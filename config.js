@@ -1,7 +1,7 @@
 // config.js
 const SUPABASE_CONFIG = {
-    url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFmbndjdXVsY2tua3hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3MDk4MzQsImV4cCI6MjA1OTI4NTgzNH0.Yzw4rjZh1KhKIKtzwAShYC-7nGjzp6aORTUaBtNxtVQ'
+    url: 'https://YOUR_PROJECT_ID.supabase.co',
+    anonKey: 'YOUR_ANON_KEY'
 };
 
 // Названия таблиц (адаптированы под существующую структуру)
