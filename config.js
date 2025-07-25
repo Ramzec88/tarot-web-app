@@ -16,8 +16,8 @@ const TABLES = {
 
 // API endpoints
 const API_CONFIG = {
-    n8nWebhook: 'https://your-n8n-domain.com/webhook/tarot-prediction',
-    paymentUrl: 'https://www.wildberries.ru/catalog/199937445/detail.aspx'
+    n8nWebhook: 'https://romanmedn8n.ru/webhook/tarot-prediction',
+    paymentUrl: 'https://digital.wildberries.ru/offer/491728'
 };
 
 // Telegram Bot конфигурация
