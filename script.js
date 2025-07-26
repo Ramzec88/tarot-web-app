@@ -853,27 +853,32 @@ async function generateAIPredictionToContainer(containerId, type, card, question
         }, 2000); 
         
         return prediction;
-        
+
     } catch (error) {
-        console.error('❌ Ошибка ИИ-предсказания:', error);
+        console.error('❌ Ошибка ИИ-предсказания (возможно, API недоступно или ошибка сети):', error);
         
-        // Фоллбэк на локальную генерацию
+        // Детальная обработка различных типов ошибок
+        let errorMessage = 'Произошла ошибка при обращении к ИИ';
+        
+        if (error.name === 'AbortError') {
+            errorMessage = 'Превышено время ожидания ответа от ИИ';
+        } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Не удается подключиться к серверу ИИ';
+        } else if (error.message.includes('404')) {
+            errorMessage = 'Эндпоинт ИИ не найден';
+        } else if (error.message.includes('CORS')) {
+            errorMessage = 'Проблема с CORS настройками';
+        }
+        
+        console.warn('🔄 Используем локальную генерацию из-за ошибки:', errorMessage);
+        
+        // Фоллбэк на локальную генерацию текста при ошибке API
         const prediction = generatePredictionText(type, card, question);
         setTimeout(() => {
             const aiContent = aiBlock.querySelector('.ai-content');
             if (aiContent) {
                 typeWriter(aiContent, prediction, 50);
             }
-        }, 2000); 
-        return prediction;
-       
-    } catch (error) {
-        console.error('❌ Ошибка ИИ-предсказания (возможно, API недоступно или ошибка сети):', error);
-        // Фоллбэк на локальную генерацию текста при ошибке API
-        const prediction = generatePredictionText(type, card, question);
-        setTimeout(() => {
-            const aiContent = aiBlock.querySelector('.ai-content');
-            typeWriter(aiContent, prediction, 50);
         }, 2000); 
         return prediction;
     }
