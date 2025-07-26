@@ -1,243 +1,598 @@
-// Обновленные функции для безопасной работы через n8n API
+// script.js - Основная логика Tarot Web App (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 
-// Создание/обновление пользователя через API
-async function createOrUpdateUser() {
-    if (!currentUser) return;
+// Глобальные переменные
+let supabase;
+let tg;
+let currentUser = null;
+let questionsLeft = 3;
+let dailyCardDrawn = false;
+let isPremium = false;
+let history = [];
+let currentQuestionId = null;
+let selectedRating = 0;
+
+// Инициализация приложения
+async function initApp() {
+    console.log('🔮 Инициализация Tarot Web App');
     
     try {
-        const response = await fetch(API_CONFIG.createUser, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                telegram_id: currentUser.telegram_id,
-                username: currentUser.username,
-                first_name: currentUser.first_name,
-                last_name: currentUser.last_name
-            })
+        // Инициализация Supabase
+        if (typeof window.supabase !== 'undefined' && SUPABASE_CONFIG) {
+            supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+            console.log('✅ Supabase инициализирован');
+        }
+        
+        // Инициализация Telegram Web App
+        initTelegramWebApp();
+        
+        // Загрузка пользователя
+        await loadCurrentUser();
+        
+        // Инициализация UI
+        initEventListeners();
+        
+        // Установка начального таба
+        switchTab('daily');
+        
+        console.log('✅ Приложение готово к работе');
+        
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+        // Fallback для тестирования без Supabase
+        initOfflineMode();
+        initEventListeners();
+        switchTab('daily');
+    }
+}
+
+// Инициализация Telegram Web App
+function initTelegramWebApp() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+            console.log('👤 Telegram пользователь:', user);
+            currentUser = {
+                telegram_id: user.id,
+                username: user.username,
+                first_name: user.first_name,
+                last_name: user.last_name
+            };
+        }
+        
+        tg.MainButton.setText('💳 Купить Premium за 299₽');
+        tg.MainButton.onClick(() => {
+            if (API_CONFIG && API_CONFIG.paymentUrl) {
+                tg.openLink(API_CONFIG.paymentUrl);
+            }
         });
         
-        if (!response.ok) throw new Error('Failed to create/update user');
+        tg.setHeaderColor('#1a1a2e');
+        tg.setBackgroundColor('#1a1a2e');
         
-        const userData = await response.json();
-        currentUser = { ...currentUser, ...userData };
-        questionsLeft = userData.free_questions_left || 0;
-        isPremium = userData.is_premium;
+    } else {
+        console.log('🔧 Режим разработки (без Telegram)');
+        currentUser = {
+            telegram_id: Math.floor(Math.random() * 1000000) + 12345,
+            username: 'test_user',
+            first_name: 'Test User'
+        };
+    }
+}
+
+// Оффлайн режим для тестирования
+function initOfflineMode() {
+    console.log('🔧 Запуск в оффлайн режиме');
+    currentUser = {
+        telegram_id: Math.floor(Math.random() * 1000000) + 12345,
+        username: 'test_user',
+        first_name: 'Test User'
+    };
+    updateSubscriptionStatus(false);
+}
+
+// Загрузка текущего пользователя
+async function loadCurrentUser() {
+    if (!currentUser || !supabase) return;
+    
+    try {
+        const { data: existingUser, error } = await supabase
+            .from(TABLES.userProfiles)
+            .select('*')
+            .eq('telegram_id', currentUser.telegram_id)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            throw error;
+        }
+        
+        if (existingUser) {
+            currentUser = { ...currentUser, ...existingUser };
+            questionsLeft = existingUser.free_questions_left || 0;
+            isPremium = existingUser.is_premium && new Date(existingUser.premium_expires_at) > new Date();
+            
+            const today = new Date().toISOString().split('T')[0];
+            dailyCardDrawn = existingUser.daily_card_drawn_date === today;
+            
+        } else {
+            await createNewUser();
+        }
         
         updateSubscriptionStatus(isPremium);
         updateQuestionsDisplay();
         
-        console.log('✅ Пользователь создан/обновлен через API');
-        
-    } catch (error) {
-        console.error('❌ Ошибка создания/обновления пользователя:', error);
-        // Fallback на локальную инициализацию
-        initOfflineMode();
-    }
-}
-
-// Сохранение карты дня через API
-async function saveDailyCardToAPI(card) {
-    if (!currentUser) return;
-    
-    try {
-        const response = await fetch(API_CONFIG.saveDailyCard, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                telegram_id: currentUser.telegram_id,
-                card_name: card.name,
-                card_symbol: card.symbol,
-                card_meaning: card.meaning,
-                drawn_date: new Date().toISOString().split('T')[0]
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to save daily card');
-        
-        console.log('✅ Карта дня сохранена через API');
-        
-    } catch (error) {
-        console.error('❌ Ошибка сохранения карты дня:', error);
-    }
-}
-
-// Сохранение вопроса через API
-async function saveQuestionToAPI(question, isFollowUp = false) {
-    if (!currentUser) return null;
-    
-    try {
-        const response = await fetch(API_CONFIG.saveQuestion, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                telegram_id: currentUser.telegram_id,
-                question_text: question,
-                is_follow_up: isFollowUp,
-                created_at: new Date().toISOString()
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to save question');
-        
-        const questionData = await response.json();
-        console.log('✅ Вопрос сохранен через API:', questionData.id);
-        
-        return questionData;
-        
-    } catch (error) {
-        console.error('❌ Ошибка сохранения вопроса:', error);
-        return { id: Date.now() }; // Fallback ID
-    }
-}
-
-// Получение истории через API
-async function loadHistoryFromAPI() {
-    if (!currentUser) return;
-    
-    try {
-        const response = await fetch(`${API_CONFIG.getHistory}?telegram_id=${currentUser.telegram_id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (!response.ok) throw new Error('Failed to load history');
-        
-        const historyData = await response.json();
-        
-        // Преобразуем данные из API в локальный формат
-        history = historyData.map(item => ({
-            id: item.id,
-            date: new Date(item.created_at).toLocaleDateString('ru-RU'),
-            time: new Date(item.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-            timestamp: new Date(item.created_at).getTime(),
-            type: item.type || 'question',
-            title: item.question_text ? 'Вопрос' : 'Карта дня',
-            question: item.question_text || '',
-            cards: item.cards || []
-        }));
-        
-        renderHistory();
-        console.log('✅ История загружена через API');
-        
-    } catch (error) {
-        console.error('❌ Ошибка загрузки истории:', error);
-        // Показываем локальную историю
-        renderHistory();
-    }
-}
-
-// Обновление подписки через API
-async function updateSubscriptionViaAPI(subscriptionCode) {
-    if (!currentUser) return false;
-    
-    try {
-        const response = await fetch(API_CONFIG.updateSubscription, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                telegram_id: currentUser.telegram_id,
-                subscription_code: subscriptionCode
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to update subscription');
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            isPremium = true;
-            questionsLeft = 999;
-            updateSubscriptionStatus(true);
-            updateQuestionsDisplay();
-            
-            showNotification('🎉 Premium подписка активирована!');
-            console.log('✅ Подписка активирована через API');
-            return true;
-        } else {
-            showNotification('❌ Неверный код подписки');
-            return false;
-        }
-        
-    } catch (error) {
-        console.error('❌ Ошибка активации подписки:', error);
-        showNotification('❌ Ошибка активации подписки');
-        return false;
-    }
-}
-
-// Генерация предсказания через n8n + OpenAI
-async function generateAIPredictionViaAPI(type, card, question = '') {
-    try {
-        const response = await fetch(API_CONFIG.generatePrediction, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                telegram_id: currentUser?.telegram_id,
-                type: type, // 'daily' или 'question'
-                card: {
-                    name: card.name,
-                    symbol: card.symbol,
-                    meaning: card.meaning
-                },
-                question: question,
-                user_context: {
-                    is_premium: isPremium,
-                    questions_asked: (APP_CONFIG.freeQuestionsLimit - questionsLeft)
-                }
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to generate prediction');
-        
-        const predictionData = await response.json();
-        
-        console.log('✅ ИИ-предсказание получено через API');
-        return predictionData.prediction || generatePredictionText(type, card, question);
-        
-    } catch (error) {
-        console.error('❌ Ошибка генерации ИИ-предсказания:', error);
-        // Fallback на локальную генерацию
-        return generatePredictionText(type, card, question);
-    }
-}
-
-// Обновленная функция инициализации пользователя
-async function loadCurrentUser() {
-    if (!currentUser) return;
-    
-    try {
-        // Вместо прямого обращения к Supabase используем API
-        await createOrUpdateUser();
-        
     } catch (error) {
         console.error('❌ Ошибка загрузки пользователя:', error);
-        initOfflineMode();
     }
 }
 
-// Обновленная функция сохранения карты дня
-async function saveDailyCardToSupabase(card) {
-    await saveDailyCardToAPI(card);
+// Создание нового пользователя
+async function createNewUser() {
+    try {
+        const { data, error } = await supabase
+            .from(TABLES.userProfiles)
+            .insert([{
+                telegram_id: currentUser.telegram_id,
+                username: currentUser.username,
+                first_name: currentUser.first_name,
+                is_premium: false,
+                free_questions_left: APP_CONFIG.freeQuestionsLimit
+            }])
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        currentUser = { ...currentUser, ...data };
+        questionsLeft = APP_CONFIG.freeQuestionsLimit;
+        isPremium = false;
+        
+        console.log('✅ Новый пользователь создан');
+        
+    } catch (error) {
+        console.error('❌ Ошибка создания пользователя:', error);
+    }
 }
 
-// Обновленная функция сохранения вопроса
-async function saveQuestionToSupabase(question, isFollowUp) {
-    return await saveQuestionToAPI(question, isFollowUp);
+// Обновление отображения статуса подписки
+function updateSubscriptionStatus(hasPremium) {
+    const statusEl = document.getElementById('subscription-status');
+    if (!statusEl) return;
+    
+    isPremium = hasPremium;
+    
+    if (hasPremium) {
+        statusEl.innerHTML = `
+            <span class="status-icon">👑</span>
+            <span class="status-text">Премиум активен</span>
+        `;
+        statusEl.classList.add('premium');
+        questionsLeft = 999;
+        
+        if (tg && tg.MainButton) {
+            tg.MainButton.hide();
+        }
+    } else {
+        statusEl.innerHTML = `
+            <span class="status-icon">🆓</span>
+            <span class="status-text">Бесплатная версия</span>
+        `;
+        statusEl.classList.remove('premium');
+        
+        if (tg && tg.MainButton) {
+            tg.MainButton.show();
+        }
+    }
 }
 
-// Обновленная функция генерации ИИ-предсказания
+// Обновление отображения количества вопросов
+function updateQuestionsDisplay() {
+    const questionsCountEl = document.getElementById('questions-count');
+    if (questionsCountEl) {
+        questionsCountEl.textContent = isPremium ? '∞' : questionsLeft;
+    }
+}
+
+// Инициализация обработчиков событий
+function initEventListeners() {
+    console.log('🎯 Инициализация обработчиков событий');
+    
+    // Основные табы
+    const mainTabs = document.querySelectorAll('.nav-tabs .nav-tab');
+    console.log('Найдено основных табов:', mainTabs.length);
+    
+    mainTabs.forEach(tab => {
+        const tabName = tab.getAttribute('data-tab');
+        console.log('Настройка таба:', tabName);
+        
+        // Удаляем старые обработчики
+        tab.replaceWith(tab.cloneNode(true));
+    });
+    
+    // Добавляем новые обработчики для основных табов
+    document.querySelectorAll('.nav-tabs .nav-tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const tabName = this.getAttribute('data-tab');
+            console.log('🔄 Переключение на основной таб:', tabName);
+            
+            if (tabName) {
+                switchTab(tabName);
+            }
+        });
+    });
+    
+    // Вторичные табы
+    const secondaryTabs = document.querySelectorAll('.nav-tabs-secondary .nav-tab');
+    console.log('Найдено вторичных табов:', secondaryTabs.length);
+    
+    secondaryTabs.forEach(tab => {
+        const tabName = tab.getAttribute('data-tab');
+        console.log('Настройка вторичного таба:', tabName);
+        
+        // Удаляем старые обработчики
+        tab.replaceWith(tab.cloneNode(true));
+    });
+    
+    // Добавляем новые обработчики для вторичных табов
+    document.querySelectorAll('.nav-tabs-secondary .nav-tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const tabName = this.getAttribute('data-tab');
+            console.log('🔄 Переключение на вторичный таб:', tabName);
+            
+            if (tabName) {
+                switchTab(tabName);
+            }
+        });
+    });
+    
+    // Обработчик для карты дня
+    const dailyCard = document.getElementById('daily-card');
+    if (dailyCard) {
+        dailyCard.addEventListener('click', drawDailyCard);
+    }
+    
+    // Обработчик для кнопки "Получить ответ"
+    const askBtn = document.getElementById('ask-btn');
+    if (askBtn) {
+        askBtn.addEventListener('click', askQuestion);
+    }
+    
+    // Обработчик для кнопки "Уточнить"
+    const followUpBtn = document.getElementById('follow-up-btn');
+    if (followUpBtn) {
+        followUpBtn.addEventListener('click', askFollowUpQuestion);
+    }
+    
+    // Обработчик для кнопки отправки отзыва
+    const submitReviewBtn = document.getElementById('submit-review-btn');
+    if (submitReviewBtn) {
+        submitReviewBtn.addEventListener('click', submitReview);
+    }
+    
+    // Обработчик для кнопки очистки истории
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', clearHistory);
+    }
+    
+    // Enter для полей ввода
+    const questionInput = document.getElementById('question-input');
+    if (questionInput) {
+        questionInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                askQuestion();
+            }
+        });
+    }
+    
+    const followUpInput = document.getElementById('follow-up-input');
+    if (followUpInput) {
+        followUpInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                askFollowUpQuestion();
+            }
+        });
+    }
+    
+    // Обработчики для рейтинга отзывов
+    const stars = document.querySelectorAll('.star');
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            selectedRating = parseInt(this.dataset.rating);
+            updateStarsDisplay();
+        });
+        
+        star.addEventListener('mouseover', function() {
+            const rating = parseInt(this.dataset.rating);
+            highlightStars(rating);
+        });
+    });
+    
+    const starsContainer = document.getElementById('rating-stars');
+    if (starsContainer) {
+        starsContainer.addEventListener('mouseleave', function() {
+            updateStarsDisplay();
+        });
+    }
+    
+    // Обработчики для раскладов
+    document.querySelectorAll('.spread-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const spreadType = this.getAttribute('data-spread');
+            if (spreadType) {
+                openSpread(spreadType);
+            }
+        });
+    });
+    
+    // Обработчики для элементов истории  
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.history-item')) {
+            const historyItem = e.target.closest('.history-item');
+            const itemId = historyItem.getAttribute('data-id');
+            if (itemId) {
+                viewHistoryItem(itemId);
+            }
+        }
+    });
+    
+    console.log('✅ Обработчики событий настроены');
+}
+
+// Переключение табов
+function switchTab(tab) {
+    console.log('🔄 Переключение на таб:', tab);
+    
+    // Скрываем все контенты табов
+    const allTabContents = document.querySelectorAll('.tab-content');
+    allTabContents.forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Убираем активный класс со всех табов
+    const allTabs = document.querySelectorAll('.nav-tab');
+    allTabs.forEach(navTab => {
+        navTab.classList.remove('active');
+    });
+    
+    // Показываем нужный контент
+    const targetContent = document.getElementById(tab + '-tab');
+    if (targetContent) {
+        targetContent.classList.add('active');
+        console.log('✅ Контент показан для:', tab);
+    } else {
+        console.error('❌ Контент не найден для таба:', tab);
+    }
+    
+    // Активируем нужный таб
+    const targetTab = document.querySelector(`[data-tab="${tab}"]`);
+    if (targetTab) {
+        targetTab.classList.add('active');
+        console.log('✅ Таб активирован:', tab);
+    } else {
+        console.error('❌ Таб не найден:', tab);
+    }
+    
+    // Специальная логика для разных табов
+    if (tab === 'history') {
+        loadHistory();
+    } else if (tab === 'reviews') {
+        loadReviews();
+    } else if (tab === 'premium') {
+        console.log('👑 Пользователь посетил Premium страницу');
+    }
+}
+
+// Карта дня
+async function drawDailyCard() {
+    if (dailyCardDrawn) {
+        showNotification('Карта дня уже была вытянута сегодня!');
+        return;
+    }
+    
+    const card = document.getElementById('daily-card');
+    const loading = document.getElementById('daily-loading');
+    
+    if (!card || !loading) return;
+    
+    loading.style.display = 'block';
+    card.style.pointerEvents = 'none';
+    
+    addSparkles(card);
+    
+    try {
+        setTimeout(async () => {
+            const randomCard = getRandomCard();
+            
+            card.innerHTML = `
+                <div class="card-name">${randomCard.name}</div>
+                <img src="${randomCard.image}" alt="${randomCard.name}" class="card-image" onerror="this.style.display='none'">
+                <div class="card-symbol">${randomCard.symbol}</div>
+                <div class="card-meaning">${randomCard.meaning}</div>
+            `;
+            
+            card.classList.add('flipped');
+            loading.style.display = 'none';
+            dailyCardDrawn = true;
+            
+            await saveDailyCardToSupabase(randomCard);
+            
+            setTimeout(async () => {
+                await generateAIPredictionToContainer('daily-ai-container', 'daily', randomCard, '');
+                
+                setTimeout(() => {
+                    const banner = document.getElementById('daily-info-banner');
+                    if (banner) {
+                        banner.style.display = 'block';
+                    }
+                }, 2000);
+            }, 1000);
+            
+            addToLocalHistory('daily', 'Карта дня', '', [randomCard]);
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Ошибка при вытягивании карты дня:', error);
+        loading.style.display = 'none';
+        card.style.pointerEvents = 'auto';
+    }
+}
+
+// Задать вопрос
+function askQuestion() {
+    const questionInput = document.getElementById('question-input');
+    if (!questionInput) return;
+    
+    const question = questionInput.value.trim();
+    if (!question) {
+        showNotification('Пожалуйста, задайте вопрос');
+        return;
+    }
+    
+    if (questionsLeft <= 0 && !isPremium) {
+        checkAndShowSubscriptionBanner();
+        return;
+    }
+    
+    performPrediction(question, false);
+}
+
+// Задать уточняющий вопрос
+function askFollowUpQuestion() {
+    const followUpInput = document.getElementById('follow-up-input');
+    if (!followUpInput) return;
+    
+    const question = followUpInput.value.trim();
+    if (!question) {
+        showNotification('Пожалуйста, задайте уточняющий вопрос');
+        return;
+    }
+    
+    if (questionsLeft <= 0 && !isPremium) {
+        checkAndShowSubscriptionBanner();
+        return;
+    }
+    
+    performPrediction(question, true);
+}
+
+// Выполнение предсказания
+async function performPrediction(question, isFollowUp) {
+    const answerSection = isFollowUp ? 
+        document.getElementById('followup-answer-section') : 
+        document.getElementById('first-answer-section');
+    const answerCard = isFollowUp ? 
+        document.getElementById('followup-answer-card') : 
+        document.getElementById('answer-card');
+    const loading = isFollowUp ? 
+        document.getElementById('followup-loading') : 
+        document.getElementById('question-loading');
+    const askBtn = document.getElementById('ask-btn');
+    const followUpBtn = document.getElementById('follow-up-btn');
+    
+    if (!answerSection || !answerCard || !loading) {
+        console.error('❌ Элементы интерфейса не найдены');
+        return;
+    }
+    
+    try {
+        answerSection.style.display = 'block';
+        loading.style.display = 'block';
+        if (askBtn) askBtn.disabled = true;
+        if (followUpBtn) followUpBtn.disabled = true;
+        
+        if (!isFollowUp) {
+            const followUpSection = document.getElementById('follow-up-section');
+            const followupAnswerSection = document.getElementById('followup-answer-section');
+            const subscriptionBanner = document.getElementById('subscription-banner-question');
+            
+            if (followUpSection) followUpSection.style.display = 'none';
+            if (followupAnswerSection) followupAnswerSection.style.display = 'none';
+            if (subscriptionBanner) subscriptionBanner.style.display = 'none';
+        }
+        
+        addSparkles(answerCard);
+        
+        const questionRecord = await saveQuestionToSupabase(question, isFollowUp);
+        currentQuestionId = questionRecord?.id;
+        
+        setTimeout(async () => {
+            const randomCard = getRandomCard();
+            
+            answerCard.innerHTML = `
+                <div class="card-name">${randomCard.name}</div>
+                <img src="${randomCard.image}" alt="${randomCard.name}" class="card-image" onerror="this.style.display='none'">
+                <div class="card-symbol">${randomCard.symbol}</div>
+                <div class="card-meaning">${randomCard.meaning}</div>
+            `;
+            
+            loading.style.display = 'none';
+            if (askBtn) askBtn.disabled = false;
+            if (followUpBtn) followUpBtn.disabled = false;
+            
+            setTimeout(async () => {
+                const aiContainerId = isFollowUp ? 'followup-ai-container' : 'first-ai-container';
+                const aiPrediction = await generateAIPredictionToContainer(aiContainerId, 'question', randomCard, question);
+                
+                if (currentQuestionId) {
+                    await saveAnswerToSupabase(currentQuestionId, randomCard, aiPrediction);
+                }
+                
+                if (!isFollowUp) {
+                    setTimeout(() => {
+                        const followUpSection = document.getElementById('follow-up-section');
+                        if (followUpSection) {
+                            followUpSection.style.display = 'block';
+                        }
+                    }, 1500);
+                }
+                
+                setTimeout(() => {
+                    checkAndShowSubscriptionBanner();
+                }, 2000);
+                
+            }, 1000);
+            
+            if (!isPremium) {
+                questionsLeft--;
+                await updateUserQuestionsInSupabase();
+                updateQuestionsDisplay();
+            }
+            
+            if (isFollowUp) {
+                document.getElementById('follow-up-input').value = '';
+            } else {
+                document.getElementById('question-input').value = '';
+            }
+            
+            addToLocalHistory('question', isFollowUp ? 'Уточняющий вопрос' : 'Вопрос', question, [randomCard]);
+            
+        }, 2500);
+        
+    } catch (error) {
+        console.error('❌ Ошибка в performPrediction:', error);
+        if (loading) loading.style.display = 'none';
+        if (askBtn) askBtn.disabled = false;
+        if (followUpBtn) followUpBtn.disabled = false;
+        showNotification('Произошла ошибка. Попробуйте еще раз.');
+    }
+}
+
+// Получение случайной карты
+function getRandomCard() {
+    return TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
+}
+
+// Генерация ИИ-предсказания в конкретный контейнер
 async function generateAIPredictionToContainer(containerId, type, card, question = '') {
     const container = document.getElementById(containerId);
     if (!container) return '';
@@ -257,8 +612,7 @@ async function generateAIPredictionToContainer(containerId, type, card, question
     container.appendChild(aiBlock);
     
     try {
-        // Получаем предсказание через API
-        const prediction = await generateAIPredictionViaAPI(type, card, question);
+        const prediction = generatePredictionText(type, card, question);
         
         setTimeout(() => {
             const aiContent = aiBlock.querySelector('.ai-content');
@@ -266,7 +620,6 @@ async function generateAIPredictionToContainer(containerId, type, card, question
         }, 2000);
         
         return prediction;
-        
     } catch (error) {
         console.error('❌ Ошибка ИИ-предсказания:', error);
         const prediction = generatePredictionText(type, card, question);
@@ -280,272 +633,358 @@ async function generateAIPredictionToContainer(containerId, type, card, question
     }
 }
 
-// Обновленная функция загрузки истории
-async function loadHistory() {
-    await loadHistoryFromAPI();
-}
-// Добавить в script.js
-
-// Глобальные переменные для профиля
-let userProfile = null;
-let profileModalShown = false;
-
-// Функция инициализации профиля
-async function initUserProfile() {
-    if (!currentUser) return;
+// Генерация предсказания (фоллбэк)
+function generatePredictionText(type, card, question) {
+    const predictions = {
+        daily: [
+            `Сегодня карта "${card.name}" говорит о том, что вас ждет особенный день. ${card.meaning.toLowerCase()} Звезды советуют обратить внимание на новые возможности, которые появятся во второй половине дня.`,
+            `Энергия карты "${card.name}" окружает вас сегодня мощной аурой. ${card.meaning.toLowerCase()} Этот день принесет важные озарения в личной сфере.`,
+            `"${card.name}" раскрывает перед вами завесу будущего на сегодня. ${card.meaning.toLowerCase()} Планеты благоволят к решительным действиям в первой половине дня.`
+        ],
+        question: [
+            `Отвечая на ваш вопрос "${question}", карта "${card.name}" открывает глубокую истину. ${card.meaning.toLowerCase()} Вселенная показывает, что ключ к решению находится в ваших руках.`,
+            `Ваш вопрос "${question}" резонирует с энергией карты "${card.name}". ${card.meaning.toLowerCase()} Духовные наставники советуют проявить терпение - ответ придет в течение 3-7 дней.`,
+            `Карта "${card.name}" дает четкий ответ на "${question}": ${card.meaning.toLowerCase()} Время действовать настанет в период растущей луны.`
+        ]
+    };
     
-    try {
-        // Пытаемся загрузить существующий профиль
-        userProfile = await loadUserProfile();
-        
-        if (!userProfile || !userProfile.display_name) {
-            // Если профиля нет - показываем форму
-            showProfileModal();
-        } else {
-            console.log('✅ Профиль пользователя загружен:', userProfile.display_name);
+    const typeArray = predictions[type] || predictions.daily;
+    return typeArray[Math.floor(Math.random() * typeArray.length)];
+}
+
+// Проверка и показ баннера подписки
+function checkAndShowSubscriptionBanner() {
+    if (!isPremium && questionsLeft <= 0) {
+        const banner = document.getElementById('subscription-banner-question');
+        if (banner) {
+            banner.style.display = 'block';
+            setTimeout(() => {
+                banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
         }
-        
-    } catch (error) {
-        console.error('❌ Ошибка загрузки профиля:', error);
-        // Показываем форму в любом случае
-        showProfileModal();
     }
 }
 
-// Показать модальное окно профиля
-function showProfileModal() {
-    if (profileModalShown) return;
-    
-    const modal = document.getElementById('profile-modal');
-    if (!modal) return;
-    
-    profileModalShown = true;
-    modal.style.display = 'flex';
-    modal.classList.add('show');
-    
-    // Добавляем обработчики событий
-    setupProfileFormHandlers();
-    
-    // Автофокус на поле имени
-    setTimeout(() => {
-        const nameInput = document.getElementById('display-name');
-        if (nameInput) nameInput.focus();
-    }, 500);
-}
-
-// Скрыть модальное окно профиля
-function hideProfileModal() {
-    const modal = document.getElementById('profile-modal');
-    if (!modal) return;
-    
-    modal.classList.add('hide');
-    
-    setTimeout(() => {
-        modal.style.display = 'none';
-        modal.classList.remove('show', 'hide');
-    }, 300);
-}
-
-// Настройка обработчиков формы
-function setupProfileFormHandlers() {
-    const profileForm = document.getElementById('profile-form');
-    const saveBtn = document.getElementById('save-profile-btn');
-    const skipBtn = document.getElementById('skip-profile-btn');
-    
-    if (profileForm) {
-        profileForm.addEventListener('submit', handleProfileSubmit);
-    }
-    
-    if (skipBtn) {
-        skipBtn.addEventListener('click', handleProfileSkip);
-    }
-    
-    // Обработчик для закрытия по клику вне модала
-    const overlay = document.querySelector('.profile-modal-overlay');
-    if (overlay) {
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                handleProfileSkip();
-            }
-        });
+// Вспомогательные функции
+function showNotification(message) {
+    if (tg && tg.showAlert) {
+        tg.showAlert(message);
+    } else {
+        alert(message);
     }
 }
 
-// Обработка отправки формы профиля
-async function handleProfileSubmit(e) {
-    e.preventDefault();
+function typeWriter(element, text, speed = 50) {
+    if (!element) return;
+    element.innerHTML = '';
+    let i = 0;
     
-    const saveBtn = document.getElementById('save-profile-btn');
-    const displayNameInput = document.getElementById('display-name');
-    const birthDateInput = document.getElementById('birth-date');
+    function type() {
+        if (i < text.length) {
+            element.innerHTML += text.charAt(i);
+            i++;
+            setTimeout(type, speed);
+        }
+    }
     
-    if (!displayNameInput || !displayNameInput.value.trim()) {
-        showNotification('Пожалуйста, введите ваше имя');
-        displayNameInput?.focus();
+    type();
+}
+
+function addSparkles(element) {
+    if (!element) return;
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            const sparkle = document.createElement('div');
+            sparkle.className = 'sparkle';
+            sparkle.textContent = '✨';
+            sparkle.style.left = Math.random() * 100 + '%';
+            sparkle.style.top = Math.random() * 100 + '%';
+            element.appendChild(sparkle);
+            
+            setTimeout(() => {
+                sparkle.remove();
+            }, 2000);
+        }, i * 200);
+    }
+}
+
+// Добавление в локальную историю
+function addToLocalHistory(type, title, question, cards) {
+    const now = new Date();
+    const historyItem = {
+        id: Date.now(),
+        date: now.toLocaleDateString('ru-RU'),
+        time: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: now.getTime(),
+        type: type,
+        title: title,
+        question: question,
+        cards: cards
+    };
+    
+    history.unshift(historyItem);
+    
+    const oneMonthAgo = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+    history = history.filter(item => item.timestamp > oneMonthAgo);
+    
+    if (history.length > 100) {
+        history = history.slice(0, 100);
+    }
+    
+    console.log('📝 Добавлен в историю:', historyItem);
+}
+
+// Функции истории
+async function loadHistory() {
+    renderHistory();
+}
+
+function renderHistory() {
+    const historyList = document.getElementById('history-list');
+    if (!historyList) return;
+    
+    if (history.length === 0) {
+        historyList.innerHTML = `
+            <div class="empty-history">
+                <div class="empty-icon">🔮</div>
+                <p>История раскладов за последний месяц пуста.<br>Начните с карты дня или задайте вопрос!</p>
+            </div>
+        `;
         return;
     }
     
-    // Показываем состояние загрузки
-    if (saveBtn) {
-        saveBtn.classList.add('loading');
-        saveBtn.disabled = true;
-    }
-    
-    try {
-        const profileData = {
-            display_name: displayNameInput.value.trim(),
-            birth_date: birthDateInput?.value || null,
-            telegram_id: currentUser?.telegram_id
-        };
-        
-        // Сохраняем профиль
-        await saveUserProfile(profileData);
-        
-        userProfile = profileData;
-        
-        // Показываем успешное сообщение
-        showNotification(`Добро пожаловать, ${profileData.display_name}! 🎉`);
-        
-        // Закрываем модал
-        hideProfileModal();
-        
-        console.log('✅ Профиль сохранен:', profileData);
-        
-    } catch (error) {
-        console.error('❌ Ошибка сохранения профиля:', error);
-        showNotification('Произошла ошибка при сохранении профиля');
-    } finally {
-        // Убираем состояние загрузки
-        if (saveBtn) {
-            saveBtn.classList.remove('loading');
-            saveBtn.disabled = false;
+    const groupedHistory = {};
+    history.forEach(item => {
+        if (!groupedHistory[item.date]) {
+            groupedHistory[item.date] = [];
         }
-    }
-}
-
-// Обработка пропуска профиля
-function handleProfileSkip() {
-    if (currentUser) {
-        userProfile = {
-            display_name: currentUser.first_name || 'Пользователь',
-            birth_date: null,
-            telegram_id: currentUser.telegram_id
-        };
-    }
+        groupedHistory[item.date].push(item);
+    });
     
-    hideProfileModal();
-    showNotification('Вы всегда можете заполнить профиль позже');
-}
-
-// Загрузка профиля пользователя
-async function loadUserProfile() {
-    if (!currentUser) return null;
-    
-    try {
-        const response = await fetch(`${API_CONFIG.getProfile}?telegram_id=${currentUser.telegram_id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
+    let historyHTML = '';
+    Object.keys(groupedHistory).forEach(date => {
+        historyHTML += `<div class="history-date-group">
+            <div class="history-date-header">${date}</div>`;
+        
+        groupedHistory[date].forEach(item => {
+            historyHTML += `
+                <div class="history-item" data-id="${item.id}">
+                    <div class="history-header">
+                        <div class="history-type">${item.title}</div>
+                        <div class="history-time">${item.time}</div>
+                    </div>
+                    ${item.question ? `<div class="history-question">"${item.question}"</div>` : ''}
+                    <div class="history-cards">
+                        ${item.cards.map(card => `
+                            <div class="history-mini-card">${card.symbol} ${card.name}</div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
         });
         
-        if (!response.ok) throw new Error('Failed to load profile');
+        historyHTML += '</div>';
+    });
+    
+    historyList.innerHTML = historyHTML;
+}
+
+function viewHistoryItem(id) {
+    const item = history.find(h => h.id == id);
+    if (!item) return;
+    
+    let details = `📅 ${item.date} в ${item.time}\n\n`;
+    details += `🔮 ${item.title}\n\n`;
+    
+    if (item.question) {
+        details += `❓ Вопрос: "${item.question}"\n\n`;
+    }
+    
+    details += `🃏 Карты:\n`;
+    item.cards.forEach(card => {
+        details += `${card.symbol} ${card.name}\n${card.meaning}\n\n`;
+    });
+    
+    showNotification(details);
+}
+
+function clearHistory() {
+    if (confirm('Удалить всю историю раскладов за последний месяц?')) {
+        history = [];
+        renderHistory();
+    }
+}
+
+// Функции для отзывов
+async function loadReviews() {
+    console.log('📝 Загрузка отзывов');
+}
+
+async function submitReview() {
+    const reviewText = document.getElementById('review-text');
+    const anonymousCheckbox = document.getElementById('anonymous-review');
+    
+    if (!reviewText || !selectedRating) {
+        showNotification('Пожалуйста, поставьте оценку и напишите отзыв');
+        return;
+    }
+    
+    const text = reviewText.value.trim();
+    if (!text) {
+        showNotification('Пожалуйста, напишите текст отзыва');
+        return;
+    }
+    
+    try {
+        // Здесь будет отправка отзыва в Supabase
+        console.log('📝 Отправка отзыва:', {
+            rating: selectedRating,
+            text: text,
+            anonymous: anonymousCheckbox ? anonymousCheckbox.checked : false
+        });
         
-        const profileData = await response.json();
-        return profileData;
+        showNotification('Спасибо за отзыв!');
+        
+        // Очищаем форму
+        reviewText.value = '';
+        selectedRating = 0;
+        updateStarsDisplay();
+        if (anonymousCheckbox) anonymousCheckbox.checked = false;
         
     } catch (error) {
-        console.error('❌ Ошибка загрузки профиля:', error);
+        console.error('❌ Ошибка отправки отзыва:', error);
+        showNotification('Ошибка при отправке отзыва');
+    }
+}
+
+function updateStarsDisplay() {
+    const stars = document.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+        if (index < selectedRating) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+}
+
+function highlightStars(rating) {
+    const stars = document.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+        if (index < rating) {
+            star.style.color = '#ffd700';
+        } else {
+            star.style.color = '#444';
+        }
+    });
+}
+
+// Функции для раскладов
+function openSpread(spreadType) {
+    console.log('🃏 Открытие расклада:', spreadType);
+    if (!isPremium) {
+        checkAndShowSubscriptionBanner();
+        return;
+    }
+    showNotification('Расклады будут доступны в следующем обновлении!');
+}
+
+function closeSpread() {
+    console.log('🃏 Закрытие расклада');
+}
+
+function drawSpread() {
+    console.log('🃏 Создание расклада');
+}
+
+// Функции-заглушки для Supabase
+async function saveDailyCardToSupabase(card) {
+    console.log('💾 Сохранение карты дня:', card.name);
+    if (!supabase || !currentUser) return null;
+    
+    try {
+        const { data, error } = await supabase
+            .from(TABLES.dailyCards)
+            .insert([{
+                user_id: currentUser.telegram_id,
+                card_name: card.name,
+                card_symbol: card.symbol,
+                card_meaning: card.meaning,
+                drawn_date: new Date().toISOString().split('T')[0]
+            }]);
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('❌ Ошибка сохранения карты дня:', error);
         return null;
     }
 }
 
-// Сохранение профиля пользователя
-async function saveUserProfile(profileData) {
-    try {
-        const response = await fetch(API_CONFIG.saveProfile, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(profileData)
-        });
-        
-        if (!response.ok) throw new Error('Failed to save profile');
-        
-        const result = await response.json();
-        return result;
-        
-    } catch (error) {
-        console.error('❌ Ошибка сохранения профиля:', error);
-        throw error;
-    }
-}
-
-// Получение персонализированного обращения
-function getPersonalizedGreeting() {
-    if (userProfile && userProfile.display_name) {
-        const hour = new Date().getHours();
-        let timeGreeting = '';
-        
-        if (hour < 12) timeGreeting = 'Доброе утро';
-        else if (hour < 18) timeGreeting = 'Добрый день';
-        else timeGreeting = 'Добрый вечер';
-        
-        return `${timeGreeting}, ${userProfile.display_name}!`;
-    }
-    
-    return 'Добро пожаловать!';
-}
-
-// Проверка заполненности профиля
-function isProfileComplete() {
-    return userProfile && userProfile.display_name;
-}
-
-// Получение возраста (если указана дата рождения)
-function getUserAge() {
-    if (!userProfile || !userProfile.birth_date) return null;
-    
-    const today = new Date();
-    const birthDate = new Date(userProfile.birth_date);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-    
-    return age;
-}
-
-// Обновленная функция инициализации приложения
-async function initApp() {
-    console.log('🔮 Инициализация Tarot Web App');
+async function saveQuestionToSupabase(question, isFollowUp) {
+    console.log('💾 Сохранение вопроса:', question);
+    if (!supabase || !currentUser) return { id: Date.now() };
     
     try {
-        // Инициализация Supabase
-        if (typeof window.supabase !== 'undefined' && SUPABASE_CONFIG) {
-            supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-            console.log('✅ Supabase инициализирован');
-        }
+        const { data, error } = await supabase
+            .from(TABLES.questions)
+            .insert([{
+                user_id: currentUser.telegram_id,
+                question_text: question,
+                is_follow_up: isFollowUp,
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
         
-        // Инициализация Telegram Web App
-        initTelegramWebApp();
-        
-        // Загрузка пользователя
-        await loadCurrentUser();
-        
-        // Инициализация профиля (показ формы если нужно)
-        await initUserProfile();
-        
-        // Инициализация UI
-        initEventListeners();
-        
-        console.log('✅ Приложение готово к работе');
-        
+        if (error) throw error;
+        return data;
     } catch (error) {
-        console.error('❌ Ошибка инициализации:', error);
-        initOfflineMode();
+        console.error('❌ Ошибка сохранения вопроса:', error);
+        return { id: Date.now() };
     }
 }
+
+async function saveAnswerToSupabase(questionId, card, aiPrediction) {
+    console.log('💾 Сохранение ответа для вопроса:', questionId);
+    if (!supabase || !currentUser) return null;
+    
+    try {
+        const { data, error } = await supabase
+            .from(TABLES.answers)
+            .insert([{
+                question_id: questionId,
+                user_id: currentUser.telegram_id,
+                card_name: card.name,
+                card_symbol: card.symbol,
+                card_meaning: card.meaning,
+                ai_prediction: aiPrediction,
+                created_at: new Date().toISOString()
+            }]);
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('❌ Ошибка сохранения ответа:', error);
+        return null;
+    }
+}
+
+async function updateUserQuestionsInSupabase() {
+    console.log('💾 Обновление количества вопросов:', questionsLeft);
+    if (!supabase || !currentUser) return;
+    
+    try {
+        const { error } = await supabase
+            .from(TABLES.userProfiles)
+            .update({ free_questions_left: questionsLeft })
+            .eq('telegram_id', currentUser.telegram_id);
+        
+        if (error) throw error;
+    } catch (error) {
+        console.error('❌ Ошибка обновления количества вопросов:', error);
+    }
+}
+
+// Проверка работы
+console.log('🔮 Script.js (исправленная версия с рабочими табами) загружен успешно!');
