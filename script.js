@@ -211,8 +211,8 @@ function updateSubscriptionStatus(hasPremium) {
         }
     } else {
         statusEl.innerHTML = `
-            <span class="status-icon">🆓</span>
-            <span class="status-text">Бесплатная версия</span>
+            <span class="status-icon">🌑</span>
+            <span class="status-text">Базовая версия</span>
         `;
         statusEl.classList.remove('premium');
         
