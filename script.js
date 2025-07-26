@@ -219,41 +219,141 @@ function updateQuestionsDisplay() {
 }
 
 // Инициализация обработчиков событий
+// ИСПРАВЛЕННАЯ ВЕРСИЯ ИНИЦИАЛИЗАЦИИ ТАБОВ
+// Заменить соответствующие функции в script.js
+
+// Инициализация обработчиков событий - ИСПРАВЛЕННАЯ ВЕРСИЯ
 function initEventListeners() {
     console.log('🎯 Инициализация обработчиков событий');
 
-    // Основные табы
-    // Удалены строки tab.replaceWith(tab.cloneNode(true));
+    // Основные табы - УЛУЧШЕННАЯ ВЕРСИЯ
     document.querySelectorAll('.nav-tabs .nav-tab').forEach(tab => {
-        tab.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const tabName = this.getAttribute('data-tab');
-            console.log('🔄 Переключение на основной таб:', tabName);
-            
-            if (tabName) {
-                switchTab(tabName);
-            }
-        });
+        // Удаляем старые обработчики если есть
+        tab.removeEventListener('click', handleMainTabClick);
+        // Добавляем новый обработчик
+        tab.addEventListener('click', handleMainTabClick);
     });
 
-    // Вторичные табы
-    // Удалены строки tab.replaceWith(tab.cloneNode(true));
+    // Вторичные табы - УЛУЧШЕННАЯ ВЕРСИЯ
     document.querySelectorAll('.nav-tabs-secondary .nav-tab').forEach(tab => {
-        tab.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const tabName = this.getAttribute('data-tab');
-            console.log('🔄 Переключение на вторичный таб:', tabName);
-            
-            if (tabName) {
-                switchTab(tabName);
-            }
-        });
+        // Удаляем старые обработчики если есть
+        tab.removeEventListener('click', handleSecondaryTabClick);
+        // Добавляем новый обработчик
+        tab.addEventListener('click', handleSecondaryTabClick);
     });
     
+    // Остальные обработчики...
+    initOtherEventListeners();
+    
+    console.log('✅ Обработчики событий настроены');
+}
+
+// Обработчик основных табов
+function handleMainTabClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const tabName = this.getAttribute('data-tab');
+    console.log('🔄 Клик по основному табу:', tabName);
+    
+    if (tabName) {
+        switchTab(tabName);
+    } else {
+        console.error('❌ Не найден data-tab атрибут у элемента:', this);
+    }
+}
+
+// Обработчик вторичных табов
+function handleSecondaryTabClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const tabName = this.getAttribute('data-tab');
+    console.log('🔄 Клик по вторичному табу:', tabName);
+    
+    if (tabName) {
+        switchTab(tabName);
+    } else {
+        console.error('❌ Не найден data-tab атрибут у элемента:', this);
+    }
+}
+
+// Переключение табов - ИСПРАВЛЕННАЯ ВЕРСИЯ
+function switchTab(tab) {
+    console.log('🔄 Переключение на таб:', tab);
+    
+    // Проверяем, что таб существует
+    const targetContent = document.getElementById(tab + '-tab');
+    if (!targetContent) {
+        console.error('❌ Контент не найден для таба:', tab);
+        return;
+    }
+    
+    // Скрываем все контенты табов
+    const allTabContents = document.querySelectorAll('.tab-content');
+    allTabContents.forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Убираем активный класс со всех табов (основных и вторичных)
+    const allTabs = document.querySelectorAll('.nav-tab');
+    allTabs.forEach(navTab => {
+        navTab.classList.remove('active');
+    });
+    
+    // Показываем нужный контент
+    targetContent.classList.add('active');
+    console.log('✅ Контент показан для:', tab);
+    
+    // Активируем соответствующий таб
+    const targetTab = document.querySelector(`[data-tab="${tab}"]`);
+    if (targetTab) {
+        targetTab.classList.add('active');
+        console.log('✅ Таб активирован:', tab);
+    } else {
+        console.error('❌ Таб не найден с data-tab:', tab);
+    }
+    
+    // Специальная логика для разных табов
+    handleTabSpecificLogic(tab);
+}
+
+// Специфическая логика для табов
+function handleTabSpecificLogic(tab) {
+    switch(tab) {
+        case 'history':
+            loadHistory();
+            break;
+        case 'reviews':
+            loadReviews();
+            break;
+        case 'premium':
+            console.log('👑 Пользователь посетил Premium страницу');
+            break;
+        case 'spreads':
+            // При переключении на вкладку "Расклады" всегда показываем список раскладов
+            const spreadsGrid = document.querySelector('.spreads-grid');
+            const spreadDetail = document.getElementById('spread-detail');
+
+            if (spreadsGrid) spreadsGrid.style.display = 'grid';
+            if (spreadDetail) spreadDetail.style.display = 'none';
+
+            currentSpread = null; // Сбрасываем текущий расклад
+            console.log('✅ Переключено на выбор раскладов.');
+            break;
+        case 'daily':
+            console.log('🌅 Переключено на карту дня');
+            break;
+        case 'question':
+            console.log('❓ Переключено на вопросы');
+            break;
+        default:
+            console.log('📋 Переключено на таб:', tab);
+    }
+}
+
+// Остальные обработчики событий
+function initOtherEventListeners() {
     // Обработчик для карты дня
     const dailyCard = document.getElementById('daily-card');
     if (dailyCard) {
@@ -345,68 +445,53 @@ function initEventListeners() {
         }
     });
     
-    // Обработчик для кнопки "Назад" в раскладах (будет перепривязан в showSpreadInterface)
+    // Обработчик для кнопки "Назад" в раскладах
     const backBtn = document.querySelector('.back-btn');
     if (backBtn) {
         backBtn.addEventListener('click', closeSpread);
     }
     
-    console.log('✅ Обработчики событий настроены');
+    // Обработчики для кнопок в баннерах
+    document.addEventListener('click', function(e) {
+        if (e.target.hasAttribute('data-tab')) {
+            const tabName = e.target.getAttribute('data-tab');
+            if (tabName) {
+                switchTab(tabName);
+            }
+        }
+    });
 }
 
-// Переключение табов
-function switchTab(tab) {
-    console.log('🔄 Переключение на таб:', tab);
+// Дополнительная функция для отладки табов
+function debugTabs() {
+    console.log('🔍 Отладка табов:');
     
-    // Скрываем все контенты табов
-    const allTabContents = document.querySelectorAll('.tab-content');
-    allTabContents.forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    // Убираем активный класс со всех табов
+    // Проверяем все табы
     const allTabs = document.querySelectorAll('.nav-tab');
-    allTabs.forEach(navTab => {
-        navTab.classList.remove('active');
+    console.log('Найдено табов:', allTabs.length);
+    
+    allTabs.forEach((tab, index) => {
+        const dataTab = tab.getAttribute('data-tab');
+        const hasClick = tab.onclick !== null;
+        console.log(`Таб ${index + 1}: data-tab="${dataTab}", hasClick=${hasClick}`);
     });
     
-    // Показываем нужный контент
-    const targetContent = document.getElementById(tab + '-tab');
-    if (targetContent) {
-        targetContent.classList.add('active');
-        console.log('✅ Контент показан для:', tab);
-    } else {
-        console.error('❌ Контент не найден для таба:', tab);
-    }
+    // Проверяем все контенты табов
+    const allContents = document.querySelectorAll('.tab-content');
+    console.log('Найдено контентов:', allContents.length);
     
-    // Активируем нужный таб
-    const targetTab = document.querySelector(`[data-tab="${tab}"]`);
-    if (targetTab) {
-        targetTab.classList.add('active');
-        console.log('✅ Таб активирован:', tab);
-    } else {
-        console.error('❌ Таб не найден:', tab);
-    }
-    
-    // Специальная логика для разных табов
-    if (tab === 'history') {
-        loadHistory();
-    } else if (tab === 'reviews') {
-        loadReviews();
-    } else if (tab === 'premium') {
-        console.log('👑 Пользователь посетил Premium страницу');
-    } else if (tab === 'spreads') { // БЛОК ДЛЯ ВКЛАДКИ "РАСКЛАДЫ"
-        // При переключении на вкладку "Расклады" всегда показываем список раскладов
-        // и скрываем детальный вид, если он был активен.
-        const spreadsGrid = document.querySelector('.spreads-grid');
-        const spreadDetail = document.getElementById('spread-detail');
+    allContents.forEach((content, index) => {
+        const id = content.id;
+        const isActive = content.classList.contains('active');
+        console.log(`Контент ${index + 1}: id="${id}", active=${isActive}`);
+    });
+}
 
-        if (spreadsGrid) spreadsGrid.style.display = 'grid'; // Убедимся, что сетка выбора видна
-        if (spreadDetail) spreadDetail.style.display = 'none'; // Убедимся, что детальный расклад скрыт
-
-        currentSpread = null; // Сбрасываем текущий расклад
-        console.log('✅ Переключено на выбор раскладов.');
-    }
+// Принудительное переключение таба для тестирования
+function forceTabSwitch(tabName) {
+    console.log('🚀 Принудительное переключение на:', tabName);
+    switchTab(tabName);
+    debugTabs();
 }
 
 // Сброс карты к дефолтному состоянию
