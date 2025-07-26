@@ -32,10 +32,10 @@ const API_CONFIG = {
     generatePrediction: 'https://romanmedn8n.ru/webhook/tarot-prediction',
     
     // НОВОЕ: GitHub Raw для карт (быстро и надежно)
-    cardsUrl: 'https://raw.githubusercontent.com/YOUR_USERNAME/tarot-web-app/main/cards.json',
+    cardsUrl: 'https://raw.githubusercontent.com/Ramzec88/tarot-web-app/main/cards.json',
     
     // Резервный URL через jsDelivr CDN
-    cardsFallbackUrl: 'https://cdn.jsdelivr.net/gh/YOUR_USERNAME/tarot-web-app@main/cards.json',
+    cardsFallbackUrl: 'https://cdn.jsdelivr.net/gh/Ramzec88/tarot-web-app@main/cards.json',
     
     // Настройки загрузки карт
     requestTimeout: 15000, // 15 секунд для карт
