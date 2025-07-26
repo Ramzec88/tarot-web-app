@@ -757,37 +757,60 @@ async function performPrediction(question, isFollowUp) {
     }
 }
 
-// Получение случайной карты из колоды
+   // РАБОЧАЯ функция получения случайной карты
 async function getRandomCard() {
-    // Если карты не загружены, загружаем их
-    if (!CARDS_LOADED) {
+    console.log('🎯 Получаю случайную карту...');
+    
+    // Если карты не загружены, пытаемся загрузить
+    if (!CARDS_LOADED || !TAROT_CARDS_CACHE || TAROT_CARDS_CACHE.length === 0) {
         await loadCardsFromGitHub();
     }
     
-    // Проверяем, что карты есть
-    if (TAROT_CARDS_CACHE.length === 0) {
-        console.error('❌ Карты не загружены, используем фоллбэк');
-        return getFallbackCard();
+    // Проверяем что карты есть
+    if (!TAROT_CARDS_CACHE || TAROT_CARDS_CACHE.length === 0) {
+        console.error('❌ Нет доступных карт');
+        return {
+            name: "Загадочная карта",
+            symbol: "🔮", 
+            meaning: "Карты временно недоступны",
+            position: "Прямая",
+            isReversed: false
+        };
     }
     
-    // Возвращаем случайную карту
+    // Получаем случайную карту
     const randomIndex = Math.floor(Math.random() * TAROT_CARDS_CACHE.length);
     const selectedCard = TAROT_CARDS_CACHE[randomIndex];
-    
-    // Случайно выбираем прямое или перевернутое положение
     const isReversed = Math.random() < 0.5;
     
-    // Создаем объект карты с учетом положения
-    const card = {
-        ...selectedCard,
+    // Исправляем структуру карты если нужно
+    if (!selectedCard.meaningUpright && !selectedCard.meaning) {
+        selectedCard.meaningUpright = `Значение карты ${selectedCard.name}`;
+        selectedCard.meaningReversed = `Перевернутое значение карты ${selectedCard.name}`;
+        selectedCard.meaning = selectedCard.meaningUpright;
+    }
+    
+    // Создаем результат
+    const result = {
+        id: selectedCard.id || selectedCard.name,
+        name: selectedCard.name || "Неизвестная карта",
+        symbol: selectedCard.symbol || "🃏",
+        meaning: isReversed ? 
+            (selectedCard.meaningReversed || selectedCard.meaningUpright || selectedCard.meaning) :
+            (selectedCard.meaningUpright || selectedCard.meaning || selectedCard.meaningReversed),
+        position: isReversed ? 'Перевёрнутая' : 'Прямая',
         isReversed: isReversed,
-        meaning: isReversed ? selectedCard.meaningReversed : selectedCard.meaningUpright,
-        image: isReversed ? (selectedCard.imageReversed || selectedCard.image) : selectedCard.image,
-        position: isReversed ? 'Перевёрнутая' : 'Прямая'
+        image: selectedCard.image || selectedCard.imageUpright || './images/cards/default.jpg',
+        
+        // Дополнительные поля
+        meaningUpright: selectedCard.meaningUpright || selectedCard.meaning,
+        meaningReversed: selectedCard.meaningReversed || selectedCard.meaningUpright,
+        element: selectedCard.element || 'Воздух',
+        type: selectedCard.type || 'Старшие Арканы'
     };
     
-    console.log('🎴 Выбрана карта:', card.name, card.position);
-    return card;
+    console.log('✅ Карта готова:', result.name, result.symbol, result.position);
+    return result;
 }
 
 // 1. ОСНОВНАЯ функция загрузки карт с GitHub
