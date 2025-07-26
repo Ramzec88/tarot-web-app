@@ -853,8 +853,7 @@ async function generateAIPredictionToContainer(containerId, type, card, question
         }, 2000); 
         
         return prediction;
-        }
-    }
+        
     } catch (error) {
         console.error('❌ Ошибка ИИ-предсказания:', error);
         
