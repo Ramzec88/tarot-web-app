@@ -226,55 +226,60 @@ function updateQuestionsDisplay() {
 // Инициализация обработчиков событий
 function initEventListeners() {
     console.log('🎯 Инициализация обработчиков событий');
-    
+
     // Основные табы
     const mainTabs = document.querySelectorAll('.nav-tabs .nav-tab');
     console.log('Найдено основных табов:', mainTabs.length);
-    
+
     mainTabs.forEach(tab => {
         const tabName = tab.getAttribute('data-tab');
         console.log('Настройка таба:', tabName);
-        
-        // Удаляем старые обработчики
-        tab.replaceWith(tab.cloneNode(true));
+
+        // УДАЛИТЕ СЛЕДУЮЩУЮ СТРОКУ:
+        // tab.replaceWith(tab.cloneNode(true));
     });
-    
+
     // Добавляем новые обработчики для основных табов
     document.querySelectorAll('.nav-tabs .nav-tab').forEach(tab => {
+        // Убедитесь, что обработчик добавляется только один раз.
+        // Возможно, вам стоит добавить проверку 'once: true' или удалить старые обработчики,
+        // если initEventListeners вызывается несколько раз.
+        // Для простоты, если initEventListeners вызывается только один раз при загрузке,
+        // то просто удаление строки выше будет достаточно.
         tab.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const tabName = this.getAttribute('data-tab');
             console.log('🔄 Переключение на основной таб:', tabName);
-            
+
             if (tabName) {
                 switchTab(tabName);
             }
         });
     });
-    
+
     // Вторичные табы
     const secondaryTabs = document.querySelectorAll('.nav-tabs-secondary .nav-tab');
     console.log('Найдено вторичных табов:', secondaryTabs.length);
-    
+
     secondaryTabs.forEach(tab => {
         const tabName = tab.getAttribute('data-tab');
         console.log('Настройка вторичного таба:', tabName);
-        
-        // Удаляем старые обработчики
-        tab.replaceWith(tab.cloneNode(true));
+
+        // УДАЛИТЕ СЛЕДУЮЩУЮ СТРОКУ:
+        // tab.replaceWith(tab.cloneNode(true));
     });
-    
+
     // Добавляем новые обработчики для вторичных табов
     document.querySelectorAll('.nav-tabs-secondary .nav-tab').forEach(tab => {
         tab.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const tabName = this.getAttribute('data-tab');
             console.log('🔄 Переключение на вторичный таб:', tabName);
-            
+
             if (tabName) {
                 switchTab(tabName);
             }
