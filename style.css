@@ -1754,3 +1754,479 @@ body {
     margin-right: 6px;
     margin-bottom: 4px;
 }
+/* Модальные окна - добавить в style.css */
+
+/* История - модальное окно */
+.history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.history-modal.show {
+    opacity: 1;
+}
+
+.history-modal-content {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 20px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+}
+
+.history-modal.show .history-modal-content {
+    transform: scale(1);
+}
+
+.history-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-modal-header h3 {
+    color: #ffd700;
+    margin: 0;
+    font-size: 18px;
+}
+
+.history-modal-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+}
+
+.history-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.history-modal-body {
+    padding: 20px;
+}
+
+.history-detail-date {
+    color: #b0b0b0;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.history-detail-question {
+    margin-bottom: 20px;
+}
+
+.history-detail-question strong {
+    color: #ffd700;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.history-detail-question p {
+    color: #e0e0e0;
+    font-style: italic;
+    margin: 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.history-detail-cards {
+    margin-bottom: 20px;
+}
+
+.history-detail-cards strong {
+    color: #ffd700;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.history-detail-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 4px solid #ffd700;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.card-symbol-large {
+    font-size: 24px;
+    margin-right: 10px;
+}
+
+.card-name-large {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.card-meaning-detail {
+    color: #e0e0e0;
+    line-height: 1.5;
+}
+
+.history-detail-prediction {
+    margin-bottom: 20px;
+}
+
+.history-detail-prediction strong {
+    color: #ffd700;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.history-detail-prediction p {
+    color: #e0e0e0;
+    line-height: 1.6;
+    margin: 0;
+    padding: 15px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.history-modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* История - кнопки действий */
+.history-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.history-btn {
+    background: rgba(255, 215, 0, 0.2);
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    color: #ffd700;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.history-btn:hover {
+    background: rgba(255, 215, 0, 0.3);
+    transform: translateY(-1px);
+}
+
+.history-icon {
+    margin-right: 6px;
+    font-size: 14px;
+}
+
+/* Приветственное модальное окно */
+.welcome-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.welcome-modal.show {
+    opacity: 1;
+}
+
+.welcome-modal-content {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+    border: 2px solid #ffd700;
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+}
+
+.welcome-modal.show .welcome-modal-content {
+    transform: scale(1);
+}
+
+.welcome-header {
+    text-align: center;
+    padding: 25px 20px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.welcome-header h2 {
+    color: #ffd700;
+    margin: 0 0 10px 0;
+    font-size: 20px;
+}
+
+.welcome-header p {
+    color: #b0b0b0;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.welcome-form {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: #ffd700;
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.welcome-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 15px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.welcome-input:focus {
+    outline: none;
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.welcome-input::placeholder {
+    color: #b0b0b0;
+}
+
+.privacy-note {
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.privacy-note p {
+    color: #888;
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid #ffd700;
+}
+
+.welcome-footer {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.welcome-footer .btn {
+    flex: 1;
+    margin: 0;
+}
+
+/* Мобильная адаптация модальных окон */
+@media (max-width: 480px) {
+    .history-modal-content,
+    .welcome-modal-content {
+        width: 95%;
+        margin: 10px;
+        max-height: 95vh;
+    }
+    
+    .history-modal-header,
+    .welcome-header {
+        padding: 15px;
+    }
+    
+    .history-modal-body,
+    .welcome-form {
+        padding: 15px;
+    }
+    
+    .history-modal-footer,
+    .welcome-footer {
+        padding: 15px;
+        flex-direction: column;
+    }
+    
+    .welcome-footer .btn {
+        width: 100%;
+    }
+    
+    .history-modal-header h2,
+    .welcome-header h2 {
+        font-size: 18px;
+    }
+}
+
+/* Анимация появления элементов истории */
+.history-item {
+    animation: slideInHistory 0.3s ease;
+}
+
+@keyframes slideInHistory {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Улучшения для элементов истории */
+.history-item:hover {
+    transform: translateX(3px);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.2);
+}
+
+.history-type {
+    display: flex;
+    align-items: center;
+}
+
+/* Дополнительные стили для улучшенной истории */
+.history-mini-card {
+    display: inline-block;
+    margin-right: 6px;
+    margin-bottom: 4px;
+}
+
+/* Улучшения для системы отзывов */
+.review-expand-btn {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: underline;
+    padding: 5px 0;
+    margin-left: 5px;
+    transition: color 0.3s ease;
+}
+
+.review-expand-btn:hover {
+    color: #ffd700;
+}
+
+.review-text {
+    line-height: 1.5;
+}
+
+.review-short,
+.review-full {
+    transition: opacity 0.3s ease;
+}
+
+/* Анимация для новых отзывов */
+.review-item.new-review {
+    animation: newReviewAppear 0.5s ease;
+    border-left: 4px solid #ffd700;
+}
+
+@keyframes newReviewAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+        background: rgba(255, 215, 0, 0.2);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        background: transparent;
+    }
+}
+
+/* Улучшения для формы отзывов */
+.review-form {
+    position: relative;
+}
+
+.review-form.submitting {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.review-form.submitting::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 15px;
+    animation: pulse 1.5s infinite;
+}
+
+/* Улучшения звездочек */
+.stars {
+    padding: 5px 0;
+}
+
+.star {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    margin: 0 2px;
+}
+
+.star:hover {
+    transform: scale(1.2);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.star.active {
+    color: #ffd700;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
