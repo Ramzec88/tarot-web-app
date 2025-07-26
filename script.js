@@ -1042,18 +1042,19 @@ function viewHistoryDetail(id) {
                     </div>
                 ` : ''}
                 
-                <div class="history-detail-cards">
-                    <strong>🃏 Карты:</strong>
-                    ${item.cards.map(card => `
-                        <div class="history-detail-card">
-                            <div class="card-header">
-                                <span class="card-symbol-large">${card.symbol}</span>
-                                <span class="card-name-large">${card.name}</span>
-                            </div>
-                            <div class="card-meaning-detail">${card.meaning}</div>
-                        </div>
-                    `).join('')}
+                 <div class="history-detail-cards">
+        <strong>🃏 Карты:</strong>
+        ${item.cards.map(cardItem => ` // <--- ИЗМЕНЕНО: теперь cardItem - это объект { card, positionName, ... }
+            <div class="history-detail-card">
+                <div class="card-header">
+                    <span class="card-symbol-large">${cardItem.card.symbol}</span> // <--- ДОСТУП К ДАННЫМ КАРТЫ ЧЕРЕЗ .card
+                    <span class="card-name-large">${cardItem.card.name}</span>
                 </div>
+                ${cardItem.positionName ? `<div class="card-position-name">${cardItem.positionName}:</div>` : ''} // <--- ДОБАВЛЕНО: Отображение имени позиции, если оно есть
+                <div class="card-meaning-detail">${cardItem.card.meaning}</div>
+            </div>
+        `).join('')}
+    </div>
                 
                 ${item.aiPrediction ? `
                     <div class="history-detail-prediction">
@@ -1673,11 +1674,44 @@ async function drawSpread() {
         showInterpretationsButton();
         
         console.log('✅ Все карты открыты, добавляем в историю');
+
+         // --- НОВОЕ: Подготовка данных для истории с позициями ---
+        const historyCards = currentSpread.cards.map((card, index) => {
+        const position = currentSpread.config.positions[index];
+        return {
+            card: card, // Сама карта
+            positionName: position.name, // Имя позиции (напр., "Вы")
+            positionDescription: position.description // Описание позиции
+        };
+    });
         
         // Добавляем в историю
-        setTimeout(() => {
-            addToLocalHistory('spread', config.name, currentSpread.question || '', spreadCards);
-        }, 1000);
+        // --- КОНЕЦ НОВОГО ---
+
+    // Добавляем в историю
+    setTimeout(() => {
+        // Теперь передаем historyCards вместо spreadCards
+        addToLocalHistory('spread', config.name, currentSpread.question || '', historyCards, currentSpread.interpretations);
+    }, 1000);
+
+}
+
+// ИЗМЕНЕНИЕ В ФУНКЦИИ addToLocalHistory:
+// Теперь она должна принимать 'cards' как массив объектов,
+// где каждый объект содержит 'card' и 'positionName'/'positionDescription'.
+function addToLocalHistory(type, title, question, cardsWithPositions, aiPrediction = '') {
+    const now = new Date();
+    const historyItem = {
+        id: Date.now(),
+        date: now.toLocaleDateString('ru-RU'),
+        time: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: now.getTime(),
+        type: type,
+        title: title,
+        question: question,
+        cards: cardsWithPositions, // Теперь это массив объектов { card, positionName, positionDescription }
+        aiPrediction: aiPrediction
+    };
         
     } catch (error) {
         console.error('❌ Ошибка в drawSpread:', error);
