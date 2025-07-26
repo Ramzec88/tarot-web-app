@@ -14,6 +14,8 @@ let hasLaunched = false; // Заменяем localStorage
 let userName = '';
 let userBirthdate = '';
 let localReviews = []; // Локальные отзывы для тестирования
+let testPremiumMode = false; // Тестовый премиум режим
+let currentSpread = null; // Текущий активный расклад
 
 // Инициализация приложения
 async function initApp() {
@@ -40,6 +42,9 @@ async function initApp() {
         
         // Проверка на первый запуск
         checkFirstLaunch();
+        
+        // Добавляем тестовую кнопку премиум режима в режиме разработки
+        addTestPremiumButton();
         
         console.log('✅ Приложение готово к работе');
         
@@ -1320,19 +1325,386 @@ function highlightStars(rating) {
 // Функции для раскладов
 function openSpread(spreadType) {
     console.log('🃏 Открытие расклада:', spreadType);
-    if (!isPremium) {
+    
+    // Проверяем премиум статус (включая тестовый режим)
+    const hasAccess = isPremium || testPremiumMode;
+    
+    if (!hasAccess) {
         checkAndShowSubscriptionBanner();
         return;
     }
-    showNotification('Расклады будут доступны в следующем обновлении!');
+    
+    // Определяем тип расклада
+    const spreadConfig = getSpreadConfig(spreadType);
+    if (!spreadConfig) {
+        showNotification('Неизвестный тип расклада');
+        return;
+    }
+    
+    currentSpread = {
+        type: spreadType,
+        config: spreadConfig,
+        cards: [],
+        question: ''
+    };
+    
+    showSpreadModal(spreadConfig);
+}
+
+function getSpreadConfig(spreadType) {
+    const configs = {
+        love: {
+            name: "💕 Любовь и отношения",
+            description: "Расклад раскроет тайны вашего сердца",
+            positions: [
+                { name: "Вы", description: "Ваше внутреннее состояние в отношениях" },
+                { name: "Партнер", description: "Чувства и мысли вашего партнера" },
+                { name: "Отношения", description: "Перспективы развития отношений" }
+            ],
+            layout: "horizontal"
+        },
+        career: {
+            name: "💼 Карьера и финансы", 
+            description: "Путь к профессиональному успеху",
+            positions: [
+                { name: "Текущее", description: "Ваше текущее положение" },
+                { name: "Препятствия", description: "Что мешает развитию" },
+                { name: "Возможности", description: "Скрытые перспективы" },
+                { name: "Совет", description: "Рекомендации карт" }
+            ],
+            layout: "cross"
+        },
+        week: {
+            name: "📅 Неделя впереди",
+            description: "Что готовит вам каждый день недели",
+            positions: [
+                { name: "Понедельник", description: "Начало недели" },
+                { name: "Вторник", description: "Развитие событий" },
+                { name: "Среда", description: "Середина недели" },
+                { name: "Четверг", description: "Активные действия" },
+                { name: "Пятница", description: "Завершение дел" },
+                { name: "Суббота", description: "Отдых и восстановление" },
+                { name: "Воскресенье", description: "Подготовка к новому" }
+            ],
+            layout: "week"
+        },
+        celtic: {
+            name: "🍀 Кельтский крест",
+            description: "Глубокий анализ жизненной ситуации",
+            positions: [
+                { name: "Ситуация", description: "Суть текущего положения" },
+                { name: "Вызов", description: "Главные препятствия" },
+                { name: "Прошлое", description: "Корни ситуации" },
+                { name: "Будущее", description: "Возможное развитие" },
+                { name: "Цель", description: "К чему стремиться" },
+                { name: "Подсознание", description: "Скрытые мотивы" },
+                { name: "Ваш подход", description: "Как вы действуете" },
+                { name: "Окружение", description: "Влияние других людей" },
+                { name: "Страхи", description: "Что вас беспокоит" },
+                { name: "Итог", description: "Финальный результат" }
+            ],
+            layout: "celtic"
+        }
+    };
+    
+    return configs[spreadType];
+}
+
+function showSpreadModal(config) {
+    const modal = document.createElement('div');
+    modal.className = 'spread-modal';
+    modal.innerHTML = `
+        <div class="spread-modal-content">
+            <div class="spread-modal-header">
+                <h3>${config.name}</h3>
+                <button class="spread-modal-close" onclick="closeSpreadModal()">&times;</button>
+            </div>
+            <div class="spread-modal-body">
+                <div class="spread-description">
+                    <p>${config.description}</p>
+                    <p><strong>Позиций карт:</strong> ${config.positions.length}</p>
+                </div>
+                
+                <div class="spread-question-section">
+                    <label for="spread-question">💭 Ваш вопрос (необязательно):</label>
+                    <textarea 
+                        id="spread-question" 
+                        class="spread-question-input" 
+                        placeholder="О чем вы хотите узнать? Чем конкретнее вопрос, тем точнее будет толкование..."
+                        maxlength="300"
+                    ></textarea>
+                </div>
+                
+                <div class="spread-positions-preview">
+                    <h4>📍 Позиции расклада:</h4>
+                    <div class="positions-list">
+                        ${config.positions.map((pos, index) => `
+                            <div class="position-preview">
+                                <span class="position-number">${index + 1}</span>
+                                <div class="position-info">
+                                    <strong>${pos.name}</strong>
+                                    <small>${pos.description}</small>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <div class="spread-modal-footer">
+                <button class="btn btn-secondary" onclick="closeSpreadModal()">Отмена</button>
+                <button class="btn spread-start-btn" onclick="startSpread()">
+                    ✨ Начать расклад
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+}
+
+function startSpread() {
+    const questionInput = document.getElementById('spread-question');
+    const question = questionInput ? questionInput.value.trim() : '';
+    
+    if (currentSpread) {
+        currentSpread.question = question;
+    }
+    
+    closeSpreadModal();
+    
+    setTimeout(() => {
+        showSpreadInterface();
+    }, 300);
+}
+
+function showSpreadInterface() {
+    if (!currentSpread) return;
+    
+    const { config } = currentSpread;
+    
+    // Скрываем список раскладов и показываем интерфейс расклада
+    const spreadsGrid = document.querySelector('.spreads-grid');
+    const spreadDetail = document.getElementById('spread-detail');
+    
+    if (spreadsGrid) spreadsGrid.style.display = 'none';
+    if (spreadDetail) {
+        spreadDetail.style.display = 'block';
+        
+        // Обновляем содержимое
+        const spreadTitle = document.getElementById('spread-title');
+        const spreadCardsContainer = document.getElementById('spread-cards-container');
+        const drawSpreadBtn = document.getElementById('draw-spread-btn');
+        
+        if (spreadTitle) {
+            spreadTitle.innerHTML = `
+                ${config.name}
+                ${currentSpread.question ? `<div class="spread-question-display">❓ ${currentSpread.question}</div>` : ''}
+            `;
+        }
+        
+        if (spreadCardsContainer) {
+            spreadCardsContainer.innerHTML = generateSpreadLayout(config);
+        }
+        
+        if (drawSpreadBtn) {
+            drawSpreadBtn.textContent = `🃏 Вытянуть ${config.positions.length} карт`;
+            drawSpreadBtn.style.display = 'block';
+        }
+    }
+}
+
+function generateSpreadLayout(config) {
+    const { positions, layout } = config;
+    
+    let layoutClass = 'spread-layout-' + layout;
+    let cardsHTML = '';
+    
+    positions.forEach((position, index) => {
+        cardsHTML += `
+            <div class="spread-position" data-position="${index}">
+                <div class="spread-card-slot" id="spread-card-${index}">
+                    <div class="card-back">
+                        <div class="card-symbol">🔮</div>
+                        <div class="card-text">?</div>
+                    </div>
+                </div>
+                <div class="position-label">
+                    <strong>${position.name}</strong>
+                    <small>${position.description}</small>
+                </div>
+                <div class="position-interpretation" id="interpretation-${index}" style="display: none;"></div>
+            </div>
+        `;
+    });
+    
+    return `<div class="${layoutClass}">${cardsHTML}</div>`;
+}
+
+async function drawSpread() {
+    if (!currentSpread) return;
+    
+    const { config } = currentSpread;
+    const drawBtn = document.getElementById('draw-spread-btn');
+    const loading = document.getElementById('spread-loading');
+    
+    if (drawBtn) {
+        drawBtn.style.display = 'none';
+    }
+    
+    if (loading) {
+        loading.style.display = 'block';
+    }
+    
+    // Генерируем уникальные карты для расклада
+    const spreadCards = [];
+    const usedCards = new Set();
+    
+    for (let i = 0; i < config.positions.length; i++) {
+        let randomCard;
+        do {
+            randomCard = getRandomCard();
+        } while (usedCards.has(randomCard.name));
+        
+        usedCards.add(randomCard.name);
+        spreadCards.push(randomCard);
+    }
+    
+    currentSpread.cards = spreadCards;
+    
+    // Анимированное открытие карт по очереди
+    for (let i = 0; i < spreadCards.length; i++) {
+        await new Promise(resolve => {
+            setTimeout(async () => {
+                await revealSpreadCard(i, spreadCards[i], config.positions[i]);
+                resolve();
+            }, i * 800);
+        });
+    }
+    
+    if (loading) {
+        loading.style.display = 'none';
+    }
+    
+    // Добавляем в историю
+    setTimeout(() => {
+        addToLocalHistory('spread', config.name, currentSpread.question || '', spreadCards);
+    }, 1000);
+}
+
+async function revealSpreadCard(index, card, position) {
+    const cardSlot = document.getElementById(`spread-card-${index}`);
+    if (!cardSlot) return;
+    
+    // Добавляем блестки
+    addSparkles(cardSlot);
+    
+    setTimeout(() => {
+        // Показываем карту
+        cardSlot.innerHTML = `
+            <div class="card-name">${card.name}</div>
+            <img src="${card.image}" alt="${card.name}" class="card-image" onerror="this.style.display='none'">
+            <div class="card-symbol">${card.symbol}</div>
+            <div class="card-meaning">${card.meaning}</div>
+        `;
+        
+        cardSlot.classList.add('flipped');
+        
+        // Генерируем толкование для позиции
+        setTimeout(async () => {
+            const interpretation = generatePositionInterpretation(card, position, currentSpread.question);
+            const interpretationEl = document.getElementById(`interpretation-${index}`);
+            
+            if (interpretationEl) {
+                interpretationEl.innerHTML = `
+                    <div class="position-ai-prediction">
+                        <div class="ai-header">
+                            <span class="ai-icon">🔮</span>
+                            <span class="ai-title">Толкование позиции</span>
+                        </div>
+                        <div class="ai-content">${interpretation}</div>
+                    </div>
+                `;
+                interpretationEl.style.display = 'block';
+                
+                // Анимация появления
+                setTimeout(() => {
+                    interpretationEl.classList.add('show');
+                }, 100);
+            }
+        }, 1000);
+        
+    }, 1500);
+}
+
+function generatePositionInterpretation(card, position, question) {
+    const templates = [
+        `В позиции "${position.name}" карта "${card.name}" указывает на то, что ${card.meaning.toLowerCase()} Это особенно важно учесть в контексте ${position.description.toLowerCase()}.`,
+        `"${card.name}" в позиции "${position.name}" говорит: ${card.meaning.toLowerCase()} Обратите внимание на то, как это влияет на ${position.description.toLowerCase()}.`,
+        `Позиция "${position.name}" раскрывается через карту "${card.name}": ${card.meaning.toLowerCase()} Это ключевой аспект для понимания ${position.description.toLowerCase()}.`
+    ];
+    
+    let interpretation = templates[Math.floor(Math.random() * templates.length)];
+    
+    if (question) {
+        interpretation += ` В контексте вашего вопроса "${question}" это означает важный шаг к пониманию ситуации.`;
+    }
+    
+    return interpretation;
 }
 
 function closeSpread() {
-    console.log('🃏 Закрытие расклада');
+    const spreadsGrid = document.querySelector('.spreads-grid');
+    const spreadDetail = document.getElementById('spread-detail');
+    
+    if (spreadsGrid) spreadsGrid.style.display = 'grid';
+    if (spreadDetail) spreadDetail.style.display = 'none';
+    
+    currentSpread = null;
 }
 
-function drawSpread() {
-    console.log('🃏 Создание расклада');
+function closeSpreadModal() {
+    const modal = document.querySelector('.spread-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+// Тестовая кнопка премиум режима
+function addTestPremiumButton() {
+    // Добавляем тестовую кнопку только в режиме разработки
+    const header = document.querySelector('.header');
+    if (header && !document.getElementById('test-premium-btn')) {
+        const testBtn = document.createElement('button');
+        testBtn.id = 'test-premium-btn';
+        testBtn.className = 'test-premium-btn';
+        testBtn.textContent = testPremiumMode ? '👑 Тест Premium ON' : '🆓 Тест Premium OFF';
+        testBtn.onclick = toggleTestPremium;
+        header.appendChild(testBtn);
+    }
+}
+
+function toggleTestPremium() {
+    testPremiumMode = !testPremiumMode;
+    const btn = document.getElementById('test-premium-btn');
+    if (btn) {
+        btn.textContent = testPremiumMode ? '👑 Тест Premium ON' : '🆓 Тест Premium OFF';
+        btn.style.background = testPremiumMode ? 
+            'linear-gradient(45deg, #ffd700, #ffed4a)' : 
+            'rgba(255, 255, 255, 0.1)';
+        btn.style.color = testPremiumMode ? '#1a1a2e' : '#fff';
+    }
+    
+    showNotification(testPremiumMode ? 
+        'Тестовый Premium режим включен! 👑' : 
+        'Тестовый Premium режим выключен 🆓'
+    );
 }
 
 // Функции-заглушки для Supabase
