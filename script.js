@@ -392,6 +392,26 @@ function switchTab(tab) {
     }
 }
 
+// Сброс карты к дефолтному состоянию
+function resetCardToDefault(cardElement) {
+    if (!cardElement) return;
+    
+    // Удаляем анимацию флипа если была
+    cardElement.classList.remove('flipped');
+    
+    // Очищаем от старых блесток
+    const sparkles = cardElement.querySelectorAll('.sparkle');
+    sparkles.forEach(sparkle => sparkle.remove());
+    
+    // Возвращаем дефолтный вид карты
+    cardElement.innerHTML = `
+        <div class="card-back">
+            <div class="card-symbol">🔮</div>
+            <div class="card-text">Ваш ответ</div>
+        </div>
+    `;
+}
+
 // Карта дня
 async function drawDailyCard() {
     if (dailyCardDrawn) {
@@ -449,20 +469,29 @@ async function drawDailyCard() {
 
 // Задать вопрос
 function askQuestion() {
+    console.log('🎯 Нажата кнопка "Задать вопрос"');
+    
     const questionInput = document.getElementById('question-input');
-    if (!questionInput) return;
+    if (!questionInput) {
+        console.error('❌ Поле ввода вопроса не найдено');
+        return;
+    }
     
     const question = questionInput.value.trim();
+    console.log('📝 Текст вопроса:', question);
+    
     if (!question) {
         showNotification('Пожалуйста, задайте вопрос');
         return;
     }
     
     if (questionsLeft <= 0 && !isPremium) {
+        console.log('❌ Вопросы закончились');
         checkAndShowSubscriptionBanner();
         return;
     }
     
+    console.log('✅ Запуск предсказания для вопроса:', question);
     performPrediction(question, false);
 }
 
@@ -487,6 +516,8 @@ function askFollowUpQuestion() {
 
 // Выполнение предсказания
 async function performPrediction(question, isFollowUp) {
+    console.log('🔮 Начало предсказания для:', question, 'isFollowUp:', isFollowUp);
+    
     const answerSection = isFollowUp ? 
         document.getElementById('followup-answer-section') : 
         document.getElementById('first-answer-section');
@@ -543,71 +574,6 @@ async function performPrediction(question, isFollowUp) {
         }
         
         addSparkles(answerCard);
-        
-        const questionRecord = await saveQuestionToSupabase(question, isFollowUp);
-        currentQuestionId = questionRecord?.id;
-        
-        setTimeout(async () => {
-            const randomCard = getRandomCard();
-            
-            answerCard.innerHTML = `
-                <div class="card-name">${randomCard.name}</div>
-                <img src="${randomCard.image}" alt="${randomCard.name}" class="card-image" onerror="this.style.display='none'">
-                <div class="card-symbol">${randomCard.symbol}</div>
-                <div class="card-meaning">${randomCard.meaning}</div>
-            `;
-            
-            loading.style.display = 'none';
-            if (askBtn) askBtn.disabled = false;
-            if (followUpBtn) followUpBtn.disabled = false;
-            
-            setTimeout(async () => {
-                const aiContainerId = isFollowUp ? 'followup-ai-container' : 'first-ai-container';
-                const aiPrediction = await generateAIPredictionToContainer(aiContainerId, 'question', randomCard, question);
-                
-                if (currentQuestionId) {
-                    await saveAnswerToSupabase(currentQuestionId, randomCard, aiPrediction);
-                }
-                
-                if (!isFollowUp) {
-                    setTimeout(() => {
-                        const followUpSection = document.getElementById('follow-up-section');
-                        if (followUpSection) {
-                            followUpSection.style.display = 'block';
-                        }
-                    }, 1500);
-                }
-                
-                setTimeout(() => {
-                    checkAndShowSubscriptionBanner();
-                }, 2000);
-                
-            }, 1000);
-            
-            if (!isPremium) {
-                questionsLeft--;
-                await updateUserQuestionsInSupabase();
-                updateQuestionsDisplay();
-            }
-            
-            if (isFollowUp) {
-                document.getElementById('follow-up-input').value = '';
-            } else {
-                document.getElementById('question-input').value = '';
-            }
-            
-            addToLocalHistory('question', isFollowUp ? 'Уточняющий вопрос' : 'Вопрос', question, [randomCard]);
-            
-        }, 2500);
-        
-    } catch (error) {
-        console.error('❌ Ошибка в performPrediction:', error);
-        if (loading) loading.style.display = 'none';
-        if (askBtn) askBtn.disabled = false;
-        if (followUpBtn) followUpBtn.disabled = false;
-        showNotification('Произошла ошибка. Попробуйте еще раз.');
-    }
-}
         
         const questionRecord = await saveQuestionToSupabase(question, isFollowUp);
         currentQuestionId = questionRecord?.id;
@@ -750,26 +716,6 @@ function checkAndShowSubscriptionBanner() {
             }, 300);
         }
     }
-}
-
-// Сброс карты к дефолтному состоянию
-function resetCardToDefault(cardElement) {
-    if (!cardElement) return;
-    
-    // Удаляем анимацию флипа если была
-    cardElement.classList.remove('flipped');
-    
-    // Очищаем от старых блесток
-    const sparkles = cardElement.querySelectorAll('.sparkle');
-    sparkles.forEach(sparkle => sparkle.remove());
-    
-    // Возвращаем дефолтный вид карты
-    cardElement.innerHTML = `
-        <div class="card-back">
-            <div class="card-symbol">🔮</div>
-            <div class="card-text">Ваш ответ</div>
-        </div>
-    `;
 }
 
 // Вспомогательные функции
@@ -1094,4 +1040,4 @@ async function updateUserQuestionsInSupabase() {
 }
 
 // Проверка работы
-console.log('🔮 Script.js (исправленная версия с рабочими табами) загружен успешно!');
+console.log('🔮 Script.js (полная исправленная версия) загружен успешно!');
