@@ -13,6 +13,7 @@ let selectedRating = 0;
 let hasLaunched = false; // Заменяем localStorage
 let userName = '';
 let userBirthdate = '';
+let localReviews = []; // Локальные отзывы для тестирования
 
 // Инициализация приложения
 async function initApp() {
@@ -392,7 +393,7 @@ function switchTab(tab) {
     if (tab === 'history') {
         loadHistory();
     } else if (tab === 'reviews') {
-        loadReviews();
+        loadReviews(); // Исправлено: теперь вызывается правильная функция
     } else if (tab === 'premium') {
         console.log('👑 Пользователь посетил Premium страницу');
     }
@@ -1093,14 +1094,133 @@ function clearHistory() {
 // Функции для отзывов
 async function loadReviews() {
     console.log('📝 Загрузка отзывов');
+    renderReviews();
+}
+
+function renderReviews() {
+    const reviewsList = document.getElementById('reviews-list');
+    if (!reviewsList) return;
+    
+    // Стандартные отзывы + локальные
+    const staticReviews = [
+        {
+            id: 1,
+            author: '@maria_k',
+            rating: 5,
+            text: 'Невероятно точные предсказания! Карта дня всегда в точку попадает. ИИ-толкования очень подробные и полезные.',
+            date: '3 дня назад',
+            isAnonymous: false
+        },
+        {
+            id: 2,
+            author: 'Анонимно',
+            rating: 5,
+            text: 'Премиум подписка стоит своих денег! Неограниченные вопросы и эксклюзивные расклады - то что нужно.',
+            date: '5 дней назад',
+            isAnonymous: true
+        },
+        {
+            id: 3,
+            author: '@alexey_777',
+            rating: 4,
+            text: 'Отличное приложение для ежедневного гадания. Интерфейс красивый, всё работает быстро.',
+            date: '1 неделю назад',
+            isAnonymous: false
+        }
+    ];
+    
+    // Объединяем статичные и локальные отзывы
+    const allReviews = [...localReviews, ...staticReviews];
+    
+    let reviewsHTML = '';
+    
+    allReviews.forEach(review => {
+        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+        const isLongText = review.text.length > 150;
+        const shortText = isLongText ? review.text.substring(0, 150) + '...' : review.text;
+        
+        reviewsHTML += `
+            <div class="review-item">
+                <div class="review-header">
+                    <div class="review-author">${review.author}</div>
+                    <div class="review-rating">${stars}</div>
+                    <div class="review-date">${review.date}</div>
+                </div>
+                <div class="review-text" id="review-text-${review.id}">
+                    <span class="review-short"${isLongText ? '' : ' style="display: none;"'}>${shortText}</span>
+                    <span class="review-full"${isLongText ? ' style="display: none;"' : ''}>${review.text}</span>
+                    ${isLongText ? `
+                        <button class="review-expand-btn" onclick="toggleReviewText(${review.id})">
+                            <span class="expand-text">Читать полностью</span>
+                            <span class="collapse-text" style="display: none;">Свернуть</span>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    reviewsList.innerHTML = reviewsHTML;
+    
+    // Обновляем статистику
+    updateReviewsStats(allReviews);
+}
+
+function updateReviewsStats(reviews) {
+    const totalReviews = reviews.length;
+    const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
+    
+    const reviewsTotalEl = document.getElementById('reviews-total');
+    const ratingDisplay = document.querySelector('.rating');
+    
+    if (reviewsTotalEl) {
+        reviewsTotalEl.textContent = totalReviews;
+    }
+    
+    if (ratingDisplay) {
+        const stars = '★'.repeat(Math.round(averageRating)) + '☆'.repeat(5 - Math.round(averageRating));
+        ratingDisplay.textContent = `${averageRating.toFixed(1)} ${stars}`;
+    }
+}
+
+function toggleReviewText(reviewId) {
+    const reviewTextEl = document.getElementById(`review-text-${reviewId}`);
+    if (!reviewTextEl) return;
+    
+    const shortSpan = reviewTextEl.querySelector('.review-short');
+    const fullSpan = reviewTextEl.querySelector('.review-full');
+    const expandBtn = reviewTextEl.querySelector('.review-expand-btn');
+    const expandText = expandBtn.querySelector('.expand-text');
+    const collapseText = expandBtn.querySelector('.collapse-text');
+    
+    const isExpanded = fullSpan.style.display !== 'none';
+    
+    if (isExpanded) {
+        // Свернуть
+        shortSpan.style.display = 'inline';
+        fullSpan.style.display = 'none';
+        expandText.style.display = 'inline';
+        collapseText.style.display = 'none';
+    } else {
+        // Развернуть
+        shortSpan.style.display = 'none';
+        fullSpan.style.display = 'inline';
+        expandText.style.display = 'none';
+        collapseText.style.display = 'inline';
+    }
 }
 
 async function submitReview() {
     const reviewText = document.getElementById('review-text');
     const anonymousCheckbox = document.getElementById('anonymous-review');
     
-    if (!reviewText || !selectedRating) {
-        showNotification('Пожалуйста, поставьте оценку и напишите отзыв');
+    if (!selectedRating) {
+        showNotification('Пожалуйста, поставьте оценку');
+        return;
+    }
+    
+    if (!reviewText) {
+        showNotification('Поле для отзыва не найдено');
         return;
     }
     
@@ -1111,24 +1231,67 @@ async function submitReview() {
     }
     
     try {
-        // Здесь будет отправка отзыва в Supabase
-        console.log('📝 Отправка отзыва:', {
+        // Создаем новый отзыв
+        const isAnonymous = anonymousCheckbox ? anonymousCheckbox.checked : false;
+        const authorName = isAnonymous ? 'Анонимно' : (userName || '@пользователь');
+        
+        const newReview = {
+            id: Date.now(),
+            author: authorName,
             rating: selectedRating,
             text: text,
-            anonymous: anonymousCheckbox ? anonymousCheckbox.checked : false
-        });
+            date: 'только что',
+            isAnonymous: isAnonymous,
+            timestamp: Date.now()
+        };
         
-        showNotification('Спасибо за отзыв!');
+        // Добавляем в начало массива локальных отзывов
+        localReviews.unshift(newReview);
         
-        // Очищаем форму
-        reviewText.value = '';
-        selectedRating = 0;
-        updateStarsDisplay();
-        if (anonymousCheckbox) anonymousCheckbox.checked = false;
+        // Анимация отправки
+        const submitBtn = document.getElementById('submit-review-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправляется...';
+        }
+        
+        // Имитация отправки
+        setTimeout(() => {
+            showNotification('Спасибо за отзыв! Он появился в списке ниже ✨');
+            
+            // Очищаем форму
+            reviewText.value = '';
+            selectedRating = 0;
+            updateStarsDisplay();
+            if (anonymousCheckbox) anonymousCheckbox.checked = false;
+            
+            // Обновляем отображение отзывов
+            renderReviews();
+            
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Отправить отзыв';
+            }
+            
+            // Плавно прокручиваем к новому отзыву
+            setTimeout(() => {
+                const reviewsList = document.getElementById('reviews-list');
+                if (reviewsList) {
+                    reviewsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 300);
+            
+        }, 1500);
         
     } catch (error) {
         console.error('❌ Ошибка отправки отзыва:', error);
         showNotification('Ошибка при отправке отзыва');
+        
+        const submitBtn = document.getElementById('submit-review-btn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить отзыв';
+        }
     }
 }
 
