@@ -10,6 +10,9 @@ let isPremium = false;
 let history = [];
 let currentQuestionId = null;
 let selectedRating = 0;
+let hasLaunched = false; // Заменяем localStorage
+let userName = '';
+let userBirthdate = '';
 
 // Инициализация приложения
 async function initApp() {
@@ -33,6 +36,9 @@ async function initApp() {
         
         // Установка начального таба
         switchTab('daily');
+        
+        // Проверка на первый запуск
+        checkFirstLaunch();
         
         console.log('✅ Приложение готово к работе');
         
@@ -447,7 +453,12 @@ async function drawDailyCard() {
             await saveDailyCardToSupabase(randomCard);
             
             setTimeout(async () => {
-                await generateAIPredictionToContainer('daily-ai-container', 'daily', randomCard, '');
+                const aiPrediction = await generateAIPredictionToContainer('daily-ai-container', 'daily', randomCard, '');
+                
+                // Обновляем историю с ИИ-предсказанием
+                if (history.length > 0) {
+                    history[0].aiPrediction = aiPrediction;
+                }
                 
                 setTimeout(() => {
                     const banner = document.getElementById('daily-info-banner');
@@ -600,6 +611,11 @@ async function performPrediction(question, isFollowUp) {
                     await saveAnswerToSupabase(currentQuestionId, randomCard, aiPrediction);
                 }
                 
+                // Обновляем последнюю запись в истории с ИИ-предсказанием
+                if (history.length > 0) {
+                    history[0].aiPrediction = aiPrediction;
+                }
+                
                 if (!isFollowUp) {
                     setTimeout(() => {
                         const followUpSection = document.getElementById('follow-up-section');
@@ -718,6 +734,98 @@ function checkAndShowSubscriptionBanner() {
     }
 }
 
+// Проверка первого запуска
+function checkFirstLaunch() {
+    if (!hasLaunched) {
+        showWelcomeModal();
+    }
+}
+
+// Показ приветственного модального окна
+function showWelcomeModal() {
+    const modal = document.createElement('div');
+    modal.className = 'welcome-modal';
+    modal.innerHTML = `
+        <div class="welcome-modal-content">
+            <div class="welcome-header">
+                <h2>✨ Добро пожаловать в Шепот карт ✨</h2>
+                <p>Давайте знакомиться! Укажите ваши данные для более точных предсказаний</p>
+            </div>
+            <div class="welcome-form">
+                <div class="form-group">
+                    <label for="user-name">👤 Ваше имя:</label>
+                    <input type="text" id="user-name" class="welcome-input" placeholder="Введите ваше имя">
+                </div>
+                <div class="form-group">
+                    <label for="user-birthdate">🎂 Дата рождения:</label>
+                    <input type="date" id="user-birthdate" class="welcome-input">
+                </div>
+                <div class="form-group privacy-note">
+                    <p>🔒 Ваши данные сохраняются в текущей сессии и используются только для персонализации предсказаний</p>
+                </div>
+            </div>
+            <div class="welcome-footer">
+                <button class="btn btn-secondary" onclick="skipWelcome()">Пропустить</button>
+                <button class="btn" onclick="saveWelcomeData()">Сохранить и продолжить</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Анимация появления
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+}
+
+// Сохранение данных приветствия
+function saveWelcomeData() {
+    const nameInput = document.getElementById('user-name');
+    const birthdateInput = document.getElementById('user-birthdate');
+    
+    const inputName = nameInput ? nameInput.value.trim() : '';
+    const inputBirthdate = birthdateInput ? birthdateInput.value : '';
+    
+    if (inputName) {
+        userName = inputName;
+        if (currentUser) {
+            currentUser.display_name = inputName;
+        }
+    }
+    
+    if (inputBirthdate) {
+        userBirthdate = inputBirthdate;
+        if (currentUser) {
+            currentUser.birthdate = inputBirthdate;
+        }
+    }
+    
+    hasLaunched = true;
+    closeWelcomeModal();
+    
+    if (inputName) {
+        showNotification(`Добро пожаловать, ${inputName}! Карты готовы ответить на ваши вопросы ✨`);
+    }
+}
+
+// Пропустить приветствие
+function skipWelcome() {
+    hasLaunched = true;
+    closeWelcomeModal();
+}
+
+// Закрытие приветственного модального окна
+function closeWelcomeModal() {
+    const modal = document.querySelector('.welcome-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
 // Вспомогательные функции
 function showNotification(message) {
     if (tg && tg.showAlert) {
@@ -762,7 +870,7 @@ function addSparkles(element) {
 }
 
 // Добавление в локальную историю
-function addToLocalHistory(type, title, question, cards) {
+function addToLocalHistory(type, title, question, cards, aiPrediction = '') {
     const now = new Date();
     const historyItem = {
         id: Date.now(),
@@ -772,7 +880,8 @@ function addToLocalHistory(type, title, question, cards) {
         type: type,
         title: title,
         question: question,
-        cards: cards
+        cards: cards,
+        aiPrediction: aiPrediction // Добавляем ИИ-предсказание
     };
     
     history.unshift(historyItem);
@@ -820,10 +929,17 @@ function renderHistory() {
             <div class="history-date-header">${date}</div>`;
         
         groupedHistory[date].forEach(item => {
+            // Определяем иконку в зависимости от типа
+            const typeIcon = item.type === 'daily' ? '🌅' : '❓';
+            const typeColor = item.type === 'daily' ? '#ffd700' : '#667eea';
+            
             historyHTML += `
-                <div class="history-item" data-id="${item.id}">
+                <div class="history-item" data-id="${item.id}" style="border-left-color: ${typeColor}">
                     <div class="history-header">
-                        <div class="history-type">${item.title}</div>
+                        <div class="history-type">
+                            <span class="history-icon">${typeIcon}</span>
+                            ${item.title}
+                        </div>
                         <div class="history-time">${item.time}</div>
                     </div>
                     ${item.question ? `<div class="history-question">"${item.question}"</div>` : ''}
@@ -831,6 +947,16 @@ function renderHistory() {
                         ${item.cards.map(card => `
                             <div class="history-mini-card">${card.symbol} ${card.name}</div>
                         `).join('')}
+                    </div>
+                    <div class="history-actions">
+                        <button class="history-btn" onclick="viewHistoryDetail('${item.id}')">
+                            📖 Подробнее
+                        </button>
+                        ${item.aiPrediction ? `
+                            <button class="history-btn" onclick="sendToTelegram('${item.id}')">
+                                📤 В Telegram
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -842,23 +968,119 @@ function renderHistory() {
     historyList.innerHTML = historyHTML;
 }
 
-function viewHistoryItem(id) {
+// Подробный просмотр элемента истории
+function viewHistoryDetail(id) {
     const item = history.find(h => h.id == id);
     if (!item) return;
     
-    let details = `📅 ${item.date} в ${item.time}\n\n`;
-    details += `🔮 ${item.title}\n\n`;
+    // Создаем модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'history-modal';
+    modal.innerHTML = `
+        <div class="history-modal-content">
+            <div class="history-modal-header">
+                <h3>${item.type === 'daily' ? '🌅' : '❓'} ${item.title}</h3>
+                <button class="history-modal-close" onclick="closeHistoryModal()">&times;</button>
+            </div>
+            <div class="history-modal-body">
+                <div class="history-detail-date">📅 ${item.date} в ${item.time}</div>
+                
+                ${item.question ? `
+                    <div class="history-detail-question">
+                        <strong>❓ Вопрос:</strong>
+                        <p>"${item.question}"</p>
+                    </div>
+                ` : ''}
+                
+                <div class="history-detail-cards">
+                    <strong>🃏 Карты:</strong>
+                    ${item.cards.map(card => `
+                        <div class="history-detail-card">
+                            <div class="card-header">
+                                <span class="card-symbol-large">${card.symbol}</span>
+                                <span class="card-name-large">${card.name}</span>
+                            </div>
+                            <div class="card-meaning-detail">${card.meaning}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                ${item.aiPrediction ? `
+                    <div class="history-detail-prediction">
+                        <strong>🤖 ИИ-толкование:</strong>
+                        <p>${item.aiPrediction}</p>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="history-modal-footer">
+                <button class="btn btn-secondary" onclick="closeHistoryModal()">Закрыть</button>
+                ${item.aiPrediction ? `
+                    <button class="btn" onclick="sendToTelegram('${item.id}')">📤 Отправить в Telegram</button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Анимация появления
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+}
+
+// Закрытие модального окна истории
+function closeHistoryModal() {
+    const modal = document.querySelector('.history-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+// Отправка в Telegram
+function sendToTelegram(id) {
+    const item = history.find(h => h.id == id);
+    if (!item) return;
+    
+    let message = `🔮 ${item.title}\n`;
+    message += `📅 ${item.date} в ${item.time}\n\n`;
     
     if (item.question) {
-        details += `❓ Вопрос: "${item.question}"\n\n`;
+        message += `❓ Вопрос: "${item.question}"\n\n`;
     }
     
-    details += `🃏 Карты:\n`;
+    message += `🃏 Карты:\n`;
     item.cards.forEach(card => {
-        details += `${card.symbol} ${card.name}\n${card.meaning}\n\n`;
+        message += `${card.symbol} ${card.name}\n${card.meaning}\n\n`;
     });
     
-    showNotification(details);
+    if (item.aiPrediction) {
+        message += `🤖 ИИ-толкование:\n${item.aiPrediction}`;
+    }
+    
+    if (tg && tg.showAlert) {
+        // В Telegram Web App можем отправить данные в бота
+        tg.sendData(JSON.stringify({
+            type: 'history_share',
+            data: item
+        }));
+        tg.showAlert('Данные отправлены в бота!');
+    } else {
+        // Фоллбэк - копируем в буфер обмена
+        navigator.clipboard.writeText(message).then(() => {
+            showNotification('Текст скопирован в буфер обмена!');
+        }).catch(() => {
+            showNotification('Не удалось скопировать текст');
+        });
+    }
+}
+
+function viewHistoryItem(id) {
+    // Старая функция - теперь перенаправляем на новую
+    viewHistoryDetail(id);
 }
 
 function clearHistory() {
