@@ -357,6 +357,12 @@ function initEventListeners() {
         }
     });
     
+    // Обработчик для кнопки "Назад" в раскладах
+    const backBtn = document.querySelector('.back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', closeSpread);
+    }
+    
     console.log('✅ Обработчики событий настроены');
 }
 
@@ -1513,6 +1519,16 @@ function showSpreadInterface() {
         if (drawSpreadBtn) {
             drawSpreadBtn.textContent = `🃏 Вытянуть ${config.positions.length} карт`;
             drawSpreadBtn.style.display = 'block';
+            drawSpreadBtn.disabled = false; // Убеждаемся что кнопка активна
+            
+            // Перепривязываем обработчик
+            drawSpreadBtn.onclick = drawSpread;
+        }
+        
+        // Убеждаемся что кнопка "Назад" работает
+        const backBtn = spreadDetail.querySelector('.back-btn');
+        if (backBtn) {
+            backBtn.onclick = closeSpread;
         }
     }
 }
@@ -1545,99 +1561,163 @@ function generateSpreadLayout(config) {
 }
 
 async function drawSpread() {
-    if (!currentSpread) return;
+    console.log('🃏 Начинаем drawSpread, currentSpread:', currentSpread);
+    
+    if (!currentSpread) {
+        console.error('❌ currentSpread is null');
+        showNotification('Ошибка: расклад не выбран');
+        return;
+    }
     
     const { config } = currentSpread;
     const drawBtn = document.getElementById('draw-spread-btn');
     const loading = document.getElementById('spread-loading');
     
-    if (drawBtn) {
-        drawBtn.style.display = 'none';
-    }
+    console.log('🎯 Элементы найдены:', { drawBtn: !!drawBtn, loading: !!loading });
     
-    if (loading) {
-        loading.style.display = 'block';
-    }
-    
-    // Генерируем уникальные карты для расклада
-    const spreadCards = [];
-    const usedCards = new Set();
-    
-    for (let i = 0; i < config.positions.length; i++) {
-        let randomCard;
-        do {
-            randomCard = getRandomCard();
-        } while (usedCards.has(randomCard.name));
+    try {
+        if (drawBtn) {
+            drawBtn.style.display = 'none';
+            drawBtn.disabled = true;
+        }
         
-        usedCards.add(randomCard.name);
-        spreadCards.push(randomCard);
+        if (loading) {
+            loading.style.display = 'block';
+        }
+        
+        // Генерируем уникальные карты для расклада
+        const spreadCards = [];
+        const usedCards = new Set();
+        
+        console.log('🃏 Генерируем карты для', config.positions.length, 'позиций');
+        
+        for (let i = 0; i < config.positions.length; i++) {
+            let randomCard;
+            let attempts = 0;
+            do {
+                randomCard = getRandomCard();
+                attempts++;
+                if (attempts > 100) {
+                    console.error('❌ Слишком много попыток генерации уникальных карт');
+                    break;
+                }
+            } while (usedCards.has(randomCard.name) && attempts <= 100);
+            
+            usedCards.add(randomCard.name);
+            spreadCards.push(randomCard);
+        }
+        
+        currentSpread.cards = spreadCards;
+        console.log('✅ Карты сгенерированы:', spreadCards.length);
+        
+        // Анимированное открытие карт по очереди
+        for (let i = 0; i < spreadCards.length; i++) {
+            console.log(`🎴 Открываем карту ${i + 1}/${spreadCards.length}`);
+            
+            await new Promise(resolve => {
+                setTimeout(async () => {
+                    try {
+                        await revealSpreadCard(i, spreadCards[i], config.positions[i]);
+                        resolve();
+                    } catch (error) {
+                        console.error(`❌ Ошибка при открытии карты ${i}:`, error);
+                        resolve();
+                    }
+                }, i * 800);
+            });
+        }
+        
+        if (loading) {
+            loading.style.display = 'none';
+        }
+        
+        console.log('✅ Все карты открыты, добавляем в историю');
+        
+        // Добавляем в историю
+        setTimeout(() => {
+            addToLocalHistory('spread', config.name, currentSpread.question || '', spreadCards);
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Ошибка в drawSpread:', error);
+        
+        if (loading) {
+            loading.style.display = 'none';
+        }
+        
+        if (drawBtn) {
+            drawBtn.style.display = 'block';
+            drawBtn.disabled = false;
+        }
+        
+        showNotification('Произошла ошибка при создании расклада. Попробуйте еще раз.');
     }
-    
-    currentSpread.cards = spreadCards;
-    
-    // Анимированное открытие карт по очереди
-    for (let i = 0; i < spreadCards.length; i++) {
-        await new Promise(resolve => {
-            setTimeout(async () => {
-                await revealSpreadCard(i, spreadCards[i], config.positions[i]);
-                resolve();
-            }, i * 800);
-        });
-    }
-    
-    if (loading) {
-        loading.style.display = 'none';
-    }
-    
-    // Добавляем в историю
-    setTimeout(() => {
-        addToLocalHistory('spread', config.name, currentSpread.question || '', spreadCards);
-    }, 1000);
 }
 
 async function revealSpreadCard(index, card, position) {
+    console.log(`🎴 revealSpreadCard: ${index}, карта: ${card.name}`);
+    
     const cardSlot = document.getElementById(`spread-card-${index}`);
-    if (!cardSlot) return;
+    if (!cardSlot) {
+        console.error(`❌ Не найден элемент spread-card-${index}`);
+        return;
+    }
     
-    // Добавляем блестки
-    addSparkles(cardSlot);
-    
-    setTimeout(() => {
-        // Показываем карту
-        cardSlot.innerHTML = `
-            <div class="card-name">${card.name}</div>
-            <img src="${card.image}" alt="${card.name}" class="card-image" onerror="this.style.display='none'">
-            <div class="card-symbol">${card.symbol}</div>
-            <div class="card-meaning">${card.meaning}</div>
-        `;
+    try {
+        // Добавляем блестки
+        addSparkles(cardSlot);
         
-        cardSlot.classList.add('flipped');
+        await new Promise(resolve => {
+            setTimeout(() => {
+                // Показываем карту
+                cardSlot.innerHTML = `
+                    <div class="card-name">${card.name}</div>
+                    <img src="${card.image}" alt="${card.name}" class="card-image" onerror="this.style.display='none'">
+                    <div class="card-symbol">${card.symbol}</div>
+                    <div class="card-meaning">${card.meaning}</div>
+                `;
+                
+                cardSlot.classList.add('flipped');
+                console.log(`✅ Карта ${index} показана`);
+                resolve();
+            }, 1500);
+        });
         
         // Генерируем толкование для позиции
-        setTimeout(async () => {
-            const interpretation = generatePositionInterpretation(card, position, currentSpread.question);
-            const interpretationEl = document.getElementById(`interpretation-${index}`);
-            
-            if (interpretationEl) {
-                interpretationEl.innerHTML = `
-                    <div class="position-ai-prediction">
-                        <div class="ai-header">
-                            <span class="ai-icon">🔮</span>
-                            <span class="ai-title">Толкование позиции</span>
-                        </div>
-                        <div class="ai-content">${interpretation}</div>
-                    </div>
-                `;
-                interpretationEl.style.display = 'block';
+        await new Promise(resolve => {
+            setTimeout(() => {
+                const interpretation = generatePositionInterpretation(card, position, currentSpread.question);
+                const interpretationEl = document.getElementById(`interpretation-${index}`);
                 
-                // Анимация появления
-                setTimeout(() => {
-                    interpretationEl.classList.add('show');
-                }, 100);
-            }
-        }, 1000);
+                if (interpretationEl) {
+                    interpretationEl.innerHTML = `
+                        <div class="position-ai-prediction">
+                            <div class="ai-header">
+                                <span class="ai-icon">🔮</span>
+                                <span class="ai-title">Толкование позиции</span>
+                            </div>
+                            <div class="ai-content">${interpretation}</div>
+                        </div>
+                    `;
+                    interpretationEl.style.display = 'block';
+                    
+                    // Анимация появления
+                    setTimeout(() => {
+                        interpretationEl.classList.add('show');
+                    }, 100);
+                    
+                    console.log(`✅ Толкование ${index} добавлено`);
+                } else {
+                    console.warn(`⚠️ Не найден элемент interpretation-${index}`);
+                }
+                
+                resolve();
+            }, 1000);
+        });
         
-    }, 1500);
+    } catch (error) {
+        console.error(`❌ Ошибка в revealSpreadCard ${index}:`, error);
+    }
 }
 
 function generatePositionInterpretation(card, position, question) {
