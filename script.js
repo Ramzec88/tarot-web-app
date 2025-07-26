@@ -284,3 +284,268 @@ async function generateAIPredictionToContainer(containerId, type, card, question
 async function loadHistory() {
     await loadHistoryFromAPI();
 }
+// Добавить в script.js
+
+// Глобальные переменные для профиля
+let userProfile = null;
+let profileModalShown = false;
+
+// Функция инициализации профиля
+async function initUserProfile() {
+    if (!currentUser) return;
+    
+    try {
+        // Пытаемся загрузить существующий профиль
+        userProfile = await loadUserProfile();
+        
+        if (!userProfile || !userProfile.display_name) {
+            // Если профиля нет - показываем форму
+            showProfileModal();
+        } else {
+            console.log('✅ Профиль пользователя загружен:', userProfile.display_name);
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки профиля:', error);
+        // Показываем форму в любом случае
+        showProfileModal();
+    }
+}
+
+// Показать модальное окно профиля
+function showProfileModal() {
+    if (profileModalShown) return;
+    
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+    
+    profileModalShown = true;
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+    
+    // Добавляем обработчики событий
+    setupProfileFormHandlers();
+    
+    // Автофокус на поле имени
+    setTimeout(() => {
+        const nameInput = document.getElementById('display-name');
+        if (nameInput) nameInput.focus();
+    }, 500);
+}
+
+// Скрыть модальное окно профиля
+function hideProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+    
+    modal.classList.add('hide');
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+        modal.classList.remove('show', 'hide');
+    }, 300);
+}
+
+// Настройка обработчиков формы
+function setupProfileFormHandlers() {
+    const profileForm = document.getElementById('profile-form');
+    const saveBtn = document.getElementById('save-profile-btn');
+    const skipBtn = document.getElementById('skip-profile-btn');
+    
+    if (profileForm) {
+        profileForm.addEventListener('submit', handleProfileSubmit);
+    }
+    
+    if (skipBtn) {
+        skipBtn.addEventListener('click', handleProfileSkip);
+    }
+    
+    // Обработчик для закрытия по клику вне модала
+    const overlay = document.querySelector('.profile-modal-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                handleProfileSkip();
+            }
+        });
+    }
+}
+
+// Обработка отправки формы профиля
+async function handleProfileSubmit(e) {
+    e.preventDefault();
+    
+    const saveBtn = document.getElementById('save-profile-btn');
+    const displayNameInput = document.getElementById('display-name');
+    const birthDateInput = document.getElementById('birth-date');
+    
+    if (!displayNameInput || !displayNameInput.value.trim()) {
+        showNotification('Пожалуйста, введите ваше имя');
+        displayNameInput?.focus();
+        return;
+    }
+    
+    // Показываем состояние загрузки
+    if (saveBtn) {
+        saveBtn.classList.add('loading');
+        saveBtn.disabled = true;
+    }
+    
+    try {
+        const profileData = {
+            display_name: displayNameInput.value.trim(),
+            birth_date: birthDateInput?.value || null,
+            telegram_id: currentUser?.telegram_id
+        };
+        
+        // Сохраняем профиль
+        await saveUserProfile(profileData);
+        
+        userProfile = profileData;
+        
+        // Показываем успешное сообщение
+        showNotification(`Добро пожаловать, ${profileData.display_name}! 🎉`);
+        
+        // Закрываем модал
+        hideProfileModal();
+        
+        console.log('✅ Профиль сохранен:', profileData);
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения профиля:', error);
+        showNotification('Произошла ошибка при сохранении профиля');
+    } finally {
+        // Убираем состояние загрузки
+        if (saveBtn) {
+            saveBtn.classList.remove('loading');
+            saveBtn.disabled = false;
+        }
+    }
+}
+
+// Обработка пропуска профиля
+function handleProfileSkip() {
+    if (currentUser) {
+        userProfile = {
+            display_name: currentUser.first_name || 'Пользователь',
+            birth_date: null,
+            telegram_id: currentUser.telegram_id
+        };
+    }
+    
+    hideProfileModal();
+    showNotification('Вы всегда можете заполнить профиль позже');
+}
+
+// Загрузка профиля пользователя
+async function loadUserProfile() {
+    if (!currentUser) return null;
+    
+    try {
+        const response = await fetch(`${API_CONFIG.getProfile}?telegram_id=${currentUser.telegram_id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load profile');
+        
+        const profileData = await response.json();
+        return profileData;
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки профиля:', error);
+        return null;
+    }
+}
+
+// Сохранение профиля пользователя
+async function saveUserProfile(profileData) {
+    try {
+        const response = await fetch(API_CONFIG.saveProfile, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(profileData)
+        });
+        
+        if (!response.ok) throw new Error('Failed to save profile');
+        
+        const result = await response.json();
+        return result;
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения профиля:', error);
+        throw error;
+    }
+}
+
+// Получение персонализированного обращения
+function getPersonalizedGreeting() {
+    if (userProfile && userProfile.display_name) {
+        const hour = new Date().getHours();
+        let timeGreeting = '';
+        
+        if (hour < 12) timeGreeting = 'Доброе утро';
+        else if (hour < 18) timeGreeting = 'Добрый день';
+        else timeGreeting = 'Добрый вечер';
+        
+        return `${timeGreeting}, ${userProfile.display_name}!`;
+    }
+    
+    return 'Добро пожаловать!';
+}
+
+// Проверка заполненности профиля
+function isProfileComplete() {
+    return userProfile && userProfile.display_name;
+}
+
+// Получение возраста (если указана дата рождения)
+function getUserAge() {
+    if (!userProfile || !userProfile.birth_date) return null;
+    
+    const today = new Date();
+    const birthDate = new Date(userProfile.birth_date);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    
+    return age;
+}
+
+// Обновленная функция инициализации приложения
+async function initApp() {
+    console.log('🔮 Инициализация Tarot Web App');
+    
+    try {
+        // Инициализация Supabase
+        if (typeof window.supabase !== 'undefined' && SUPABASE_CONFIG) {
+            supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+            console.log('✅ Supabase инициализирован');
+        }
+        
+        // Инициализация Telegram Web App
+        initTelegramWebApp();
+        
+        // Загрузка пользователя
+        await loadCurrentUser();
+        
+        // Инициализация профиля (показ формы если нужно)
+        await initUserProfile();
+        
+        // Инициализация UI
+        initEventListeners();
+        
+        console.log('✅ Приложение готово к работе');
+        
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+        initOfflineMode();
+    }
+}
