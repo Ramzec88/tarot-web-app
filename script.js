@@ -1,4 +1,19 @@
-// script.js - Основная логика Tarot Web App (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+function generateSpreadLayout(config) {
+    const { positions, layout } = config;
+    
+    let layoutClass = 'spread-layout-' + layout;
+    let cardsHTML = '';
+    
+    positions.forEach((position, index) => {
+        cardsHTML += `
+            <div class="spread-position" data-position="${index}">
+                <div class="spread-card-slot" id="spread-card-${index}">
+                    <div class="card-back">
+                        <div class="card-symbol">🔮</div>
+                        <div class="card-text">?</div>
+                    </div>
+                </div>
+                <div class="position-// script.js - Основная логика Tarot Web App (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 
 // Глобальные переменные
 let supabase;
@@ -1552,7 +1567,6 @@ function generateSpreadLayout(config) {
                     <strong>${position.name}</strong>
                     <small>${position.description}</small>
                 </div>
-                <div class="position-interpretation" id="interpretation-${index}" style="display: none;"></div>
             </div>
         `;
     });
@@ -1608,6 +1622,7 @@ async function drawSpread() {
         }
         
         currentSpread.cards = spreadCards;
+        currentSpread.interpretations = []; // Массив для интерпретаций
         console.log('✅ Карты сгенерированы:', spreadCards.length);
         
         // Анимированное открытие карт по очереди
@@ -1631,6 +1646,9 @@ async function drawSpread() {
             loading.style.display = 'none';
         }
         
+        // Показываем кнопку для просмотра интерпретаций
+        showInterpretationsButton();
+        
         console.log('✅ Все карты открыты, добавляем в историю');
         
         // Добавляем в историю
@@ -1651,6 +1669,82 @@ async function drawSpread() {
         }
         
         showNotification('Произошла ошибка при создании расклада. Попробуйте еще раз.');
+    }
+}
+
+function showInterpretationsButton() {
+    const spreadDetail = document.getElementById('spread-detail');
+    if (!spreadDetail) return;
+    
+    // Удаляем старую кнопку если есть
+    const oldBtn = spreadDetail.querySelector('.show-interpretations-btn');
+    if (oldBtn) oldBtn.remove();
+    
+    // Создаем новую кнопку
+    const button = document.createElement('button');
+    button.className = 'show-interpretations-btn';
+    button.textContent = '🔮 Посмотреть толкования карт';
+    button.onclick = showInterpretationsModal;
+    
+    spreadDetail.appendChild(button);
+}
+
+function showInterpretationsModal() {
+    if (!currentSpread || !currentSpread.interpretations) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'interpretations-modal';
+    
+    let interpretationsHTML = '';
+    currentSpread.interpretations.forEach((interpretation, index) => {
+        const card = currentSpread.cards[index];
+        const position = currentSpread.config.positions[index];
+        
+        interpretationsHTML += `
+            <div class="interpretation-item">
+                <div class="interpretation-card-info">
+                    <div class="interpretation-card-symbol">${card.symbol}</div>
+                    <div class="interpretation-card-details">
+                        <h4>${card.name}</h4>
+                        <p class="position-name">${position.name} - ${position.description}</p>
+                    </div>
+                </div>
+                <div class="interpretation-text">${interpretation}</div>
+            </div>
+        `;
+    });
+    
+    modal.innerHTML = `
+        <div class="interpretations-modal-content">
+            <div class="interpretations-modal-header">
+                <h3>🔮 Толкования расклада</h3>
+                <button class="interpretations-modal-close" onclick="closeInterpretationsModal()">&times;</button>
+            </div>
+            <div class="interpretations-modal-body">
+                ${currentSpread.question ? `
+                    <div class="spread-question-display" style="margin-bottom: 20px;">
+                        <strong>❓ Ваш вопрос:</strong> ${currentSpread.question}
+                    </div>
+                ` : ''}
+                ${interpretationsHTML}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+}
+
+function closeInterpretationsModal() {
+    const modal = document.querySelector('.interpretations-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
     }
 }
 
@@ -1680,40 +1774,14 @@ async function revealSpreadCard(index, card, position) {
                 cardSlot.classList.add('flipped');
                 console.log(`✅ Карта ${index} показана`);
                 resolve();
-            }, 1500);
-        });
-        
-        // Генерируем толкование для позиции
-        await new Promise(resolve => {
-            setTimeout(() => {
-                const interpretation = generatePositionInterpretation(card, position, currentSpread.question);
-                const interpretationEl = document.getElementById(`interpretation-${index}`);
-                
-                if (interpretationEl) {
-                    interpretationEl.innerHTML = `
-                        <div class="position-ai-prediction">
-                            <div class="ai-header">
-                                <span class="ai-icon">🔮</span>
-                                <span class="ai-title">Толкование позиции</span>
-                            </div>
-                            <div class="ai-content">${interpretation}</div>
-                        </div>
-                    `;
-                    interpretationEl.style.display = 'block';
-                    
-                    // Анимация появления
-                    setTimeout(() => {
-                        interpretationEl.classList.add('show');
-                    }, 100);
-                    
-                    console.log(`✅ Толкование ${index} добавлено`);
-                } else {
-                    console.warn(`⚠️ Не найден элемент interpretation-${index}`);
-                }
-                
-                resolve();
             }, 1000);
         });
+        
+        // Генерируем и сохраняем толкование для позиции
+        const interpretation = generatePositionInterpretation(card, position, currentSpread.question);
+        currentSpread.interpretations[index] = interpretation;
+        
+        console.log(`✅ Толкование ${index} сгенерировано`);
         
     } catch (error) {
         console.error(`❌ Ошибка в revealSpreadCard ${index}:`, error);
