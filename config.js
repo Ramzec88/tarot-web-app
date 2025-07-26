@@ -25,7 +25,10 @@ const TABLES = {
 const API_CONFIG = {
     // n8n вебхуки для различных операций
     createUser: 'https://romanmedn8n.ru/webhook/tarot-create-user',
+    saveProfile: 'https://romanmedn8n.ru/webhook/tarot-save-profile',
+    getProfile: 'https://romanmedn8n.ru/webhook/tarot-get-profile',
     saveQuestion: 'https://romanmedn8n.ru/webhook/tarot-save-question',
+    saveAnswer: 'https://romanmedn8n.ru/webhook/tarot-save-answer',
     saveDailyCard: 'https://romanmedn8n.ru/webhook/tarot-save-daily-card',
     getHistory: 'https://romanmedn8n.ru/webhook/tarot-get-history',
     updateSubscription: 'https://romanmedn8n.ru/webhook/tarot-update-subscription',
