@@ -1654,8 +1654,8 @@ async function drawSpread() {
             spreadCards.push(randomCard);
         }
         
-        currentSpread.cards = spreadCards; // Массив только карт (для логики расклада)
-        currentSpread.interpretations = []; // Массив для интерпретаций (строки)
+        currentSpread.cards = [];
+        currentSpread.interpretations = [];
         console.log('✅ Карты сгенерированы:', spreadCards.length);
         
         // Анимированное открытие карт по очереди
@@ -1666,14 +1666,21 @@ async function drawSpread() {
                 setTimeout(async () => {
                     try {
                         const interpretation = await revealSpreadCard(i, spreadCards[i], config.positions[i]);
-                        // Сохраняем интерпретацию в объекте карты внутри currentSpread.cards для истории
-                        currentSpread.cards[i].interpretation = interpretation;
+                        
+                        // Сохраняем карту с полной информацией
+                        currentSpread.cards.push({
+                            card: spreadCards[i],
+                            positionName: config.positions[i].name,
+                            positionDescription: config.positions[i].description,
+                            interpretation: interpretation
+                        });
+                        
                         resolve();
                     } catch (error) {
                         console.error(`❌ Ошибка при открытии карты ${i}:`, error);
                         resolve();
                     }
-                }, i * 800);
+                }, i * 1200); // Увеличена задержка для лучшей анимации
             });
         }
         
@@ -1685,21 +1692,25 @@ async function drawSpread() {
         showInterpretationsButton();
         
         console.log('✅ Все карты открыты, добавляем в историю');
-
-        // Подготовка данных для истории с позициями
-        // Этот массив historyCards будет содержать объекты {card, positionName, positionDescription, interpretation}
-        const historyCards = currentSpread.cards.map((card, index) => {
-            const position = currentSpread.config.positions[index];
-            return {
-                card: card, // Сама карта (уже может содержать .interpretation)
-                positionName: position.name,
-                positionDescription: position.description,
-                interpretation: card.interpretation // Добавляем интерпретацию здесь
-            };
-        });
         
-        // Добавляем в историю. aiPrediction для раскладов не нужен, т.к. толкования на каждую карту.
-        addToLocalHistory('spread', config.name, currentSpread.question || '', historyCards, ''); 
+        // Добавляем в историю
+        addToLocalHistory('spread', config.name, currentSpread.question || '', currentSpread.cards, ''); 
+        
+    } catch (error) {
+        console.error('❌ Ошибка в drawSpread:', error);
+        
+        if (loading) {
+            loading.style.display = 'none';
+        }
+        
+        if (drawBtn) {
+            drawBtn.style.display = 'block';
+            drawBtn.disabled = false;
+        }
+        
+        showNotification('Произошла ошибка при создании расклада. Попробуйте еще раз.');
+    }
+}
         
     } catch (error) {
         console.error('❌ Ошибка в drawSpread:', error);
@@ -1756,13 +1767,19 @@ function showInterpretationsButton() {
     const oldBtn = spreadDetail.querySelector('.show-interpretations-btn');
     if (oldBtn) oldBtn.remove();
     
-    // Создаем новую кнопку
-    const button = document.createElement('button');
-    button.className = 'show-interpretations-btn';
-    button.textContent = '🔮 Посмотреть толкования карт';
-    button.onclick = showInterpretationsModal;
+    // Создаем контейнер для кнопок
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'spread-actions';
+    buttonsContainer.innerHTML = `
+        <button class="btn show-interpretations-btn" onclick="showInterpretationsModal()">
+            🔮 Посмотреть все толкования
+        </button>
+        <button class="btn btn-secondary" onclick="saveSpreadToHistory()">
+            📚 Сохранить в историю
+        </button>
+    `;
     
-    spreadDetail.appendChild(button);
+    spreadDetail.appendChild(buttonsContainer);
 }
 
 function showInterpretationsModal() {
@@ -1828,42 +1845,134 @@ function closeInterpretationsModal() {
 
 // revealSpreadCard теперь ВОЗВРАЩАЕТ интерпретацию, а не просто сохраняет
 async function revealSpreadCard(index, card, position) {
-    console.log(`🎴 revealSpreadCard: ${index}, карта: ${card.name}`);
+    console.log(`🎴 revealSpreadCard: ${index}, карта: ${card.name}, позиция: ${position.name}`);
     
     const cardSlot = document.getElementById(`spread-card-${index}`);
     if (!cardSlot) {
         console.error(`❌ Не найден элемент spread-card-${index}`);
-        return ''; // Возвращаем пустую строку при ошибке
+        return 'Не удалось сгенерировать толкование.';
     }
     
     try {
         // Добавляем блестки
         addSparkles(cardSlot);
         
+        // Показываем карту с анимацией
         await new Promise(resolve => {
             setTimeout(() => {
-                // Показываем карту
                 cardSlot.innerHTML = `
-                    <div class="card-name">${card.name}</div>
-                    <img src="${card.image}" alt="${card.name}" class="card-image" onerror="this.style.display='none'">
-                    <div class="card-symbol">${card.symbol}</div>
-                    <div class="card-meaning">${card.meaning}</div>
+                    <div class="spread-card-revealed">
+                        <div class="card-name">${card.name}</div>
+                        <img src="${card.image}" alt="${card.name}" class="card-image" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.fontSize='24px';">
+                        <div class="card-symbol">${card.symbol}</div>
+                        <div class="card-meaning">${card.meaning}</div>
+                        <div class="position-context">
+                            <strong>${position.name}</strong>
+                            <small>${position.description}</small>
+                        </div>
+                    </div>
                 `;
                 
                 cardSlot.classList.add('flipped');
                 console.log(`✅ Карта ${index} показана`);
                 resolve();
-            }, 1000);
+            }, 800);
         });
         
-        // Генерируем и ВОЗВРАЩАЕМ толкование для позиции
-        const interpretation = generatePositionInterpretation(card, position, currentSpread.question);
-        return interpretation; // Возвращаем интерпретацию
+        // Генерируем персональное толкование для позиции
+        const interpretation = await generateAdvancedInterpretation(card, position, currentSpread.question);
+        
+        // Добавляем толкование под карту с задержкой
+        setTimeout(() => {
+            const interpretationDiv = document.createElement('div');
+            interpretationDiv.className = 'position-interpretation';
+            interpretationDiv.innerHTML = `
+                <div class="interpretation-header">
+                    <span class="interpretation-icon">🔮</span>
+                    <span class="interpretation-title">Толкование</span>
+                </div>
+                <div class="interpretation-text">${interpretation}</div>
+            `;
+            
+            const positionElement = cardSlot.closest('.spread-position');
+            if (positionElement) {
+                positionElement.appendChild(interpretationDiv);
+                
+                // Анимация появления
+                setTimeout(() => {
+                    interpretationDiv.style.opacity = '1';
+                    interpretationDiv.style.transform = 'translateY(0)';
+                }, 100);
+            }
+        }, 1000);
+        
+        return interpretation;
         
     } catch (error) {
         console.error(`❌ Ошибка в revealSpreadCard ${index}:`, error);
-        return ''; // Возвращаем пустую строку при ошибке
+        return 'Произошла ошибка при генерации толкования.';
     }
+}
+
+async function generateAdvancedInterpretation(card, position, question) {
+    try {
+        // Если есть API для генерации через ИИ, используем его
+        if (typeof API_CONFIG !== 'undefined' && API_CONFIG.generatePrediction) {
+            const response = await fetch(API_CONFIG.generatePrediction, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: 'spread_position',
+                    card: card,
+                    position: position,
+                    question: question,
+                    userName: userName,
+                    userBirthdate: userBirthdate
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                return result.prediction || generateLocalInterpretation(card, position, question);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка API генерации, используем локальную:', error);
+    }
+    
+    // Фоллбэк на локальную генерацию
+    return generateLocalInterpretation(card, position, question);
+}
+
+// Если этой функции нет - добавьте:
+function generateLocalInterpretation(card, position, question) {
+    const templates = [
+        `В позиции "${position.name}" карта "${card.name}" раскрывает важную истину: ${card.meaning.toLowerCase()} Это ключевой аспект для понимания ${position.description.toLowerCase()}.`,
+        
+        `"${card.name}" в контексте "${position.name}" говорит о том, что ${card.meaning.toLowerCase()} Обратите особое внимание на то, как это влияет на ${position.description.toLowerCase()}.`,
+        
+        `Позиция "${position.name}" освещается энергией карты "${card.name}": ${card.meaning.toLowerCase()} Это указывает на важность ${position.description.toLowerCase()} в вашей текущей ситуации.`,
+        
+        `Карта "${card.name}" в позиции "${position.name}" символизирует: ${card.meaning.toLowerCase()} Духовные наставники советуют сосредоточиться на ${position.description.toLowerCase()}.`
+    ];
+    
+    let interpretation = templates[Math.floor(Math.random() * templates.length)];
+    
+    // Добавляем контекст вопроса, если он есть
+    if (question && question.trim()) {
+        const questionContexts = [
+            ` В контексте вашего вопроса "${question}" это означает, что ответ кроется в области ${position.description.toLowerCase()}.`,
+            ` Относительно вашего запроса "${question}", эта карта указывает на важность ${position.description.toLowerCase()} для получения ясности.`,
+            ` Ваш вопрос "${question}" находит отклик в этой позиции - ${position.description.toLowerCase()} станет ключом к пониманию.`
+        ];
+        
+        interpretation += questionContexts[Math.floor(Math.random() * questionContexts.length)];
+    }
+    
+    return interpretation;
 }
 
 function generatePositionInterpretation(card, position, question) {
@@ -2022,6 +2131,58 @@ async function saveAnswerToSupabase(questionId, card, aiPrediction) {
         return null;
     }
 }
+function saveSpreadToHistory() {
+    if (!currentSpread || !currentSpread.cards || currentSpread.cards.length === 0) {
+        showNotification('Нет данных для сохранения');
+        return;
+    }
+    
+    // Данные уже добавлены в историю в drawSpread, просто уведомляем
+    showNotification('✅ Расклад сохранен в истории!');
+    
+    // Переключаемся на вкладку истории
+    setTimeout(() => {
+        switchTab('history');
+    }, 1000);
+}
+
+function sendSpreadToTelegram() {
+    if (!currentSpread || !currentSpread.cards) return;
+    
+    let message = `🔮 ${currentSpread.config.name}\n`;
+    message += `📅 ${new Date().toLocaleString('ru-RU')}\n\n`;
+    
+    if (currentSpread.question) {
+        message += `❓ Вопрос: "${currentSpread.question}"\n\n`;
+    }
+    
+    message += `🃏 Расклад:\n\n`;
+    
+    currentSpread.cards.forEach((cardData, index) => {
+        message += `${index + 1}. ${cardData.positionName}\n`;
+        message += `🃏 ${cardData.card.symbol} ${cardData.card.name}\n`;
+        message += `📝 ${cardData.card.meaning}\n`;
+        message += `🔮 ${cardData.interpretation}\n\n`;
+    });
+    
+    if (tg && tg.sendData) {
+        tg.sendData(JSON.stringify({
+            type: 'spread_share',
+            data: currentSpread,
+            text_message: message
+        }));
+        showNotification('Расклад отправлен в бота!');
+        closeInterpretationsModal();
+    } else {
+        // Фоллбэк - копируем в буфер обмена
+        navigator.clipboard.writeText(message).then(() => {
+            showNotification('Текст расклада скопирован в буфер обмена!');
+        }).catch(() => {
+            showNotification('Не удалось скопировать текст');
+        });
+    }
+}
+
 
 async function updateUserQuestionsInSupabase() {
     console.log('💾 Обновление количества вопросов:', questionsLeft);
