@@ -13,8 +13,15 @@ function generateSpreadLayout(config) {
                         <div class="card-text">?</div>
                     </div>
                 </div>
-                <div class="position-// script.js - Основная логика Tarot Web App (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+                <div class="position-label"> 17                      <strong>${position.name}</strong>
+                    <small>${position.description}</small>
+               </div>
+              </div>
+          `;
+      });
 
+     return `<div class="${layoutClass}">${cardsHTML}</div>`;
+} // <-- Закрывающая скобка для generateSpreadLayout
 // Глобальные переменные
 let supabase;
 let tg;
