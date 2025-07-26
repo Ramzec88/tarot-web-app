@@ -1,28 +1,6 @@
-function generateSpreadLayout(config) {
-    const { positions, layout } = config;
-    
-    let layoutClass = 'spread-layout-' + layout;
-    let cardsHTML = '';
-    
-    positions.forEach((position, index) => {
-        cardsHTML += `
-            <div class="spread-position" data-position="${index}">
-                <div class="spread-card-slot" id="spread-card-${index}">
-                    <div class="card-back">
-                        <div class="card-symbol">🔮</div>
-                        <div class="card-text">?</div>
-                    </div>
-                </div>
-                <div class="position-label"> 17                      <strong>${position.name}</strong>
-                    <small>${position.description}</small>
-               </div>
-              </div>
-          `;
-      });
+// script.js - Основная логика Tarot Web App (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 
-     return `<div class="${layoutClass}">${cardsHTML}</div>`;
-} // <-- Закрывающая скобка для generateSpreadLayout
-// Глобальные переменные
+// Глобальные переменные - ДОЛЖНЫ БЫТЬ В САМОМ НАЧАЛЕ ФАЙЛА, ПОСЛЕ ИМПОРТОВ И КОНФИГУРАЦИЙ
 let supabase;
 let tg;
 let currentUser = null;
@@ -45,9 +23,16 @@ async function initApp() {
     
     try {
         // Инициализация Supabase
-        if (typeof window.supabase !== 'undefined' && SUPABASE_CONFIG) {
+        // Убедитесь, что SUPABASE_CONFIG доступен глобально (из config.js)
+        if (typeof window.supabase !== 'undefined' && typeof SUPABASE_CONFIG !== 'undefined') {
             supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
             console.log('✅ Supabase инициализирован');
+        } else {
+             console.warn('Supabase клиент или SUPABASE_CONFIG не найден. Приложение будет работать в оффлайн-режиме.');
+             initOfflineMode(); // Переходим в оффлайн режим, если Supabase недоступен
+             initEventListeners();
+             switchTab('daily');
+             return; // Прерываем дальнейшее выполнение, чтобы избежать ошибок
         }
         
         // Инициализация Telegram Web App
@@ -99,8 +84,10 @@ function initTelegramWebApp() {
         
         tg.MainButton.setText('💳 Купить Premium за 299₽');
         tg.MainButton.onClick(() => {
-            if (API_CONFIG && API_CONFIG.paymentUrl) {
+            if (typeof API_CONFIG !== 'undefined' && API_CONFIG && API_CONFIG.paymentUrl) {
                 tg.openLink(API_CONFIG.paymentUrl);
+            } else {
+                showNotification('Ссылка для оплаты не настроена.');
             }
         });
         
@@ -130,7 +117,7 @@ function initOfflineMode() {
 
 // Загрузка текущего пользователя
 async function loadCurrentUser() {
-    if (!currentUser || !supabase) return;
+    if (!currentUser || !supabase) return; // Пропускаем, если Supabase не инициализирован
     
     try {
         const { data: existingUser, error } = await supabase
@@ -139,7 +126,7 @@ async function loadCurrentUser() {
             .eq('telegram_id', currentUser.telegram_id)
             .single();
         
-        if (error && error.code !== 'PGRST116') {
+        if (error && error.code !== 'PGRST116') { // PGRST116 - "No rows found"
             throw error;
         }
         
@@ -165,6 +152,7 @@ async function loadCurrentUser() {
 
 // Создание нового пользователя
 async function createNewUser() {
+    if (!supabase || !currentUser) return; // Пропускаем, если Supabase не инициализирован
     try {
         const { data, error } = await supabase
             .from(TABLES.userProfiles)
@@ -204,15 +192,15 @@ function updateSubscriptionStatus(hasPremium) {
             <span class="status-text">Премиум активен</span>
         `;
         statusEl.classList.add('premium');
-        questionsLeft = 999;
+        questionsLeft = 999; // Устанавливаем бесконечное количество вопросов для премиум
         
         if (tg && tg.MainButton) {
             tg.MainButton.hide();
         }
     } else {
         statusEl.innerHTML = `
-            <span class="status-icon">🌑</span>
-            <span class="status-text">Базовая версия</span>
+            <span class="status-icon">🆓</span>
+            <span class="status-text">Бесплатная версия</span>
         `;
         statusEl.classList.remove('premium');
         
@@ -235,31 +223,15 @@ function initEventListeners() {
     console.log('🎯 Инициализация обработчиков событий');
 
     // Основные табы
-    const mainTabs = document.querySelectorAll('.nav-tabs .nav-tab');
-    console.log('Найдено основных табов:', mainTabs.length);
-
-    mainTabs.forEach(tab => {
-        const tabName = tab.getAttribute('data-tab');
-        console.log('Настройка таба:', tabName);
-
-        // УДАЛИТЕ СЛЕДУЮЩУЮ СТРОКУ:
-        // tab.replaceWith(tab.cloneNode(true));
-    });
-
-    // Добавляем новые обработчики для основных табов
+    // Удалены строки tab.replaceWith(tab.cloneNode(true));
     document.querySelectorAll('.nav-tabs .nav-tab').forEach(tab => {
-        // Убедитесь, что обработчик добавляется только один раз.
-        // Возможно, вам стоит добавить проверку 'once: true' или удалить старые обработчики,
-        // если initEventListeners вызывается несколько раз.
-        // Для простоты, если initEventListeners вызывается только один раз при загрузке,
-        // то просто удаление строки выше будет достаточно.
         tab.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-
+            
             const tabName = this.getAttribute('data-tab');
             console.log('🔄 Переключение на основной таб:', tabName);
-
+            
             if (tabName) {
                 switchTab(tabName);
             }
@@ -267,26 +239,15 @@ function initEventListeners() {
     });
 
     // Вторичные табы
-    const secondaryTabs = document.querySelectorAll('.nav-tabs-secondary .nav-tab');
-    console.log('Найдено вторичных табов:', secondaryTabs.length);
-
-    secondaryTabs.forEach(tab => {
-        const tabName = tab.getAttribute('data-tab');
-        console.log('Настройка вторичного таба:', tabName);
-
-        // УДАЛИТЕ СЛЕДУЮЩУЮ СТРОКУ:
-        // tab.replaceWith(tab.cloneNode(true));
-    });
-
-    // Добавляем новые обработчики для вторичных табов
+    // Удалены строки tab.replaceWith(tab.cloneNode(true));
     document.querySelectorAll('.nav-tabs-secondary .nav-tab').forEach(tab => {
         tab.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-
+            
             const tabName = this.getAttribute('data-tab');
             console.log('🔄 Переключение на вторичный таб:', tabName);
-
+            
             if (tabName) {
                 switchTab(tabName);
             }
@@ -384,7 +345,7 @@ function initEventListeners() {
         }
     });
     
-    // Обработчик для кнопки "Назад" в раскладах
+    // Обработчик для кнопки "Назад" в раскладах (будет перепривязан в showSpreadInterface)
     const backBtn = document.querySelector('.back-btn');
     if (backBtn) {
         backBtn.addEventListener('click', closeSpread);
@@ -431,10 +392,10 @@ function switchTab(tab) {
     if (tab === 'history') {
         loadHistory();
     } else if (tab === 'reviews') {
-        loadReviews(); // Исправлено: теперь вызывается правильная функция
+        loadReviews();
     } else if (tab === 'premium') {
         console.log('👑 Пользователь посетил Premium страницу');
-    } else if (tab === 'spreads') { // <-- Добавьте этот блок ЗДЕСЬ
+    } else if (tab === 'spreads') { // БЛОК ДЛЯ ВКЛАДКИ "РАСКЛАДЫ"
         // При переключении на вкладку "Расклады" всегда показываем список раскладов
         // и скрываем детальный вид, если он был активен.
         const spreadsGrid = document.querySelector('.spreads-grid');
@@ -518,7 +479,9 @@ async function drawDailyCard() {
                 }, 2000);
             }, 1000);
             
-            addToLocalHistory('daily', 'Карта дня', '', [randomCard]);
+            // Для карты дня, передаем просто объект randomCard в массив.
+            // viewHistoryDetail будет проверять, есть ли positionName.
+            addToLocalHistory('daily', 'Карта дня', '', [randomCard]); 
         }, 2000);
         
     } catch (error) {
@@ -693,6 +656,8 @@ async function performPrediction(question, isFollowUp) {
                 document.getElementById('question-input').value = '';
             }
             
+            // Для обычного вопроса, передаем просто объект randomCard в массив.
+            // viewHistoryDetail будет проверять, есть ли positionName.
             addToLocalHistory('question', isFollowUp ? 'Уточняющий вопрос' : 'Вопрос', question, [randomCard]);
             
         }, 2500);
@@ -708,6 +673,12 @@ async function performPrediction(question, isFollowUp) {
 
 // Получение случайной карты
 function getRandomCard() {
+    // Убедитесь, что TAROT_CARDS определен (например, в config.js)
+    if (typeof TAROT_CARDS === 'undefined' || TAROT_CARDS.length === 0) {
+        console.error('❌ TAROT_CARDS не определены или пусты!');
+        // Фоллбэк или бросить ошибку
+        return { name: "Ошибка", symbol: "!", meaning: "Карты не загружены." };
+    }
     return TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
 }
 
@@ -731,23 +702,47 @@ async function generateAIPredictionToContainer(containerId, type, card, question
     container.appendChild(aiBlock);
     
     try {
-        const prediction = generatePredictionText(type, card, question);
-        
-        setTimeout(() => {
-            const aiContent = aiBlock.querySelector('.ai-content');
+        // Если API_CONFIG.aiPredictionEndpoint настроен, делаем fetch запрос
+        if (typeof API_CONFIG !== 'undefined' && API_CONFIG.aiPredictionEndpoint) {
+             const response = await fetch(API_CONFIG.aiPredictionEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: type,
+                    card: card,
+                    question: question,
+                    userName: userName, // Передаем данные пользователя для персонализации
+                    userBirthdate: userBirthdate
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            const prediction = result.prediction || "Не удалось сгенерировать предсказание.";
             typeWriter(aiContent, prediction, 30);
-        }, 2000);
-        
-        return prediction;
+            return prediction;
+
+        } else {
+            // Иначе используем фоллбэк генерацию текста
+            const prediction = generatePredictionText(type, card, question);
+            setTimeout(() => {
+                typeWriter(aiContent, prediction, 30);
+            }, 2000); // Задержка для имитации генерации
+            return prediction;
+        }
+       
     } catch (error) {
-        console.error('❌ Ошибка ИИ-предсказания:', error);
+        console.error('❌ Ошибка ИИ-предсказания (возможно, API недоступно):', error);
+        // Фоллбэк на локальную генерацию текста при ошибке API
         const prediction = generatePredictionText(type, card, question);
-        
         setTimeout(() => {
-            const aiContent = aiBlock.querySelector('.ai-content');
             typeWriter(aiContent, prediction, 50);
-        }, 2000);
-        
+        }, 2000); // Задержка для имитации генерации
         return prediction;
     }
 }
@@ -784,55 +779,28 @@ function checkAndShowSubscriptionBanner() {
     }
 }
 
-// Проверка первого запуска
+// Проверка первого запуска (использование showWelcomeModal)
 function checkFirstLaunch() {
+    // В вашем index.html вы уже добавили modal-profile, так что используем его.
+    // Если hasLaunched === false, показываем модалку профиля
     if (!hasLaunched) {
-        showWelcomeModal();
+        const profileModal = document.getElementById('profile-modal');
+        if (profileModal) {
+            profileModal.style.display = 'flex'; // Показываем модалку профиля
+            // Здесь можно добавить обработчики для кнопок сохранения/пропуска профиля
+            document.getElementById('profile-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveWelcomeData(); // Сохранить данные профиля
+            });
+            document.getElementById('skip-profile-btn').addEventListener('click', skipWelcome);
+        }
     }
 }
 
-// Показ приветственного модального окна
-function showWelcomeModal() {
-    const modal = document.createElement('div');
-    modal.className = 'welcome-modal';
-    modal.innerHTML = `
-        <div class="welcome-modal-content">
-            <div class="welcome-header">
-                <h2>✨ Добро пожаловать в Шепот карт ✨</h2>
-                <p>Давайте знакомиться! Укажите ваши данные для более точных предсказаний</p>
-            </div>
-            <div class="welcome-form">
-                <div class="form-group">
-                    <label for="user-name">👤 Ваше имя:</label>
-                    <input type="text" id="user-name" class="welcome-input" placeholder="Введите ваше имя">
-                </div>
-                <div class="form-group">
-                    <label for="user-birthdate">🎂 Дата рождения:</label>
-                    <input type="date" id="user-birthdate" class="welcome-input">
-                </div>
-                <div class="form-group privacy-note">
-                    <p>🔒 Ваши данные сохраняются в текущей сессии и используются только для персонализации предсказаний</p>
-                </div>
-            </div>
-            <div class="welcome-footer">
-                <button class="btn btn-secondary" onclick="skipWelcome()">Пропустить</button>
-                <button class="btn" onclick="saveWelcomeData()">Сохранить и продолжить</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Анимация появления
-    setTimeout(() => {
-        modal.classList.add('show');
-    }, 10);
-}
-
-// Сохранение данных приветствия
+// Сохранение данных приветствия (теперь для модалки профиля)
 function saveWelcomeData() {
-    const nameInput = document.getElementById('user-name');
-    const birthdateInput = document.getElementById('user-birthdate');
+    const nameInput = document.getElementById('display-name');
+    const birthdateInput = document.getElementById('birth-date');
     
     const inputName = nameInput ? nameInput.value.trim() : '';
     const inputBirthdate = birthdateInput ? birthdateInput.value : '';
@@ -841,6 +809,8 @@ function saveWelcomeData() {
         userName = inputName;
         if (currentUser) {
             currentUser.display_name = inputName;
+            // Здесь можно добавить сохранение display_name в Supabase
+            // await supabase.from(TABLES.userProfiles).update({ display_name: inputName }).eq('telegram_id', currentUser.telegram_id);
         }
     }
     
@@ -848,33 +818,35 @@ function saveWelcomeData() {
         userBirthdate = inputBirthdate;
         if (currentUser) {
             currentUser.birthdate = inputBirthdate;
+            // Здесь можно добавить сохранение birthdate в Supabase
+            // await supabase.from(TABLES.userProfiles).update({ birthdate: inputBirthdate }).eq('telegram_id', currentUser.telegram_id);
         }
     }
     
     hasLaunched = true;
-    closeWelcomeModal();
+    closeWelcomeModal(); // Используем ту же функцию для скрытия модалки
     
     if (inputName) {
         showNotification(`Добро пожаловать, ${inputName}! Карты готовы ответить на ваши вопросы ✨`);
     }
 }
 
-// Пропустить приветствие
+// Пропустить приветствие (теперь для модалки профиля)
 function skipWelcome() {
     hasLaunched = true;
-    closeWelcomeModal();
+    closeWelcomeModal(); // Используем ту же функцию для скрытия модалки
 }
 
-// Закрытие приветственного модального окна
+// Закрытие приветственного модального окна (теперь для модалки профиля)
 function closeWelcomeModal() {
-    const modal = document.querySelector('.welcome-modal');
+    const modal = document.getElementById('profile-modal'); // Изменено на ID модалки профиля
     if (modal) {
-        modal.classList.remove('show');
-        setTimeout(() => {
-            modal.remove();
-        }, 300);
+        // modal.classList.remove('show'); // Если у вас есть класс show для fadeOut, оставьте
+        modal.style.display = 'none'; // Просто скрываем
+        // setTimeout(() => { modal.remove(); }, 300); // Не удаляем, просто скрываем
     }
 }
+
 
 // Вспомогательные функции
 function showNotification(message) {
@@ -903,13 +875,20 @@ function typeWriter(element, text, speed = 50) {
 
 function addSparkles(element) {
     if (!element) return;
+    // Очищаем от старых блесток перед добавлением новых
+    const existingSparkles = element.querySelectorAll('.sparkle');
+    existingSparkles.forEach(s => s.remove());
+
     for (let i = 0; i < 5; i++) {
         setTimeout(() => {
             const sparkle = document.createElement('div');
             sparkle.className = 'sparkle';
             sparkle.textContent = '✨';
-            sparkle.style.left = Math.random() * 100 + '%';
-            sparkle.style.top = Math.random() * 100 + '%';
+            // Позиционируем блестки относительно элемента, а не всего экрана
+            const rect = element.getBoundingClientRect();
+            sparkle.style.left = `${Math.random() * rect.width}px`;
+            sparkle.style.top = `${Math.random() * rect.height}px`;
+            sparkle.style.position = 'absolute'; // Убедитесь, что элемент имеет position: relative
             element.appendChild(sparkle);
             
             setTimeout(() => {
@@ -920,6 +899,8 @@ function addSparkles(element) {
 }
 
 // Добавление в локальную историю
+// Cards - теперь может быть либо массив объектов карт (для daily/question),
+// либо массив объектов { card: {}, positionName: "", positionDescription: "" } (для spreads).
 function addToLocalHistory(type, title, question, cards, aiPrediction = '') {
     const now = new Date();
     const historyItem = {
@@ -930,8 +911,8 @@ function addToLocalHistory(type, title, question, cards, aiPrediction = '') {
         type: type,
         title: title,
         question: question,
-        cards: cards,
-        aiPrediction: aiPrediction // Добавляем ИИ-предсказание
+        cards: cards, // Здесь может быть cards (массив карт) или cardsWithPositions (массив {card, position})
+        aiPrediction: aiPrediction
     };
     
     history.unshift(historyItem);
@@ -980,8 +961,8 @@ function renderHistory() {
         
         groupedHistory[date].forEach(item => {
             // Определяем иконку в зависимости от типа
-            const typeIcon = item.type === 'daily' ? '🌅' : '❓';
-            const typeColor = item.type === 'daily' ? '#ffd700' : '#667eea';
+            const typeIcon = item.type === 'daily' ? '🌅' : (item.type === 'question' ? '❓' : '🃏'); // Добавлена иконка для раскладов
+            const typeColor = item.type === 'daily' ? '#ffd700' : (item.type === 'question' ? '#667eea' : '#a276b2'); // Добавлен цвет для раскладов
             
             historyHTML += `
                 <div class="history-item" data-id="${item.id}" style="border-left-color: ${typeColor}">
@@ -994,15 +975,22 @@ function renderHistory() {
                     </div>
                     ${item.question ? `<div class="history-question">"${item.question}"</div>` : ''}
                     <div class="history-cards">
-                        ${item.cards.map(card => `
-                            <div class="history-mini-card">${card.symbol} ${card.name}</div>
-                        `).join('')}
+                        ${item.cards.map(cardItem => {
+                            // Проверяем, это просто карта или объект с картой и позицией
+                            const card = cardItem.card || cardItem; 
+                            const positionName = cardItem.positionName || '';
+                            return `
+                                <div class="history-mini-card">
+                                    ${card.symbol} ${card.name} ${positionName ? `(${positionName})` : ''}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                     <div class="history-actions">
                         <button class="history-btn" onclick="viewHistoryDetail('${item.id}')">
                             📖 Подробнее
                         </button>
-                        ${item.aiPrediction ? `
+                        ${item.aiPrediction || (item.type === 'spread' && item.cards.some(c => c.interpretation)) ? `
                             <button class="history-btn" onclick="sendToTelegram('${item.id}')">
                                 📤 В Telegram
                             </button>
@@ -1029,7 +1017,7 @@ function viewHistoryDetail(id) {
     modal.innerHTML = `
         <div class="history-modal-content">
             <div class="history-modal-header">
-                <h3>${item.type === 'daily' ? '🌅' : '❓'} ${item.title}</h3>
+                <h3>${item.type === 'daily' ? '🌅' : (item.type === 'question' ? '❓' : '🃏')} ${item.title}</h3>
                 <button class="history-modal-close" onclick="closeHistoryModal()">&times;</button>
             </div>
             <div class="history-modal-body">
@@ -1042,30 +1030,40 @@ function viewHistoryDetail(id) {
                     </div>
                 ` : ''}
                 
-                 <div class="history-detail-cards">
-        <strong>🃏 Карты:</strong>
-        ${item.cards.map(cardItem => ` // <--- ИЗМЕНЕНО: теперь cardItem - это объект { card, positionName, ... }
-            <div class="history-detail-card">
-                <div class="card-header">
-                    <span class="card-symbol-large">${cardItem.card.symbol}</span> // <--- ДОСТУП К ДАННЫМ КАРТЫ ЧЕРЕЗ .card
-                    <span class="card-name-large">${cardItem.card.name}</span>
+                <div class="history-detail-cards">
+                    <strong>🃏 Карты:</strong>
+                    ${item.cards.map(cardItem => {
+                        const card = cardItem.card || cardItem; // Получаем объект карты
+                        const positionName = cardItem.positionName || ''; // Получаем имя позиции, если есть
+                        return `
+                            <div class="history-detail-card">
+                                <div class="card-header">
+                                    <span class="card-symbol-large">${card.symbol}</span>
+                                    <span class="card-name-large">${card.name}</span>
+                                </div>
+                                ${positionName ? `<div class="card-position-name">${positionName}:</div>` : ''} <div class="card-meaning-detail">${card.meaning}</div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
-                ${cardItem.positionName ? `<div class="card-position-name">${cardItem.positionName}:</div>` : ''} // <--- ДОБАВЛЕНО: Отображение имени позиции, если оно есть
-                <div class="card-meaning-detail">${cardItem.card.meaning}</div>
-            </div>
-        `).join('')}
-    </div>
                 
                 ${item.aiPrediction ? `
                     <div class="history-detail-prediction">
                         <strong>🤖 ИИ-толкование:</strong>
                         <p>${item.aiPrediction}</p>
                     </div>
+                ` : (item.type === 'spread' && item.cards.some(c => c.interpretation)) ? `
+                    <div class="history-detail-prediction">
+                        <strong>🤖 ИИ-толкования карт:</strong>
+                        ${item.cards.map(cardItem => `
+                            <p><strong>${cardItem.card.name}${cardItem.positionName ? ` (${cardItem.positionName})` : ''}:</strong> ${cardItem.interpretation || 'Нет толкования'}</p>
+                        `).join('')}
+                    </div>
                 ` : ''}
             </div>
             <div class="history-modal-footer">
                 <button class="btn btn-secondary" onclick="closeHistoryModal()">Закрыть</button>
-                ${item.aiPrediction ? `
+                ${item.aiPrediction || (item.type === 'spread' && item.cards.some(c => c.interpretation)) ? `
                     <button class="btn" onclick="sendToTelegram('${item.id}')">📤 Отправить в Telegram</button>
                 ` : ''}
             </div>
@@ -1104,21 +1102,30 @@ function sendToTelegram(id) {
     }
     
     message += `🃏 Карты:\n`;
-    item.cards.forEach(card => {
-        message += `${card.symbol} ${card.name}\n${card.meaning}\n\n`;
+    item.cards.forEach(cardItem => {
+        const card = cardItem.card || cardItem;
+        const positionName = cardItem.positionName || '';
+        message += `${card.symbol} ${card.name}${positionName ? ` (${positionName})` : ''}\n`;
+        message += `${card.meaning}\n\n`;
     });
     
     if (item.aiPrediction) {
         message += `🤖 ИИ-толкование:\n${item.aiPrediction}`;
+    } else if (item.type === 'spread' && item.cards.some(c => c.interpretation)) {
+        message += `🤖 ИИ-толкования карт:\n`;
+        item.cards.forEach(cardItem => {
+            message += `${cardItem.card.name}${cardItem.positionName ? ` (${cardItem.positionName})` : ''}: ${cardItem.interpretation || 'Нет толкования'}\n`;
+        });
     }
     
-    if (tg && tg.showAlert) {
+    if (tg && tg.sendData) { // Изменено с tg.showAlert на tg.sendData
         // В Telegram Web App можем отправить данные в бота
         tg.sendData(JSON.stringify({
             type: 'history_share',
-            data: item
+            data: item,
+            text_message: message // Отправляем также форматированный текст для удобства
         }));
-        tg.showAlert('Данные отправлены в бота!');
+        tg.showAlert('Данные отправлены в бота!'); // Оповещение об отправке
     } else {
         // Фоллбэк - копируем в буфер обмена
         navigator.clipboard.writeText(message).then(() => {
@@ -1389,7 +1396,8 @@ function openSpread(spreadType) {
     currentSpread = {
         type: spreadType,
         config: spreadConfig,
-        cards: [],
+        cards: [], // Этот массив будет заполнен объектами {card: {}, positionName: "", positionDescription: ""}
+        interpretations: [], // Этот массив будет заполнен строками интерпретаций
         question: ''
     };
     
@@ -1572,6 +1580,7 @@ function showSpreadInterface() {
     }
 }
 
+// Эта функция должна быть вне showSpreadInterface, как и в вашем коде
 function generateSpreadLayout(config) {
     const { positions, layout } = config;
     
@@ -1645,8 +1654,8 @@ async function drawSpread() {
             spreadCards.push(randomCard);
         }
         
-        currentSpread.cards = spreadCards;
-        currentSpread.interpretations = []; // Массив для интерпретаций
+        currentSpread.cards = spreadCards; // Массив только карт (для логики расклада)
+        currentSpread.interpretations = []; // Массив для интерпретаций (строки)
         console.log('✅ Карты сгенерированы:', spreadCards.length);
         
         // Анимированное открытие карт по очереди
@@ -1656,7 +1665,9 @@ async function drawSpread() {
             await new Promise(resolve => {
                 setTimeout(async () => {
                     try {
-                        await revealSpreadCard(i, spreadCards[i], config.positions[i]);
+                        const interpretation = await revealSpreadCard(i, spreadCards[i], config.positions[i]);
+                        // Сохраняем интерпретацию в объекте карты внутри currentSpread.cards для истории
+                        currentSpread.cards[i].interpretation = interpretation;
                         resolve();
                     } catch (error) {
                         console.error(`❌ Ошибка при открытии карты ${i}:`, error);
@@ -1675,43 +1686,20 @@ async function drawSpread() {
         
         console.log('✅ Все карты открыты, добавляем в историю');
 
-         // --- НОВОЕ: Подготовка данных для истории с позициями ---
+        // Подготовка данных для истории с позициями
+        // Этот массив historyCards будет содержать объекты {card, positionName, positionDescription, interpretation}
         const historyCards = currentSpread.cards.map((card, index) => {
-        const position = currentSpread.config.positions[index];
-        return {
-            card: card, // Сама карта
-            positionName: position.name, // Имя позиции (напр., "Вы")
-            positionDescription: position.description // Описание позиции
-        };
-    });
+            const position = currentSpread.config.positions[index];
+            return {
+                card: card, // Сама карта (уже может содержать .interpretation)
+                positionName: position.name,
+                positionDescription: position.description,
+                interpretation: card.interpretation // Добавляем интерпретацию здесь
+            };
+        });
         
-        // Добавляем в историю
-        // --- КОНЕЦ НОВОГО ---
-
-    // Добавляем в историю
-    setTimeout(() => {
-        // Теперь передаем historyCards вместо spreadCards
-        addToLocalHistory('spread', config.name, currentSpread.question || '', historyCards, currentSpread.interpretations);
-    }, 1000);
-
-}
-
-// ИЗМЕНЕНИЕ В ФУНКЦИИ addToLocalHistory:
-// Теперь она должна принимать 'cards' как массив объектов,
-// где каждый объект содержит 'card' и 'positionName'/'positionDescription'.
-function addToLocalHistory(type, title, question, cardsWithPositions, aiPrediction = '') {
-    const now = new Date();
-    const historyItem = {
-        id: Date.now(),
-        date: now.toLocaleDateString('ru-RU'),
-        time: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-        timestamp: now.getTime(),
-        type: type,
-        title: title,
-        question: question,
-        cards: cardsWithPositions, // Теперь это массив объектов { card, positionName, positionDescription }
-        aiPrediction: aiPrediction
-    };
+        // Добавляем в историю. aiPrediction для раскладов не нужен, т.к. толкования на каждую карту.
+        addToLocalHistory('spread', config.name, currentSpread.question || '', historyCards, ''); 
         
     } catch (error) {
         console.error('❌ Ошибка в drawSpread:', error);
@@ -1728,6 +1716,37 @@ function addToLocalHistory(type, title, question, cardsWithPositions, aiPredicti
         showNotification('Произошла ошибка при создании расклада. Попробуйте еще раз.');
     }
 }
+
+// ИЗМЕНЕНИЕ В ФУНКЦИИ addToLocalHistory:
+// Теперь она должна принимать 'cards' как массив объектов,
+// где каждый объект содержит 'card' и 'positionName'/'positionDescription'.
+// Для daily/question cards будет просто массив объектов карт.
+function addToLocalHistory(type, title, question, cards, aiPrediction = '') {
+    const now = new Date();
+    const historyItem = {
+        id: Date.now(),
+        date: now.toLocaleDateString('ru-RU'),
+        time: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: now.getTime(),
+        type: type,
+        title: title,
+        question: question,
+        cards: cards, // Здесь может быть cards (массив карт) или cardsWithPositions (массив {card, position, interpretation})
+        aiPrediction: aiPrediction // Для раскладов обычно пусто, для вопросов/daily - текст
+    };
+    
+    history.unshift(historyItem);
+    
+    const oneMonthAgo = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+    history = history.filter(item => item.timestamp > oneMonthAgo);
+    
+    if (history.length > 100) {
+        history = history.slice(0, 100);
+    }
+    
+    console.log('📝 Добавлен в историю:', historyItem);
+}
+
 
 function showInterpretationsButton() {
     const spreadDetail = document.getElementById('spread-detail');
@@ -1747,23 +1766,25 @@ function showInterpretationsButton() {
 }
 
 function showInterpretationsModal() {
-    if (!currentSpread || !currentSpread.interpretations) return;
+    // currentSpread.cards теперь содержит объекты {card: {}, positionName: "", interpretation: ""}
+    if (!currentSpread || !currentSpread.cards) return; 
     
     const modal = document.createElement('div');
     modal.className = 'interpretations-modal';
     
     let interpretationsHTML = '';
-    currentSpread.interpretations.forEach((interpretation, index) => {
-        const card = currentSpread.cards[index];
-        const position = currentSpread.config.positions[index];
-        
+    currentSpread.cards.forEach((cardItem, index) => { // Итерируем по historyCards-подобным объектам
+        const card = cardItem.card; // Получаем сам объект карты
+        const positionName = cardItem.positionName; // Получаем имя позиции
+        const interpretation = cardItem.interpretation; // Получаем интерпретацию
+
         interpretationsHTML += `
             <div class="interpretation-item">
                 <div class="interpretation-card-info">
                     <div class="interpretation-card-symbol">${card.symbol}</div>
                     <div class="interpretation-card-details">
                         <h4>${card.name}</h4>
-                        <p class="position-name">${position.name} - ${position.description}</p>
+                        <p class="position-name">${positionName} - ${currentSpread.config.positions[index].description}</p>
                     </div>
                 </div>
                 <div class="interpretation-text">${interpretation}</div>
@@ -1805,13 +1826,14 @@ function closeInterpretationsModal() {
     }
 }
 
+// revealSpreadCard теперь ВОЗВРАЩАЕТ интерпретацию, а не просто сохраняет
 async function revealSpreadCard(index, card, position) {
     console.log(`🎴 revealSpreadCard: ${index}, карта: ${card.name}`);
     
     const cardSlot = document.getElementById(`spread-card-${index}`);
     if (!cardSlot) {
         console.error(`❌ Не найден элемент spread-card-${index}`);
-        return;
+        return ''; // Возвращаем пустую строку при ошибке
     }
     
     try {
@@ -1834,14 +1856,13 @@ async function revealSpreadCard(index, card, position) {
             }, 1000);
         });
         
-        // Генерируем и сохраняем толкование для позиции
+        // Генерируем и ВОЗВРАЩАЕМ толкование для позиции
         const interpretation = generatePositionInterpretation(card, position, currentSpread.question);
-        currentSpread.interpretations[index] = interpretation;
-        
-        console.log(`✅ Толкование ${index} сгенерировано`);
+        return interpretation; // Возвращаем интерпретацию
         
     } catch (error) {
         console.error(`❌ Ошибка в revealSpreadCard ${index}:`, error);
+        return ''; // Возвращаем пустую строку при ошибке
     }
 }
 
@@ -1910,12 +1931,19 @@ function toggleTestPremium() {
         'Тестовый Premium режим включен! 👑' : 
         'Тестовый Premium режим выключен 🆓'
     );
+    // Обновляем статус подписки, чтобы UI сразу отреагировал
+    updateSubscriptionStatus(isPremium || testPremiumMode); 
+    // Также обновляем количество вопросов
+    updateQuestionsDisplay();
 }
 
 // Функции-заглушки для Supabase
 async function saveDailyCardToSupabase(card) {
     console.log('💾 Сохранение карты дня:', card.name);
-    if (!supabase || !currentUser) return null;
+    if (!supabase || !currentUser) {
+        console.warn('Supabase или currentUser не инициализированы, пропуск сохранения.');
+        return null;
+    }
     
     try {
         const { data, error } = await supabase
@@ -1926,19 +1954,24 @@ async function saveDailyCardToSupabase(card) {
                 card_symbol: card.symbol,
                 card_meaning: card.meaning,
                 drawn_date: new Date().toISOString().split('T')[0]
-            }]);
+            }])
+            .select(); // Добавлено .select() для получения возвращаемых данных, если нужны
         
         if (error) throw error;
+        console.log('✅ Карта дня сохранена в Supabase:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка сохранения карты дня:', error);
+        console.error('❌ Ошибка сохранения карты дня в Supabase:', error);
         return null;
     }
 }
 
 async function saveQuestionToSupabase(question, isFollowUp) {
     console.log('💾 Сохранение вопроса:', question);
-    if (!supabase || !currentUser) return { id: Date.now() };
+    if (!supabase || !currentUser) {
+        console.warn('Supabase или currentUser не инициализированы, пропуск сохранения.');
+        return { id: Date.now() }; // Возвращаем фейковый ID для продолжения работы
+    }
     
     try {
         const { data, error } = await supabase
@@ -1953,16 +1986,20 @@ async function saveQuestionToSupabase(question, isFollowUp) {
             .single();
         
         if (error) throw error;
+        console.log('✅ Вопрос сохранен в Supabase:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка сохранения вопроса:', error);
-        return { id: Date.now() };
+        console.error('❌ Ошибка сохранения вопроса в Supabase:', error);
+        return { id: Date.now() }; // Возвращаем фейковый ID
     }
 }
 
 async function saveAnswerToSupabase(questionId, card, aiPrediction) {
     console.log('💾 Сохранение ответа для вопроса:', questionId);
-    if (!supabase || !currentUser) return null;
+    if (!supabase || !currentUser) {
+        console.warn('Supabase или currentUser не инициализированы, пропуск сохранения.');
+        return null;
+    }
     
     try {
         const { data, error } = await supabase
@@ -1978,16 +2015,20 @@ async function saveAnswerToSupabase(questionId, card, aiPrediction) {
             }]);
         
         if (error) throw error;
+        console.log('✅ Ответ сохранен в Supabase:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка сохранения ответа:', error);
+        console.error('❌ Ошибка сохранения ответа в Supabase:', error);
         return null;
     }
 }
 
 async function updateUserQuestionsInSupabase() {
     console.log('💾 Обновление количества вопросов:', questionsLeft);
-    if (!supabase || !currentUser) return;
+    if (!supabase || !currentUser) {
+        console.warn('Supabase или currentUser не инициализированы, пропуск обновления.');
+        return;
+    }
     
     try {
         const { error } = await supabase
@@ -1996,8 +2037,9 @@ async function updateUserQuestionsInSupabase() {
             .eq('telegram_id', currentUser.telegram_id);
         
         if (error) throw error;
+        console.log('✅ Количество вопросов обновлено в Supabase.');
     } catch (error) {
-        console.error('❌ Ошибка обновления количества вопросов:', error);
+        console.error('❌ Ошибка обновления количества вопросов в Supabase:', error);
     }
 }
 
