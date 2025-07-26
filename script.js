@@ -160,30 +160,38 @@ async function loadCurrentUser() {
 
 // Создание нового пользователя в Supabase
 async function createNewUser() {
-    if (!supabase || !currentUser || !APP_CONFIG) return; // Пропускаем, если Supabase, currentUser или APP_CONFIG не инициализирован
+    if (!API_CONFIG || !API_CONFIG.createUser || !currentUser) return;
+    
     try {
-        const { data, error } = await supabase
-            .from(TABLES.userProfiles)
-            .insert([{
+        const response = await fetch(API_CONFIG.createUser, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
                 telegram_id: currentUser.telegram_id,
                 username: currentUser.username,
                 first_name: currentUser.first_name,
                 is_premium: false,
-                free_questions_left: APP_CONFIG.freeQuestionsLimit || 3 // Устанавливаем лимит из конфига
-            }])
-            .select() // Запрашиваем данные только что вставленной записи
-            .single(); // Ожидаем одну запись
+                free_questions_left: APP_CONFIG.freeQuestionsLimit || 3,
+                timestamp: new Date().toISOString()
+            })
+        });
         
-        if (error) throw error;
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
-        currentUser = { ...currentUser, ...data }; // Обновляем текущего пользователя данными из БД
+        const data = await response.json();
+        currentUser = { ...currentUser, ...data };
         questionsLeft = APP_CONFIG.freeQuestionsLimit || 3;
         isPremium = false;
         
-        console.log('✅ Новый пользователь создан');
+        console.log('✅ Новый пользователь создан через n8n');
         
     } catch (error) {
-        console.error('❌ Ошибка создания пользователя:', error);
+        console.error('❌ Ошибка создания пользователя через n8n:', error);
     }
 }
 
@@ -776,36 +784,88 @@ async function generateAIPredictionToContainer(containerId, type, card, question
     
     try {
         let prediction = '';
-        // Если API_CONFIG.aiPredictionEndpoint настроен, делаем fetch запрос к n8n или AI
-        if (typeof API_CONFIG !== 'undefined' && API_CONFIG.aiPredictionEndpoint) {
-             const response = await fetch(API_CONFIG.aiPredictionEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: type,
-                    card: card,
-                    question: question,
-                    userName: userName,
-                    userBirthdate: userBirthdate
-                })
+        
+        // ИСПРАВЛЕНО: Используем POST запрос с правильными данными
+        if (typeof API_CONFIG !== 'undefined' && API_CONFIG.generatePrediction) {
+            
+            const requestData = {
+                type: type,
+                card: {
+                    name: card.name,
+                    symbol: card.symbol,
+                    meaning: card.meaning,
+                    image: card.image || ''
+                },
+                question: question || '',
+                userName: userName || 'Гость',
+                userBirthdate: userBirthdate || '',
+                timestamp: new Date().toISOString(),
+                requestId: Date.now()
+            };
+
+            console.log('📤 Отправляю данные в n8n:', requestData);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.requestTimeout || 30000);
+
+            const response = await fetch(API_CONFIG.generatePrediction, {
+                method: 'POST', // ИСПРАВЛЕНО: POST вместо GET
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify(requestData),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const result = await response.json();
-            prediction = result.prediction || "Не удалось сгенерировать предсказание от ИИ.";
+
+            const responseText = await response.text();
+            console.log('📥 Ответ от n8n (raw):', responseText);
+
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.warn('⚠️ Ответ не JSON, используем как текст:', responseText);
+                result = { prediction: responseText };
+            }
+
+            prediction = result.prediction || result.response || result.message || responseText || "Карты молчат сегодня...";
+            console.log('✅ Получено предсказание от ИИ:', prediction);
+
         } else {
-            // Иначе используем локальную фоллбэк генерацию текста
+            console.warn('⚠️ API_CONFIG не настроен, используем локальную генерацию');
             prediction = generatePredictionText(type, card, question);
         }
        
         // Задержка перед началом печати текста
         setTimeout(() => {
             const aiContent = aiBlock.querySelector('.ai-content');
-            typeWriter(aiContent, prediction, 30); // Эффект печатания
+            if (aiContent) {
+                typeWriter(aiContent, prediction, 30);
+            }
         }, 2000); 
         
+        return prediction;
+        }
+    }
+    } catch (error) {
+        console.error('❌ Ошибка ИИ-предсказания:', error);
+        
+        // Фоллбэк на локальную генерацию
+        const prediction = generatePredictionText(type, card, question);
+        setTimeout(() => {
+            const aiContent = aiBlock.querySelector('.ai-content');
+            if (aiContent) {
+                typeWriter(aiContent, prediction, 50);
+            }
+        }, 2000); 
         return prediction;
        
     } catch (error) {
@@ -2117,106 +2177,146 @@ function toggleTestPremium() {
 
 async function saveDailyCardToSupabase(card) {
     console.log('💾 Сохранение карты дня:', card.name);
-    if (!supabase || !currentUser) {
-        console.warn('Supabase или currentUser не инициализированы, пропуск сохранения.');
+    if (!API_CONFIG || !API_CONFIG.saveDailyCard) {
+        console.warn('API не настроен, пропуск сохранения.');
         return null;
     }
     
     try {
-        const { data, error } = await supabase
-            .from(TABLES.dailyCards)
-            .insert([{
-                user_id: currentUser.telegram_id,
+        const response = await fetch(API_CONFIG.saveDailyCard, {
+            method: 'POST', // ИСПРАВЛЕНО: POST вместо GET
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: currentUser?.telegram_id || 'anonymous',
                 card_name: card.name,
                 card_symbol: card.symbol,
                 card_meaning: card.meaning,
-                drawn_date: new Date().toISOString().split('T')[0]
-            }])
-            .select(); 
+                card_image: card.image || '',
+                drawn_date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().toISOString()
+            })
+        });
         
-        if (error) throw error;
-        console.log('✅ Карта дня сохранена в Supabase:', data);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Карта дня сохранена в n8n:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка сохранения карты дня в Supabase:', error);
+        console.error('❌ Ошибка сохранения карты дня:', error);
         return null;
     }
 }
 
 async function saveQuestionToSupabase(question, isFollowUp) {
     console.log('💾 Сохранение вопроса:', question);
-    if (!supabase || !currentUser) {
-        console.warn('Supabase или currentUser не инициализированы, пропуск сохранения.');
-        return { id: Date.now() }; 
+    if (!API_CONFIG || !API_CONFIG.saveQuestion) {
+        console.warn('API не настроен, пропуск сохранения.');
+        return { id: Date.now() };
     }
     
     try {
-        const { data, error } = await supabase
-            .from(TABLES.questions)
-            .insert([{
-                user_id: currentUser.telegram_id,
+        const response = await fetch(API_CONFIG.saveQuestion, {
+            method: 'POST', // ИСПРАВЛЕНО: POST вместо GET
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: currentUser?.telegram_id || 'anonymous',
                 question_text: question,
                 is_follow_up: isFollowUp,
-                created_at: new Date().toISOString()
-            }])
-            .select()
-            .single();
+                timestamp: new Date().toISOString()
+            })
+        });
         
-        if (error) throw error;
-        console.log('✅ Вопрос сохранен в Supabase:', data);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Вопрос сохранен в n8n:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка сохранения вопроса в Supabase:', error);
-        return { id: Date.now() }; 
+        console.error('❌ Ошибка сохранения вопроса:', error);
+        return { id: Date.now() };
     }
 }
 
 async function saveAnswerToSupabase(questionId, card, aiPrediction) {
     console.log('💾 Сохранение ответа для вопроса:', questionId);
-    if (!supabase || !currentUser) {
-        console.warn('Supabase или currentUser не инициализированы, пропуск сохранения.');
+    if (!API_CONFIG || !API_CONFIG.saveAnswer) {
+        console.warn('API не настроен, пропуск сохранения.');
         return null;
     }
     
     try {
-        const { data, error } = await supabase
-            .from(TABLES.answers)
-            .insert([{
+        const response = await fetch(API_CONFIG.saveAnswer, {
+            method: 'POST', // ИСПРАВЛЕНО: POST вместо GET
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
                 question_id: questionId,
-                user_id: currentUser.telegram_id,
+                user_id: currentUser?.telegram_id || 'anonymous',
                 card_name: card.name,
                 card_symbol: card.symbol,
                 card_meaning: card.meaning,
+                card_image: card.image || '',
                 ai_prediction: aiPrediction,
-                created_at: new Date().toISOString()
-            }]);
+                timestamp: new Date().toISOString()
+            })
+        });
         
-        if (error) throw error;
-        console.log('✅ Ответ сохранен в Supabase:', data);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Ответ сохранен в n8n:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка сохранения ответа в Supabase:', error);
+        console.error('❌ Ошибка сохранения ответа:', error);
         return null;
     }
 }
 
 async function updateUserQuestionsInSupabase() {
     console.log('💾 Обновление количества вопросов:', questionsLeft);
-    if (!supabase || !currentUser) {
-        console.warn('Supabase или currentUser не инициализированы, пропуск обновления.');
+    if (!API_CONFIG || !API_CONFIG.updateSubscription) {
+        console.warn('API не настроен, пропуск обновления.');
         return;
     }
     
     try {
-        const { error } = await supabase
-            .from(TABLES.userProfiles)
-            .update({ free_questions_left: questionsLeft })
-            .eq('telegram_id', currentUser.telegram_id);
+        const response = await fetch(API_CONFIG.updateSubscription, {
+            method: 'POST', // ИСПРАВЛЕНО: POST вместо GET
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: currentUser?.telegram_id || 'anonymous',
+                free_questions_left: questionsLeft,
+                action: 'update_questions',
+                timestamp: new Date().toISOString()
+            })
+        });
         
-        if (error) throw error;
-        console.log('✅ Количество вопросов обновлено в Supabase.');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Количество вопросов обновлено в n8n:', data);
     } catch (error) {
-        console.error('❌ Ошибка обновления количества вопросов в Supabase:', error);
+        console.error('❌ Ошибка обновления количества вопросов:', error);
     }
 }
 
@@ -2282,3 +2382,46 @@ function sendSpreadToTelegram() {
 
 // Проверка работы скрипта
 console.log('🔮 Script.js (финальная исправленная версия) загружен успешно!');
+
+// Функция для тестирования подключения к n8n (можно вызвать из консоли)
+async function testN8NConnection() {
+    try {
+        console.log('🧪 Тестирую подключение к n8n...');
+        
+        const testData = {
+            type: 'connection_test',
+            message: 'Тест подключения от Telegram Web App',
+            timestamp: new Date().toISOString(),
+            user_agent: navigator.userAgent
+        };
+        
+        const response = await fetch(API_CONFIG.generatePrediction, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(testData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.text();
+        console.log('✅ Тест подключения успешен:', result);
+        showNotification('✅ Подключение к n8n работает!');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Тест подключения неудачен:', error);
+        showNotification('❌ Ошибка подключения к n8n');
+        return false;
+    }
+}
+
+// Автоматическое тестирование при загрузке (в development режиме)
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    // Тестируем подключение через 3 секунды после загрузки
+    setTimeout(testN8NConnection, 3000);
+}
