@@ -505,6 +505,22 @@ async function performPrediction(question, isFollowUp) {
     }
     
     try {
+        // Сброс состояния карты к дефолтному виду
+        resetCardToDefault(answerCard);
+        
+        // Очистка предыдущих ИИ-предсказаний
+        if (!isFollowUp) {
+            const firstAiContainer = document.getElementById('first-ai-container');
+            if (firstAiContainer) {
+                firstAiContainer.innerHTML = '';
+            }
+        } else {
+            const followupAiContainer = document.getElementById('followup-ai-container');
+            if (followupAiContainer) {
+                followupAiContainer.innerHTML = '';
+            }
+        }
+        
         answerSection.style.display = 'block';
         loading.style.display = 'block';
         if (askBtn) askBtn.disabled = true;
@@ -518,6 +534,12 @@ async function performPrediction(question, isFollowUp) {
             if (followUpSection) followUpSection.style.display = 'none';
             if (followupAnswerSection) followupAnswerSection.style.display = 'none';
             if (subscriptionBanner) subscriptionBanner.style.display = 'none';
+            
+            // Очистка контейнера уточняющего ответа при новом основном вопросе
+            const followupAiContainer = document.getElementById('followup-ai-container');
+            if (followupAiContainer) {
+                followupAiContainer.innerHTML = '';
+            }
         }
         
         addSparkles(answerCard);
