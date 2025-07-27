@@ -1,4 +1,4 @@
-// script.js - Основной файл приложения с динамической конфигурацией
+// script.js - Исправленные функции навигации и инициализации
 // ========================================================================
 
 // 🌐 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
@@ -15,25 +15,39 @@ let CARDS_LOADING_PROMISE = null;
 let dailyCardDrawn = false;
 let currentSpread = { cards: [], interpretations: [] };
 let history = [];
+let currentTab = 'daily';
 
-// 🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+// Система восстановления
+let recoveryAttempts = 0;
+const MAX_RECOVERY_ATTEMPTS = 3;
+
+// 🚀 УЛУЧШЕННАЯ ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
 async function initApp() {
-    console.log('🔮 Инициализация Tarot Web App v2.0');
+    console.log('🔮 Инициализация Tarot Web App v2.1');
     
     try {
-        console.log('🔧 Загружаю конфигурацию...');
-        await initializeConfig();
-        
-        initTelegramWebApp();
-        
-        const supabaseReady = initSupabase();
-        if (!supabaseReady) {
-            console.warn('⚠️ Supabase недоступен, работаем в автономном режиме');
+        // Проверяем готовность конфигурации
+        console.log('🔧 Проверка конфигурации...');
+        if (!window.isConfigReady || !window.isConfigReady()) {
+            console.log('⚠️ Конфигурация не готова, инициализирую...');
+            if (window.initializeConfig) {
+                await window.initializeConfig();
+            } else {
+                throw new Error('Система конфигурации недоступна');
+            }
         }
         
+        // Инициализация Telegram WebApp
+        const telegramReady = initTelegramWebApp();
+        
+        // Инициализация Supabase
+        const supabaseReady = initSupabase();
+        
+        // Загрузка карт
         const cardsPromise = loadCardsFromGitHub();
         
-        if (supabaseReady) {
+        // Инициализация пользователя
+        if (supabaseReady && telegramReady) {
             currentUser = await initTelegramUser();
             if (currentUser) {
                 console.log(`👤 Пользователь: ${currentUser.first_name || currentUser.username}`);
@@ -41,1119 +55,1052 @@ async function initApp() {
                 console.log(`⭐ Премиум: ${currentUser.is_subscribed ? 'Да' : 'Нет'}`);
             }
         } else {
-            currentUser = {
-                user_id: 123456789,
-                first_name: 'Тестовый пользователь',
-                free_predictions_left: window.APP_CONFIG?.freeQuestionsLimit || 3,
-                is_subscribed: false
-            };
+            // Создаем тестового пользователя для отладки
+            currentUser = createTestUser();
         }
         
+        // Ждем загрузки карт
         await cardsPromise;
         
+        // Загрузка истории
         if (supabase && currentUser) {
             await loadUserHistoryFromSupabase();
         } else {
             loadLocalHistory();
         }
         
+        // Инициализация UI
         initEventListeners();
+        initNavigation();
         updateUserInterface();
-        switchTab('daily');
         
+        // Переключаемся на стартовую вкладку
+        const savedTab = sessionStorage.getItem('currentTab') || 'daily';
+        switchTab(savedTab);
+        
+        // Проверяем статус карты дня
         await checkDailyCardStatus();
+        
+        // Запускаем систему автовосстановления
+        setupAutoRecovery();
         
         console.log('✅ Приложение готово к работе');
         console.log(`🃏 Доступно карт: ${TAROT_CARDS_CACHE.length}`);
         
-        showNotification(window.APP_CONFIG?.texts?.cardsReady || 'Карты готовы!');
+        showNotification(
+            window.APP_CONFIG?.texts?.cardsReady || 'Карты готовы!', 
+            'success'
+        );
+        
+        // Сбрасываем счетчик попыток восстановления
+        recoveryAttempts = 0;
         
     } catch (error) {
         console.error('❌ Ошибка инициализации:', error);
-        
-        initOfflineMode();
-        initEventListeners();
-        switchTab('daily');
-        showNotification('Приложение запущено в автономном режиме');
+        handleInitializationError(error);
     }
 }
 
-// 🔧 ИНИЦИАЛИЗАЦИЯ SUPABASE
-function initSupabase() {
+// 🔧 УЛУЧШЕННАЯ ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP
+function initTelegramWebApp() {
     try {
-        const config = window.SUPABASE_CONFIG;
-        if (typeof window.supabase !== 'undefined' && config?.url && config?.anonKey) {
-            supabase = window.supabase.createClient(config.url, config.anonKey);
-            console.log('✅ Supabase инициализирован с динамической конфигурацией');
+        console.log('📱 Инициализация Telegram WebApp...');
+        
+        if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+            tg = window.Telegram.WebApp;
+            
+            // Настройка WebApp
+            tg.ready();
+            tg.expand();
+            
+            // Применяем тему Telegram
+            if (tg.themeParams) {
+                document.documentElement.style.setProperty('--tg-bg-color', tg.themeParams.bg_color || '#1a1a2e');
+                document.documentElement.style.setProperty('--tg-text-color', tg.themeParams.text_color || '#ffffff');
+                document.documentElement.style.setProperty('--tg-hint-color', tg.themeParams.hint_color || '#999999');
+                document.documentElement.style.setProperty('--tg-button-color', tg.themeParams.button_color || '#6366f1');
+            }
+            
+            // Обработка кнопки "Назад"
+            tg.BackButton.onClick(() => {
+                if (currentTab !== 'daily') {
+                    switchTab('daily');
+                } else {
+                    tg.close();
+                }
+            });
+            
+            console.log('✅ Telegram WebApp инициализирован');
             return true;
+            
         } else {
-            console.warn('⚠️ Supabase недоступен или неправильная конфигурация');
+            console.warn('⚠️ Приложение запущено вне Telegram');
+            
+            // Создаем заглушку для тестирования
+            window.tg = {
+                initDataUnsafe: {
+                    user: {
+                        id: Math.floor(Math.random() * 1000000) + 100000,
+                        first_name: 'Тестовый пользователь',
+                        username: 'test_user'
+                    }
+                },
+                ready: () => {},
+                expand: () => {},
+                close: () => console.log('🚪 Telegram WebApp закрыт (эмуляция)'),
+                BackButton: {
+                    show: () => {},
+                    hide: () => {},
+                    onClick: () => {}
+                },
+                themeParams: {
+                    bg_color: '#1a1a2e',
+                    text_color: '#ffffff'
+                }
+            };
+            
+            tg = window.tg;
             return false;
         }
+    } catch (error) {
+        console.error('❌ Ошибка инициализации Telegram:', error);
+        return false;
+    }
+}
+
+// 🔧 УЛУЧШЕННАЯ ИНИЦИАЛИЗАЦИЯ SUPABASE
+function initSupabase() {
+    try {
+        console.log('🗄️ Инициализация Supabase...');
+        
+        const config = window.getSupabaseConfig ? window.getSupabaseConfig() : window.SUPABASE_CONFIG;
+        
+        if (!config || !config.url || !config.anonKey) {
+            console.warn('⚠️ Конфигурация Supabase отсутствует, работаем в автономном режиме');
+            return false;
+        }
+        
+        if (typeof window.supabase === 'undefined') {
+            console.error('❌ Библиотека Supabase не загружена');
+            return false;
+        }
+        
+        // Проверяем корректность URL
+        try {
+            new URL(config.url);
+        } catch {
+            console.error('❌ Некорректный URL Supabase');
+            return false;
+        }
+        
+        // Создаем клиент Supabase
+        supabase = window.supabase.createClient(config.url, config.anonKey);
+        
+        // Тестируем соединение (асинхронно)
+        testSupabaseConnection();
+        
+        console.log('✅ Supabase клиент создан');
+        return true;
+        
     } catch (error) {
         console.error('❌ Ошибка инициализации Supabase:', error);
         return false;
     }
 }
 
-// 🃏 ЗАГРУЗКА КАРТ С GITHUB
-async function loadCardsFromGitHub() {
-    if (CARDS_LOADING_PROMISE) {
-        return CARDS_LOADING_PROMISE;
-    }
-    
-    CARDS_LOADING_PROMISE = (async () => {
-        try {
-            console.log('🃏 Загружаю карты с GitHub...');
-            
-            if (loadCardsFromCache()) {
-                console.log('📦 Карты загружены из кэша');
-                return;
-            }
-            
-            const cardsData = await fetchCardsFromGitHub();
-            
-            if (cardsData && cardsData.length > 0) {
-                TAROT_CARDS_CACHE = cardsData;
-                CARDS_LOADED = true;
-                
-                saveCardsToCache(cardsData);
-                
-                console.log(`✅ Загружено ${TAROT_CARDS_CACHE.length} карт с GitHub`);
-            } else {
-                throw new Error('Получены пустые данные карт');
-            }
-            
-        } catch (error) {
-            console.error('❌ Ошибка загрузки карт с GitHub:', error);
-            
-            if (loadCardsFromCache()) {
-                console.log('📦 Использую карты из кэша (ошибка GitHub)');
-            } else {
-                console.log('⚠️ Использую фоллбэк карты');
-                TAROT_CARDS_CACHE = getLocalFallbackCards();
-                CARDS_LOADED = true;
-            }
-        }
-    })();
-    
-    return CARDS_LOADING_PROMISE;
-}
-
-async function fetchCardsFromGitHub() {
-    const apiConfig = window.API_CONFIG;
-    const urls = [
-        apiConfig?.cardsUrl,
-        apiConfig?.cardsFallbackUrl,
-        apiConfig?.cardsLocalFallback || './cards.json'
-    ].filter(Boolean);
-    
-    for (const url of urls) {
-        try {
-            console.log('📡 Запрос к:', url);
-            
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), apiConfig?.requestTimeout || 15000);
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Cache-Control': 'no-cache'
-                },
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            if (Array.isArray(data) && data.length > 0) {
-                console.log(`✅ Получено ${data.length} карт с ${url}`);
-                return data.map(card => normalizeCard(card));
-            } else if (data.cards && Array.isArray(data.cards)) {
-                console.log(`✅ Получено ${data.cards.length} карт с ${url}`);
-                return data.cards.map(card => normalizeCard(card));
-            } else {
-                throw new Error('Неверный формат данных карт');
-            }
-            
-        } catch (error) {
-            console.warn(`⚠️ Ошибка загрузки с ${url}:`, error.message);
-            continue;
-        }
-    }
-    
-    throw new Error('Все URL карт недоступны');
-}
-
-function normalizeCard(card) {
-    return {
-        id: card.id || card.name || `card_${Math.random()}`,
-        name: card.name || 'Неизвестная карта',
-        symbol: card.symbol || '🃏',
-        meaningUpright: card.meaningUpright || card.meaning || 'Значение не указано',
-        meaningReversed: card.meaningReversed || card.meaningUpright || card.meaning || 'Значение не указано',
-        meaning: card.meaning || card.meaningUpright || 'Значение не указано',
-        image: card.image || card.imageUpright || './images/cards/default.jpg',
-        type: card.type || 'Неизвестный тип',
-        element: card.element || 'Эфир',
-        description: card.description || '',
-        keyPhrase: card.keyPhrase || ''
-    };
-}
-
-// 📱 ИНТЕГРАЦИЯ С TELEGRAM WEB APP
-function initTelegramWebApp() {
+// 🔍 ТЕСТИРОВАНИЕ СОЕДИНЕНИЯ SUPABASE
+async function testSupabaseConnection() {
     try {
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            
-            document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#0f0f23');
-            document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#e2e8f0');
-            
-            console.log('✅ Telegram WebApp инициализирован');
+        const { data, error } = await supabase
+            .from('users')
+            .select('count')
+            .limit(1);
+        
+        if (error) {
+            console.warn('⚠️ Supabase недоступен:', error.message);
         } else {
-            console.warn('⚠️ Telegram WebApp недоступен');
+            console.log('✅ Supabase подключен и доступен');
         }
     } catch (error) {
-        console.error('❌ Ошибка инициализации Telegram WebApp:', error);
+        console.warn('⚠️ Ошибка тестирования Supabase:', error);
     }
 }
 
-// 🃏 КАРТА ДНЯ
-async function checkDailyCardStatus() {
-    if (!currentUser) return;
-    
-    try {
-        if (supabase) {
-            const todayCard = await getTodayDailyCard(currentUser.user_id);
-            if (todayCard) {
-                console.log('📅 Карта дня уже была вытянута сегодня');
-                displayExistingDailyCard(todayCard);
-                return;
-            }
-        }
-        
-        const today = new Date().toDateString();
-        const lastCardDate = localStorage.getItem('lastDailyCardDate');
-        
-        if (lastCardDate === today) {
-            console.log('📅 Карта дня уже была вытянута (локально)');
-            dailyCardDrawn = true;
-            const cardData = JSON.parse(localStorage.getItem('todayDailyCard') || '{}');
-            if (cardData.name) {
-                displayExistingDailyCard({ card_data: cardData });
-            }
-        }
-        
-    } catch (error) {
-        console.error('❌ Ошибка проверки карты дня:', error);
-    }
-}
-
-async function drawDailyCard() {
-    if (!CARDS_LOADED) {
-        const appConfig = window.APP_CONFIG;
-        showNotification(appConfig?.texts?.loadingCards || 'Карты еще загружаются...');
-        return;
-    }
-    
-    const card = document.getElementById('daily-card');
-    const loading = document.getElementById('daily-loading');
-    
-    if (!card || !loading) return;
-    
-    loading.style.display = 'block';
-    card.style.pointerEvents = 'none';
-    
-    addSparkles(card);
-    
-    try {
-        const appConfig = window.APP_CONFIG;
-        setTimeout(async () => {
-            const randomCard = getRandomCard();
-            
-            displayCardInUI(card, randomCard);
-            
-            loading.style.display = 'none';
-            dailyCardDrawn = true;
-            
-            localStorage.setItem('lastDailyCardDate', new Date().toDateString());
-            localStorage.setItem('todayDailyCard', JSON.stringify(randomCard));
-            
-            if (supabase && currentUser) {
-                await saveCompleteDailyCardSession(currentUser.user_id, randomCard);
-            }
-            
-            setTimeout(async () => {
-                const aiContainer = document.getElementById('daily-ai-container');
-                if (aiContainer) {
-                    await generateAIPredictionToContainer(aiContainer, 'daily', randomCard, '');
-                }
-                
-                setTimeout(() => {
-                    const banner = document.getElementById('daily-info-banner');
-                    if (banner) banner.style.display = 'block';
-                }, 2000);
-            }, 1000);
-            
-            addToHistory('daily', 'Карта дня', '', [randomCard]);
-            
-        }, appConfig?.loadingDelay || 2000);
-        
-    } catch (error) {
-        console.error('❌ Ошибка при вытягивании карты дня:', error);
-        loading.style.display = 'none';
-        card.style.pointerEvents = 'auto';
-        showNotification('Произошла ошибка. Попробуйте еще раз.');
-    }
-}
-
-function displayExistingDailyCard(cardRecord) {
-    const card = document.getElementById('daily-card');
-    if (!card) return;
-    
-    const cardData = cardRecord.card_data;
-    displayCardInUI(card, cardData);
-    
-    dailyCardDrawn = true;
-    card.style.pointerEvents = 'none';
-    
-    if (cardRecord.ai_prediction) {
-        const aiContainer = document.getElementById('daily-ai-container');
-        if (aiContainer) {
-            aiContainer.innerHTML = `
-                <div class="ai-prediction">
-                    <h3>🤖 ИИ-толкование</h3>
-                    <p>${cardRecord.ai_prediction}</p>
-                </div>
-            `;
-        }
-    }
-    
-    const banner = document.getElementById('daily-info-banner');
-    if (banner) banner.style.display = 'block';
-}
-
-// ❓ ВОПРОСЫ И ОТВЕТЫ
-async function askQuestion() {
-    const input = document.getElementById('question-input');
-    const question = input.value.trim();
-    
-    const appConfig = window.APP_CONFIG;
-    
-    if (!question) {
-        showNotification(appConfig?.texts?.noQuestions || 'Пожалуйста, задайте вопрос');
-        return;
-    }
-    
-    if (!CARDS_LOADED) {
-        showNotification(appConfig?.texts?.loadingCards || 'Карты еще загружаются...');
-        return;
-    }
-    
-    if (!currentUser || (!currentUser.is_subscribed && currentUser.free_predictions_left <= 0)) {
-        showNotification(appConfig?.texts?.questionsEnded || 'У вас закончились бесплатные вопросы');
-        showPremiumOffer();
-        return;
-    }
-    
-    try {
-        const randomCard = getRandomCard();
-        
-        const container = document.getElementById('question-result');
-        displayQuestionResult(container, question, randomCard);
-        
-        const aiPrediction = await generateAIPredictionFromN8N(question, [randomCard], 'question');
-        
-        if (supabase && currentUser) {
-            await saveCompleteQuestionSession(
-                currentUser.user_id, 
-                question, 
-                [randomCard], 
-                aiPrediction, 
-                'question'
-            );
-            
-            if (!currentUser.is_subscribed) {
-                currentUser.free_predictions_left--;
-                updateUserInterface();
-            }
-        }
-        
-        addToHistory('question', 'Вопрос к картам', question, [randomCard], aiPrediction);
-        
-        input.value = '';
-        
-    } catch (error) {
-        console.error('❌ Ошибка при обработке вопроса:', error);
-        showNotification('Произошла ошибка. Попробуйте еще раз.');
-    }
-}
-
-// 📚 ИСТОРИЯ
-async function loadUserHistoryFromSupabase() {
-    if (!supabase || !currentUser) return;
-    
-    try {
-        console.log('📚 Загружаю историю из Supabase...');
-        
-        const supabaseHistory = await getUserHistory(currentUser.user_id);
-        
-        history = supabaseHistory.map(item => {
-            const baseItem = {
-                id: item.id,
-                timestamp: new Date(item.created_at).getTime(),
-                date: new Date(item.created_at).toLocaleDateString('ru-RU'),
-                time: new Date(item.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-                type: item.type
-            };
-            
-            if (item.type === 'daily') {
-                return {
-                    ...baseItem,
-                    title: 'Карта дня',
-                    cards: [item.card_data],
-                    aiPrediction: item.ai_prediction
-                };
-            } else if (item.type === 'question') {
-                const answers = item.tarot_answers || [];
-                const answer = answers[0] || {};
-                
-                return {
-                    ...baseItem,
-                    title: 'Вопрос к картам',
-                    question: item.question_text,
-                    cards: answer.cards_drawn || [],
-                    aiPrediction: answer.ai_prediction
-                };
-            } else if (item.type === 'spread') {
-                return {
-                    ...baseItem,
-                    title: item.spread_name || 'Расклад',
-                    question: item.question,
-                    cards: item.cards_data || [],
-                    spreadType: item.spread_name
-                };
-            }
-            
-            return baseItem;
-        }).filter(Boolean);
-        
-        console.log(`📚 Загружено ${history.length} записей истории`);
-        renderHistory();
-        
-    } catch (error) {
-        console.error('❌ Ошибка загрузки истории из Supabase:', error);
-        loadLocalHistory();
-    }
-}
-
-function loadLocalHistory() {
-    try {
-        const savedHistory = localStorage.getItem('tarot_history');
-        if (savedHistory) {
-            history = JSON.parse(savedHistory);
-            console.log(`📦 Загружена локальная история: ${history.length} записей`);
-        }
-        renderHistory();
-    } catch (error) {
-        console.error('❌ Ошибка загрузки локальной истории:', error);
-        history = [];
-    }
-}
-
-function addToHistory(type, title, question = '', cards = [], aiPrediction = null, spreadType = null) {
-    const historyItem = {
-        id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type: type,
-        title: title,
-        question: question,
-        cards: cards,
-        aiPrediction: aiPrediction,
-        spreadType: spreadType,
-        timestamp: Date.now(),
-        date: new Date().toLocaleDateString('ru-RU'),
-        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+// 👤 СОЗДАНИЕ ТЕСТОВОГО ПОЛЬЗОВАТЕЛЯ
+function createTestUser() {
+    const testUser = {
+        user_id: tg?.initDataUnsafe?.user?.id || Math.floor(Math.random() * 1000000) + 100000,
+        first_name: tg?.initDataUnsafe?.user?.first_name || 'Тестовый пользователь',
+        username: tg?.initDataUnsafe?.user?.username || 'test_user',
+        free_predictions_left: window.APP_CONFIG?.freeQuestionsLimit || 3,
+        is_subscribed: false,
+        created_at: new Date().toISOString()
     };
     
-    history.unshift(historyItem);
-    
-    const appConfig = window.APP_CONFIG;
-    const maxItems = appConfig?.maxHistoryItems || 100;
-    if (history.length > maxItems) {
-        history = history.slice(0, maxItems);
-    }
-    
-    localStorage.setItem('tarot_history', JSON.stringify(history));
-    
-    console.log('📝 Добавлено в историю:', title);
+    console.log('👤 Создан тестовый пользователь:', testUser);
+    return testUser;
 }
 
-// 🤖 ИИ-ПРЕДСКАЗАНИЯ
-async function generateAIPredictionFromN8N(question, cards, type = 'question') {
-    if (!currentUser) return 'ИИ-предсказание недоступно';
-    
+// 🎯 ИСПРАВЛЕННАЯ СИСТЕМА НАВИГАЦИИ
+function initNavigation() {
     try {
-        console.log('🤖 Генерирую ИИ-предсказание...');
+        console.log('🧭 Инициализация навигации...');
         
-        const response = await fetch('/api/generate-prediction', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                user_id: currentUser.user_id,
-                question: question,
-                cards: cards,
-                type: type
-            })
-        });
+        // Получаем все вкладки навигации
+        const navTabs = document.querySelectorAll('.nav-tab[data-tab], .nav-tab.premium-tab[data-tab]');
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        console.log('✅ ИИ-предсказание получено');
-        return result.prediction || result.message || 'Предсказание получено';
-        
-    } catch (error) {
-        console.error('❌ Ошибка генерации ИИ-предсказания:', error);
-        return 'К сожалению, не удалось получить ИИ-предсказание. Попробуйте позже.';
-    }
-}
-
-async function generateAIPredictionToContainer(container, type, card, question) {
-    if (!container) return;
-    
-    const appConfig = window.APP_CONFIG;
-    
-    container.innerHTML = `
-        <div class="ai-loading">
-            <div class="loading-spinner"></div>
-            <p>${appConfig?.texts?.generating || 'Генерирую предсказание...'}</p>
-        </div>
-    `;
-    
-    try {
-        const prediction = await generateAIPredictionFromN8N(question, [card], type);
-        
-        container.innerHTML = `
-            <div class="ai-prediction">
-                <h3>🤖 ИИ-толкование</h3>
-                <div class="prediction-text" id="prediction-text-${Date.now()}"></div>
-            </div>
-        `;
-        
-        const textElement = container.querySelector('.prediction-text');
-        await typewriterEffect(textElement, prediction);
-        
-        return prediction;
-        
-    } catch (error) {
-        console.error('❌ Ошибка отображения ИИ-предсказания:', error);
-        container.innerHTML = `
-            <div class="ai-prediction error">
-                <h3>🤖 ИИ-толкование</h3>
-                <p>Не удалось получить предсказание. Попробуйте позже.</p>
-            </div>
-        `;
-        return null;
-    }
-}
-
-// 🎨 UI ФУНКЦИИ
-function updateUserInterface() {
-    if (!currentUser) return;
-    
-    const counter = document.getElementById('free-questions-counter');
-    if (counter) {
-        counter.textContent = currentUser.free_predictions_left;
-    }
-    
-    const premiumElements = document.querySelectorAll('.premium-only');
-    const freeElements = document.querySelectorAll('.free-only');
-    
-    if (currentUser.is_subscribed) {
-        premiumElements.forEach(el => el.style.display = 'block');
-        freeElements.forEach(el => el.style.display = 'none');
-    } else {
-        premiumElements.forEach(el => el.style.display = 'none');
-        freeElements.forEach(el => el.style.display = 'block');
-    }
-    
-    const userInfo = document.getElementById('user-info');
-    if (userInfo) {
-        userInfo.innerHTML = `
-            <div class="user-name">${currentUser.first_name || currentUser.username || 'Пользователь'}</div>
-            <div class="user-status">
-                ${currentUser.is_subscribed 
-                    ? '<span class="premium-badge">⭐ Премиум</span>' 
-                    : `<span class="free-badge">🎫 ${currentUser.free_predictions_left} вопросов</span>`
-                }
-            </div>
-        `;
-    }
-}
-
-function displayCardInUI(container, cardData) {
-    if (!container || !cardData) return;
-    
-    container.innerHTML = `
-        <div class="card-header">
-            <div class="card-name">${cardData.name}</div>
-            <div class="card-symbol">${cardData.symbol}</div>
-        </div>
-        <div class="card-body">
-            <img src="${cardData.image}" alt="${cardData.name}" class="card-image" 
-                 onerror="this.style.display='none'">
-            <div class="card-meaning">${cardData.meaning}</div>
-            ${cardData.keyPhrase ? `<div class="card-phrase">"${cardData.keyPhrase}"</div>` : ''}
-        </div>
-    `;
-    
-    container.classList.add('flipped');
-}
-
-function displayQuestionResult(container, question, card) {
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="question-result-content">
-            <h3>Ваш вопрос</h3>
-            <p class="question-text">"${question}"</p>
-            
-            <h3>Ответ карт</h3>
-            <div class="result-card">
-                <div class="card-name">${card.name}</div>
-                <div class="card-symbol">${card.symbol}</div>
-                <img src="${card.image}" alt="${card.name}" class="card-image" 
-                     onerror="this.style.display='none'">
-                <div class="card-meaning">${card.meaning}</div>
-            </div>
-            
-            <div id="question-ai-container" class="ai-container"></div>
-        </div>
-    `;
-    
-    setTimeout(() => {
-        const aiContainer = document.getElementById('question-ai-container');
-        if (aiContainer) {
-            generateAIPredictionToContainer(aiContainer, 'question', card, question);
-        }
-    }, 1000);
-}
-
-// 🎯 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-function getRandomCard() {
-    if (!CARDS_LOADED || TAROT_CARDS_CACHE.length === 0) {
-        console.warn('⚠️ Карты не загружены, используем фоллбэк');
-        return getLocalFallbackCards()[0];
-    }
-    
-    const randomIndex = Math.floor(Math.random() * TAROT_CARDS_CACHE.length);
-    const selectedCard = TAROT_CARDS_CACHE[randomIndex];
-    
-    const isReversed = Math.random() < 0.3;
-    
-    return {
-        ...selectedCard,
-        position: isReversed ? 'Перевёрнутая' : 'Прямая',
-        isReversed: isReversed,
-        meaning: isReversed ? selectedCard.meaningReversed : selectedCard.meaningUpright
-    };
-}
-
-function getLocalFallbackCards() {
-    return window.FALLBACK_CARDS || [
-        {
-            id: "fallback_1",
-            name: "Загадочная карта",
-            symbol: "🔮",
-            meaning: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
-            image: "./images/cards/default.jpg"
-        }
-    ];
-}
-
-function saveCardsToCache(cards) {
-    try {
-        const appConfig = window.APP_CONFIG;
-        const cacheData = {
-            cards: cards,
-            timestamp: Date.now(),
-            version: appConfig?.cacheVersion || '2.0',
-            source: 'github'
-        };
-        
-        localStorage.setItem('tarot_cards_cache', JSON.stringify(cacheData));
-        console.log('💾 Карты сохранены в кэш');
-    } catch (error) {
-        console.warn('⚠️ Не удалось сохранить в кэш:', error);
-    }
-}
-
-function loadCardsFromCache() {
-    try {
-        const cached = localStorage.getItem('tarot_cards_cache');
-        if (!cached) return false;
-        
-        const cacheData = JSON.parse(cached);
-        const cacheAge = Date.now() - cacheData.timestamp;
-        const apiConfig = window.API_CONFIG;
-        
-        if (cacheAge < (apiConfig?.cacheTimeout || 24 * 60 * 60 * 1000) && 
-            cacheData.cards && cacheData.cards.length > 0) {
-            
-            TAROT_CARDS_CACHE = cacheData.cards;
-            CARDS_LOADED = true;
-            
-            console.log(`📦 Загружено ${TAROT_CARDS_CACHE.length} карт из кэша`);
-            return true;
-        } else {
-            localStorage.removeItem('tarot_cards_cache');
+        if (navTabs.length === 0) {
+            console.warn('⚠️ Элементы навигации не найдены');
             return false;
         }
         
+        // Добавляем обработчики событий
+        navTabs.forEach((tab, index) => {
+            const tabName = tab.getAttribute('data-tab');
+            
+            if (!tabName) {
+                console.warn(`⚠️ Вкладка ${index} не имеет атрибута data-tab`);
+                return;
+            }
+            
+            // Удаляем старые обработчики
+            tab.replaceWith(tab.cloneNode(true));
+            const newTab = document.querySelectorAll('.nav-tab[data-tab], .nav-tab.premium-tab[data-tab]')[index];
+            
+            newTab.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log(`🔄 Переключение на вкладку: ${tabName}`);
+                switchTab(tabName);
+            });
+            
+            // Добавляем визуальную обратную связь
+            newTab.addEventListener('touchstart', () => {
+                newTab.style.transform = 'scale(0.95)';
+            });
+            
+            newTab.addEventListener('touchend', () => {
+                newTab.style.transform = 'scale(1)';
+            });
+        });
+        
+        console.log(`✅ Навигация инициализирована для ${navTabs.length} вкладок`);
+        return true;
+        
     } catch (error) {
-        console.warn('⚠️ Ошибка загрузки кэша:', error);
-        localStorage.removeItem('tarot_cards_cache');
+        console.error('❌ Ошибка инициализации навигации:', error);
         return false;
     }
 }
 
-// 💎 ПРЕМИУМ ФУНКЦИИ
-function showPremiumOffer() {
-    const appConfig = window.APP_CONFIG;
-    const apiConfig = window.API_CONFIG;
-    
-    const modal = document.createElement('div');
-    modal.className = 'premium-modal';
-    modal.innerHTML = `
-        <div class="premium-content">
-            <h3>⭐ Премиум доступ</h3>
-            <p>Получите неограниченные вопросы к картам и эксклюзивные расклады!</p>
-            <div class="premium-price">Всего ${appConfig?.premiumPrice || 299} ₽ на ${appConfig?.premiumDuration || 30} дней</div>
-            <div class="premium-buttons">
-                <button onclick="openPaymentLink()" class="premium-btn">Оформить премиум</button>
-                <button onclick="closePremiumModal()" class="cancel-btn">Отмена</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    window.currentPremiumModal = modal;
-}
-
-function openPaymentLink() {
-    const paymentUrl = window.API_CONFIG?.paymentUrl;
-    if (tg && tg.openLink && paymentUrl) {
-        tg.openLink(paymentUrl);
-    } else if (paymentUrl) {
-        window.open(paymentUrl, '_blank');
-    }
-    closePremiumModal();
-}
-
-function closePremiumModal() {
-    if (window.currentPremiumModal) {
-        document.body.removeChild(window.currentPremiumModal);
-        window.currentPremiumModal = null;
-    }
-}
-
-// 🔔 УВЕДОМЛЕНИЯ
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 100);
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-}
-
-// 🎪 АНИМАЦИИ И ЭФФЕКТЫ
-function addSparkles(element) {
-    const appConfig = window.APP_CONFIG;
-    const sparkleCount = appConfig?.sparkleCount || 5;
-    
-    for (let i = 0; i < sparkleCount; i++) {
-        const sparkle = document.createElement('div');
-        sparkle.className = 'sparkle';
-        sparkle.style.left = Math.random() * 100 + '%';
-        sparkle.style.top = Math.random() * 100 + '%';
-        sparkle.style.animationDelay = Math.random() * 1000 + 'ms';
-        
-        element.appendChild(sparkle);
-        
-        setTimeout(() => {
-            if (sparkle.parentNode) {
-                sparkle.parentNode.removeChild(sparkle);
-            }
-        }, 2000);
-    }
-}
-
-async function typewriterEffect(element, text) {
-    if (!element || !text) return;
-    
-    const appConfig = window.APP_CONFIG;
-    const speed = appConfig?.typewriterSpeed || 30;
-    
-    element.innerHTML = '';
-    
-    for (let i = 0; i < text.length; i++) {
-        element.innerHTML += text.charAt(i);
-        await new Promise(resolve => setTimeout(resolve, speed));
-    }
-}
-
-// 🎛️ УПРАВЛЕНИЕ ТАБАМИ
+// 🔄 ИСПРАВЛЕННАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
 function switchTab(tabName) {
-    const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => tab.style.display = 'none');
-    
-    const buttons = document.querySelectorAll('.tab-button');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    
-    const selectedTab = document.getElementById(`${tabName}-tab`);
-    if (selectedTab) {
-        selectedTab.style.display = 'block';
-    }
-    
-    const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
-    if (selectedButton) {
-        selectedButton.classList.add('active');
-    }
-    
-    if (tabName === 'history') {
-        renderHistory();
-    } else if (tabName === 'reviews') {
-        loadReviews();
-    }
-}
-
-// 📚 ОТОБРАЖЕНИЕ ИСТОРИИ
-function renderHistory() {
-    const historyList = document.getElementById('history-list');
-    if (!historyList) return;
-    
-    if (history.length === 0) {
-        historyList.innerHTML = `
-            <div class="empty-history">
-                <div class="empty-icon">🔮</div>
-                <p>История раскладов пуста.<br>Начните с карты дня или задайте вопрос!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    const groupedHistory = {};
-    history.forEach(item => {
-        if (!groupedHistory[item.date]) {
-            groupedHistory[item.date] = [];
-        }
-        groupedHistory[item.date].push(item);
-    });
-    
-    let historyHTML = '';
-    Object.keys(groupedHistory).forEach(date => {
-        historyHTML += `<div class="history-date-group">
-            <div class="history-date-header">${date}</div>`;
+    try {
+        console.log(`🔄 Переключение на вкладку: ${tabName}`);
         
-        groupedHistory[date].forEach(item => {
-            const typeIcon = item.type === 'daily' ? '🌅' : 
-                           item.type === 'question' ? '❓' : '🃏';
-            
-            historyHTML += `
-                <div class="history-item" onclick="viewHistoryDetail('${item.id}')">
-                    <div class="history-header">
-                        <div class="history-type">
-                            <span class="history-icon">${typeIcon}</span>
-                            ${item.title}
-                        </div>
-                        <div class="history-time">${item.time}</div>
-                    </div>
-                    ${item.question ? `<div class="history-question">"${item.question}"</div>` : ''}
-                    <div class="history-cards">
-                        ${item.cards.slice(0, 3).map(card => `
-                            <span class="history-mini-card">${card.symbol} ${card.name}</span>
-                        `).join('')}
-                        ${item.cards.length > 3 ? `<span class="more-cards">+${item.cards.length - 3}</span>` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        
-        historyHTML += '</div>';
-    });
-    
-    historyList.innerHTML = historyHTML;
-}
-
-function viewHistoryDetail(itemId) {
-    const item = history.find(h => h.id === itemId);
-    if (!item) return;
-    
-    const modal = document.createElement('div');
-    modal.className = 'history-modal';
-    modal.innerHTML = `
-        <div class="history-detail">
-            <h3>${item.title}</h3>
-            <p class="history-date">${item.date} в ${item.time}</p>
-            
-            ${item.question ? `<div class="detail-question">"${item.question}"</div>` : ''}
-            
-            <div class="detail-cards">
-                ${item.cards.map(card => `
-                    <div class="detail-card">
-                        <div class="card-name">${card.name} ${card.symbol}</div>
-                        <div class="card-meaning">${card.meaning}</div>
-                    </div>
-                `).join('')}
-            </div>
-            
-            ${item.aiPrediction ? `
-                <div class="detail-ai-prediction">
-                    <h4>🤖 ИИ-толкование</h4>
-                    <p>${item.aiPrediction}</p>
-                </div>
-            ` : ''}
-            
-            <div class="history-actions">
-                <button onclick="shareHistoryItem('${item.id}')" class="share-btn">Поделиться</button>
-                <button onclick="closeHistoryModal()" class="close-btn">Закрыть</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    window.currentHistoryModal = modal;
-}
-
-function closeHistoryModal() {
-    if (window.currentHistoryModal) {
-        document.body.removeChild(window.currentHistoryModal);
-        window.currentHistoryModal = null;
-    }
-}
-
-function shareHistoryItem(itemId) {
-    const item = history.find(h => h.id === itemId);
-    if (!item) return;
-    
-    let message = `🔮 ${item.title}\n📅 ${item.date}\n\n`;
-    
-    if (item.question) {
-        message += `❓ Вопрос: "${item.question}"\n\n`;
-    }
-    
-    message += `🃏 Карты:\n`;
-    item.cards.forEach(card => {
-        message += `${card.symbol} ${card.name}: ${card.meaning}\n`;
-    });
-    
-    if (item.aiPrediction) {
-        message += `\n🤖 ИИ-толкование:\n${item.aiPrediction}`;
-    }
-    
-    if (tg && tg.sendData) {
-        tg.sendData(JSON.stringify({
-            type: 'history_share',
-            data: item,
-            text_message: message
-        }));
-        showNotification('Данные отправлены в бота!');
-    } else {
-        navigator.clipboard.writeText(message).then(() => {
-            showNotification('Текст скопирован в буфер обмена!');
-        }).catch(() => {
-            showNotification('Не удалось скопировать текст');
-        });
-    }
-    
-    closeHistoryModal();
-}
-
-// 📝 ФУНКЦИИ ДЛЯ ОТЗЫВОВ
-async function loadReviews() {
-    console.log('📝 Загрузка отзывов');
-    renderReviews();
-}
-
-function renderReviews() {
-    const reviewsList = document.getElementById('reviews-list');
-    if (!reviewsList) return;
-    
-    const staticReviews = [
-        {
-            id: 1, author: '@maria_k', rating: 5,
-            text: 'Невероятно точные предсказания! Карта дня всегда в точку попадает. ИИ-толкования очень подробные и полезные.',
-            date: '3 дня назад', isAnonymous: false
-        },
-        {
-            id: 2, author: 'Анонимно', rating: 5,
-            text: 'Премиум подписка стоит своих денег! Неограниченные вопросы и эксклюзивные расклады - то что нужно.',
-            date: '5 дней назад', isAnonymous: true
-        },
-        {
-            id: 3, author: '@alexey_777', rating: 4,
-            text: 'Отличное приложение для ежедневного гадания. Интерфейс красивый, всё работает быстро.',
-            date: '1 неделю назад', isAnonymous: false
-        }
-    ];
-    
-    let reviewsHTML = '';
-    staticReviews.forEach(review => {
-        reviewsHTML += `
-            <div class="review-item">
-                <div class="review-header">
-                    <div class="review-author">${review.author}</div>
-                    <div class="review-rating">${'⭐'.repeat(review.rating)}</div>
-                </div>
-                <div class="review-text">${review.text}</div>
-                <div class="review-date">${review.date}</div>
-            </div>
-        `;
-    });
-    
-    reviewsList.innerHTML = reviewsHTML;
-}
-
-// 🎬 ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ СОБЫТИЙ
-function initEventListeners() {
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', () => {
-            const tabName = button.getAttribute('data-tab');
-            switchTab(tabName);
-        });
-    });
-    
-    const dailyCardBtn = document.getElementById('draw-daily-card');
-    if (dailyCardBtn) {
-        dailyCardBtn.addEventListener('click', drawDailyCard);
-    }
-    
-    const askBtn = document.getElementById('ask-question-btn');
-    if (askBtn) {
-        askBtn.addEventListener('click', askQuestion);
-    }
-    
-    const questionInput = document.getElementById('question-input');
-    if (questionInput) {
-        questionInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                askQuestion();
+        // Проверяем существование вкладки
+        const tabContent = document.getElementById(`${tabName}-tab`);
+        if (!tabContent) {
+            console.error(`❌ Контент вкладки ${tabName} не найден`);
+            // Пытаемся переключиться на дефолтную вкладку
+            if (tabName !== 'daily') {
+                return switchTab('daily');
             }
+            return false;
+        }
+        
+        // Скрываем все вкладки
+        const allTabs = document.querySelectorAll('.tab-content');
+        allTabs.forEach(tab => {
+            tab.classList.remove('active');
+            tab.style.display = 'none';
         });
+        
+        // Убираем активный класс с навигации
+        const allNavTabs = document.querySelectorAll('.nav-tab');
+        allNavTabs.forEach(navTab => {
+            navTab.classList.remove('active');
+        });
+        
+        // Показываем выбранную вкладку
+        tabContent.classList.add('active');
+        tabContent.style.display = 'block';
+        
+        // Активируем соответствующую кнопку навигации
+        const activeNavTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeNavTab) {
+            activeNavTab.classList.add('active');
+        } else {
+            console.warn(`⚠️ Кнопка навигации для ${tabName} не найдена`);
+        }
+        
+        // Сохраняем текущую вкладку
+        currentTab = tabName;
+        sessionStorage.setItem('currentTab', tabName);
+        
+        // Обновляем кнопку "Назад" в Telegram
+        if (tg && tg.BackButton) {
+            if (tabName === 'daily') {
+                tg.BackButton.hide();
+            } else {
+                tg.BackButton.show();
+            }
+        }
+        
+        // Выполняем действия специфичные для вкладки
+        handleTabSpecificActions(tabName);
+        
+        console.log(`✅ Переключено на вкладку: ${tabName}`);
+        return true;
+        
+    } catch (error) {
+        console.error(`❌ Ошибка переключения вкладки ${tabName}:`, error);
+        
+        // Попытка аварийного восстановления
+        try {
+            const dailyTab = document.getElementById('daily-tab');
+            if (dailyTab) {
+                dailyTab.classList.add('active');
+                dailyTab.style.display = 'block';
+                currentTab = 'daily';
+                sessionStorage.setItem('currentTab', 'daily');
+                console.log('🚑 Аварийное переключение на главную вкладку');
+                return true;
+            }
+        } catch (recoveryError) {
+            console.error('❌ Критическая ошибка навигации:', recoveryError);
+        }
+        
+        return false;
     }
-    
-    const premiumBtn = document.getElementById('premium-btn');
-    if (premiumBtn) {
-        premiumBtn.addEventListener('click', showPremiumOffer);
-    }
-    
-    console.log('🎛️ Обработчики событий инициализированы');
 }
 
-// 🔄 АВТОНОМНЫЙ РЕЖИМ
+// 🎬 ДЕЙСТВИЯ СПЕЦИФИЧНЫЕ ДЛЯ ВКЛАДОК
+function handleTabSpecificActions(tabName) {
+    switch (tabName) {
+        case 'daily':
+            // Проверяем статус карты дня
+            checkDailyCardStatus();
+            break;
+            
+        case 'question':
+            // Фокус на поле ввода вопроса
+            setTimeout(() => {
+                const questionInput = document.getElementById('question-input');
+                if (questionInput) {
+                    questionInput.focus();
+                }
+            }, 300);
+            break;
+            
+        case 'history':
+            // Обновляем историю
+            refreshHistory();
+            break;
+            
+        case 'premium':
+            // Обновляем информацию о подписке
+            updatePremiumInfo();
+            break;
+            
+        default:
+            break;
+    }
+}
+
+// 🔄 СИСТЕМА АВТОВОССТАНОВЛЕНИЯ
+function setupAutoRecovery() {
+    console.log('🛡️ Настройка системы автовосстановления...');
+    
+    // Проверка каждые 30 секунд
+    setInterval(async () => {
+        try {
+            // Проверяем конфигурацию
+            if (window.isConfigReady && !window.isConfigReady()) {
+                console.warn('🔄 Конфигурация повреждена, восстанавливаю...');
+                if (window.emergencyConfigRecovery) {
+                    window.emergencyConfigRecovery();
+                }
+            }
+            
+            // Проверяем загрузку карт
+            if (TAROT_CARDS_CACHE.length === 0 && recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
+                console.warn('🔄 Карты отсутствуют, перезагружаю...');
+                recoveryAttempts++;
+                await loadCardsFromGitHub();
+            }
+            
+            // Проверяем состояние навигации
+            if (!document.querySelector('.nav-tab.active')) {
+                console.warn('🔄 Навигация повреждена, восстанавливаю...');
+                switchTab(currentTab || 'daily');
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Ошибка автовосстановления:', error);
+        }
+    }, 30000);
+}
+
+// 🚨 ОБРАБОТКА ОШИБОК ИНИЦИАЛИЗАЦИИ
+function handleInitializationError(error) {
+    console.error('🚨 Критическая ошибка инициализации:', error);
+    
+    try {
+        // Показываем сообщение пользователю
+        showNotification(
+            'Возникла проблема при загрузке. Пожалуйста, обновите страницу.',
+            'error'
+        );
+        
+        // Пытаемся запустить в автономном режиме
+        initOfflineMode();
+        
+        // Инициализируем базовую навигацию
+        initEventListeners();
+        switchTab('daily');
+        
+    } catch (fallbackError) {
+        console.error('❌ Критическая ошибка fallback режима:', fallbackError);
+        
+        // Последняя попытка - показать базовое сообщение
+        document.body.innerHTML = `
+            <div style="padding: 20px; text-align: center; font-family: sans-serif;">
+                <h2>🔮 Шёпот Карт</h2>
+                <p>Приложение временно недоступно</p>
+                <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 20px;">
+                    Обновить страницу
+                </button>
+            </div>
+        `;
+    }
+}
+
+// 🌐 АВТОНОМНЫЙ РЕЖИМ
 function initOfflineMode() {
-    console.log('📱 Инициализация автономного режима');
+    console.log('🌐 Инициализация автономного режима...');
     
-    currentUser = {
-        user_id: 123456789,
-        first_name: 'Пользователь',
-        free_predictions_left: 3,
-        is_subscribed: false
-    };
-    
-    TAROT_CARDS_CACHE = getLocalFallbackCards();
+    // Используем фоллбэк карты
+    TAROT_CARDS_CACHE = window.FALLBACK_CARDS || [];
     CARDS_LOADED = true;
     
+    // Создаем базового пользователя
+    if (!currentUser) {
+        currentUser = createTestUser();
+    }
+    
+    // Загружаем локальную историю
     loadLocalHistory();
-}
-
-// 🔧 ОТЛАДОЧНЫЕ ФУНКЦИИ
-async function refreshCardsCache() {
-    console.log('🔄 Принудительное обновление карт...');
     
-    CARDS_LOADED = false;
-    CARDS_LOADING_PROMISE = null;
-    localStorage.removeItem('tarot_cards_cache');
-    
-    await loadCardsFromGitHub();
-    const appConfig = window.APP_CONFIG;
-    showNotification(appConfig?.notifications?.cardsCached || '🃏 Карты обновлены!');
+    console.log('✅ Автономный режим активирован');
 }
 
-function getAppStats() {
-    return {
-        cardsLoaded: CARDS_LOADED,
-        cardsCount: TAROT_CARDS_CACHE.length,
-        historyCount: history.length,
-        currentUser: currentUser,
-        supabaseConnected: !!supabase,
-        configLoaded: !!(window.SUPABASE_CONFIG && window.API_CONFIG && window.APP_CONFIG)
-    };
-}
-
-// Интеграция с отладчиком (только в development)
-if (window.location.hostname === 'localhost' || window.location.search.includes('debug=true')) {
-    window.TarotDebug = {
-        log: (message, level = 'info') => {
-            console.log(`[${level.toUpperCase()}] ${message}`);
-            // Отправка в отладчик если открыт
-            if (window.TarotDebugger) {
-                window.TarotDebugger.log(message, level);
-            }
-        },
-        trackApiCall: () => {
-            if (window.TarotDebugger) {
-                const state = window.TarotDebugger.getState();
-                state.apiCalls++;
-            }
-        },
-        trackError: (error) => {
-            if (window.TarotDebugger) {
-                window.TarotDebugger.log(error.message, 'error');
+// 📊 ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ПОЛЬЗОВАТЕЛЯ
+function updateUserInterface() {
+    try {
+        if (!currentUser) return;
+        
+        // Обновляем статус подписки
+        const statusElement = document.getElementById('subscription-status');
+        if (statusElement) {
+            const statusIcon = statusElement.querySelector('.status-icon');
+            const statusText = statusElement.querySelector('.status-text');
+            
+            if (currentUser.is_subscribed) {
+                statusIcon.textContent = '⭐';
+                statusText.textContent = 'Premium';
+                statusElement.classList.add('premium');
+            } else {
+                statusIcon.textContent = '🌑';
+                statusText.textContent = `Базовая (${currentUser.free_predictions_left} вопросов)`;
+                statusElement.classList.remove('premium');
             }
         }
-    };
+        
+        console.log('✅ Интерфейс пользователя обновлен');
+        
+    } catch (error) {
+        console.error('❌ Ошибка обновления интерфейса:', error);
+    }
 }
 
-// 🚀 ЗАПУСК ПРИЛОЖЕНИЯ
-document.addEventListener('DOMContentLoaded', initApp);
+// 🔄 ОБНОВЛЕНИЕ ИСТОРИИ
+function refreshHistory() {
+    // Реализация обновления истории
+    console.log('🔄 Обновление истории...');
+}
 
-// Глобальные функции для доступа из HTML
+// 💎 ОБНОВЛЕНИЕ ИНФОРМАЦИИ PREMIUM
+function updatePremiumInfo() {
+    // Реализация обновления Premium информации
+    console.log('💎 Обновление Premium информации...');
+}
+
+// 📤 ЭКСПОРТ ФУНКЦИЙ
 window.switchTab = switchTab;
-window.drawDailyCard = drawDailyCard;
-window.askQuestion = askQuestion;
-window.showPremiumOffer = showPremiumOffer;
-window.openPaymentLink = openPaymentLink;
-window.closePremiumModal = closePremiumModal;
-window.viewHistoryDetail = viewHistoryDetail;
-window.closeHistoryModal = closeHistoryModal;
-window.shareHistoryItem = shareHistoryItem;
-window.refreshCardsCache = refreshCardsCache;
-window.getAppStats = getAppStats;
+window.initApp = initApp;
+window.initTelegramWebApp = initTelegramWebApp;
+window.initSupabase = initSupabase;
+window.updateUserInterface = updateUserInterface;
+
+// Исправленная система сохранения и загрузки истории
+// ========================================================================
+
+// 💾 УЛУЧШЕННАЯ СИСТЕМА СОХРАНЕНИЯ ИСТОРИИ
+async function saveToHistory(data) {
+    try {
+        console.log('💾 Сохранение в историю...', data);
+        
+        // Валидация данных
+        if (!data || typeof data !== 'object') {
+            throw new Error('Некорректные данные для сохранения');
+        }
+        
+        // Создаем объект истории
+        const historyItem = {
+            id: generateHistoryId(),
+            timestamp: new Date().toISOString(),
+            type: data.type || 'question',
+            question: data.question || '',
+            cards: Array.isArray(data.cards) ? data.cards : [],
+            interpretation: data.interpretation || '',
+            user_id: currentUser?.user_id || 'anonymous',
+            session_id: getSessionId(),
+            metadata: {
+                userAgent: navigator.userAgent,
+                timestamp: Date.now(),
+                version: window.APP_CONFIG?.version || '1.0.0'
+            }
+        };
+        
+        // Попытка сохранения в Supabase
+        let savedToSupabase = false;
+        if (supabase && currentUser && currentUser.user_id !== 'anonymous') {
+            try {
+                const { data: savedData, error } = await supabase
+                    .from('predictions')
+                    .insert([historyItem])
+                    .select();
+                
+                if (error) {
+                    console.warn('⚠️ Ошибка сохранения в Supabase:', error);
+                    throw error;
+                }
+                
+                console.log('✅ История сохранена в Supabase');
+                savedToSupabase = true;
+                
+                // Обновляем локальную историю данными из БД
+                if (savedData && savedData.length > 0) {
+                    updateLocalHistory(savedData[0]);
+                }
+                
+            } catch (supabaseError) {
+                console.warn('⚠️ Supabase недоступен, сохраняю локально:', supabaseError.message);
+                throw supabaseError;
+            }
+        }
+        
+        // Если не удалось сохранить в Supabase, сохраняем локально
+        if (!savedToSupabase) {
+            await saveToLocalHistory(historyItem);
+            console.log('✅ История сохранена локально');
+        }
+        
+        // Обновляем глобальную переменную истории
+        history.unshift(historyItem);
+        
+        // Ограничиваем размер истории в памяти
+        if (history.length > (window.APP_CONFIG?.maxHistoryItems || 50)) {
+            history = history.slice(0, window.APP_CONFIG?.maxHistoryItems || 50);
+        }
+        
+        // Обновляем UI если на странице истории
+        if (currentTab === 'history') {
+            renderHistory();
+        }
+        
+        // Уведомляем об успешном сохранении
+        showNotification('Предсказание сохранено в истории', 'success');
+        
+        return historyItem;
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения истории:', error);
+        
+        // Показываем пользователю сообщение об ошибке
+        showNotification('Не удалось сохранить в историю', 'error');
+        
+        // Пытаемся аварийное сохранение в localStorage
+        try {
+            const emergencyData = {
+                id: Date.now().toString(),
+                timestamp: new Date().toISOString(),
+                data: data,
+                error: error.message
+            };
+            
+            let emergencyHistory = [];
+            const stored = localStorage.getItem('emergency_history');
+            if (stored) {
+                emergencyHistory = JSON.parse(stored);
+            }
+            
+            emergencyHistory.unshift(emergencyData);
+            emergencyHistory = emergencyHistory.slice(0, 10); // Только последние 10
+            
+            localStorage.setItem('emergency_history', JSON.stringify(emergencyHistory));
+            console.log('🚑 Аварийное сохранение выполнено');
+            
+        } catch (emergencyError) {
+            console.error('💥 Критическая ошибка аварийного сохранения:', emergencyError);
+        }
+        
+        throw error;
+    }
+}
+
+// 💾 СОХРАНЕНИЕ В ЛОКАЛЬНУЮ ИСТОРИЮ
+async function saveToLocalHistory(historyItem) {
+    try {
+        let localHistory = [];
+        
+        // Загружаем существующую историю
+        const stored = localStorage.getItem('tarot_history');
+        if (stored) {
+            try {
+                localHistory = JSON.parse(stored);
+                if (!Array.isArray(localHistory)) {
+                    localHistory = [];
+                }
+            } catch (parseError) {
+                console.warn('⚠️ Поврежденная локальная история, создаю новую');
+                localHistory = [];
+            }
+        }
+        
+        // Добавляем новый элемент
+        localHistory.unshift(historyItem);
+        
+        // Ограничиваем размер
+        const maxItems = window.APP_CONFIG?.maxHistoryItems || 50;
+        if (localHistory.length > maxItems) {
+            localHistory = localHistory.slice(0, maxItems);
+        }
+        
+        // Сохраняем обратно
+        localStorage.setItem('tarot_history', JSON.stringify(localHistory));
+        
+        // Обновляем статистику
+        updateHistoryStats(localHistory.length);
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения в localStorage:', error);
+        throw error;
+    }
+}
+
+// 📥 ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
+async function loadUserHistoryFromSupabase() {
+    try {
+        console.log('📥 Загрузка истории из Supabase...');
+        
+        if (!supabase || !currentUser) {
+            throw new Error('Supabase или пользователь недоступны');
+        }
+        
+        const { data, error } = await supabase
+            .from('predictions')
+            .select('*')
+            .eq('user_id', currentUser.user_id)
+            .order('timestamp', { ascending: false })
+            .limit(window.APP_CONFIG?.maxHistoryItems || 50);
+        
+        if (error) {
+            console.warn('⚠️ Ошибка загрузки истории из Supabase:', error);
+            throw error;
+        }
+        
+        // Обновляем глобальную историю
+        history = data || [];
+        
+        // Синхронизируем с локальной историей
+        await syncWithLocalHistory(history);
+        
+        console.log(`✅ Загружено ${history.length} записей истории из Supabase`);
+        
+        // Обновляем UI
+        if (currentTab === 'history') {
+            renderHistory();
+        }
+        
+        return history;
+        
+    } catch (error) {
+        console.warn('⚠️ Не удалось загрузить историю из Supabase, загружаю локальную:', error);
+        return await loadLocalHistory();
+    }
+}
+
+// 📱 ЗАГРУЗКА ЛОКАЛЬНОЙ ИСТОРИИ
+async function loadLocalHistory() {
+    try {
+        console.log('📱 Загрузка локальной истории...');
+        
+        const stored = localStorage.getItem('tarot_history');
+        if (!stored) {
+            console.log('📝 Локальная история пуста');
+            history = [];
+            return history;
+        }
+        
+        const localHistory = JSON.parse(stored);
+        if (!Array.isArray(localHistory)) {
+            throw new Error('Некорректный формат локальной истории');
+        }
+        
+        // Валидируем и очищаем записи
+        history = localHistory.filter(item => {
+            return item && 
+                   typeof item === 'object' && 
+                   item.id && 
+                   item.timestamp;
+        });
+        
+        // Сортируем по времени (новые первыми)
+        history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        console.log(`✅ Загружено ${history.length} записей локальной истории`);
+        
+        // Обновляем UI
+        if (currentTab === 'history') {
+            renderHistory();
+        }
+        
+        return history;
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки локальной истории:', error);
+        history = [];
+        return history;
+    }
+}
+
+// 🔄 СИНХРОНИЗАЦИЯ С ЛОКАЛЬНОЙ ИСТОРИЕЙ
+async function syncWithLocalHistory(serverHistory) {
+    try {
+        console.log('🔄 Синхронизация истории...');
+        
+        const localHistory = await loadLocalHistory();
+        
+        // Создаем карту серверных записей по ID
+        const serverMap = new Map(serverHistory.map(item => [item.id, item]));
+        
+        // Находим локальные записи, которых нет на сервере
+        const localOnlyItems = localHistory.filter(item => !serverMap.has(item.id));
+        
+        if (localOnlyItems.length > 0) {
+            console.log(`📤 Найдено ${localOnlyItems.length} локальных записей для синхронизации`);
+            
+            // Пытаемся загрузить их на сервер
+            for (const item of localOnlyItems) {
+                try {
+                    await saveToSupabase(item);
+                } catch (uploadError) {
+                    console.warn(`⚠️ Не удалось синхронизировать запись ${item.id}:`, uploadError);
+                }
+            }
+        }
+        
+        // Обновляем локальную историю серверными данными
+        const mergedHistory = [...serverHistory, ...localOnlyItems];
+        mergedHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Сохраняем обновленную историю локально
+        localStorage.setItem('tarot_history', JSON.stringify(mergedHistory));
+        
+        console.log('✅ Синхронизация завершена');
+        return mergedHistory;
+        
+    } catch (error) {
+        console.error('❌ Ошибка синхронизации истории:', error);
+        return serverHistory; // Возвращаем серверную историю в случае ошибки
+    }
+}
+
+// 💾 СОХРАНЕНИЕ В SUPABASE
+async function saveToSupabase(historyItem) {
+    if (!supabase) {
+        throw new Error('Supabase недоступен');
+    }
+    
+    const { data, error } = await supabase
+        .from('predictions')
+        .insert([historyItem])
+        .select();
+    
+    if (error) {
+        throw error;
+    }
+    
+    return data;
+}
+
+// 🎨 ОТОБРАЖЕНИЕ ИСТОРИИ
+function renderHistory() {
+    try {
+        console.log('🎨 Отображение истории...');
+        
+        const historyContainer = document.querySelector('#history-tab .history-list');
+        if (!historyContainer) {
+            console.warn('⚠️ Контейнер истории не найден');
+            return;
+        }
+        
+        // Очищаем контейнер
+        historyContainer.innerHTML = '';
+        
+        if (history.length === 0) {
+            historyContainer.innerHTML = `
+                <div class="empty-history">
+                    <div class="empty-icon">📜</div>
+                    <div class="empty-text">История предсказаний пуста</div>
+                    <div class="empty-subtext">Задайте свой первый вопрос картам</div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Группируем по дням
+        const groupedHistory = groupHistoryByDate(history);
+        
+        // Отображаем каждую группу
+        Object.entries(groupedHistory).forEach(([date, items]) => {
+            const dateGroup = document.createElement('div');
+            dateGroup.className = 'history-date-group';
+            
+            dateGroup.innerHTML = `
+                <div class="history-date-header">${formatHistoryDate(date)}</div>
+                <div class="history-items">
+                    ${items.map(item => renderHistoryItem(item)).join('')}
+                </div>
+            `;
+            
+            historyContainer.appendChild(dateGroup);
+        });
+        
+        console.log(`✅ Отображено ${history.length} записей истории`);
+        
+    } catch (error) {
+        console.error('❌ Ошибка отображения истории:', error);
+        
+        const historyContainer = document.querySelector('#history-tab .history-list');
+        if (historyContainer) {
+            historyContainer.innerHTML = `
+                <div class="error-state">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-text">Ошибка загрузки истории</div>
+                    <button onclick="refreshHistory()" class="retry-button">Попробовать снова</button>
+                </div>
+            `;
+        }
+    }
+}
+
+// 📊 ГРУППИРОВКА ИСТОРИИ ПО ДАТАМ
+function groupHistoryByDate(historyItems) {
+    const groups = {};
+    
+    historyItems.forEach(item => {
+        try {
+            const date = new Date(item.timestamp).toISOString().split('T')[0];
+            if (!groups[date]) {
+                groups[date] = [];
+            }
+            groups[date].push(item);
+        } catch (error) {
+            console.warn('⚠️ Некорректная дата в записи истории:', item);
+        }
+    });
+    
+    return groups;
+}
+
+// 📅 ФОРМАТИРОВАНИЕ ДАТЫ ДЛЯ ИСТОРИИ
+function formatHistoryDate(dateString) {
+    try {
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (dateString === today.toISOString().split('T')[0]) {
+            return 'Сегодня';
+        } else if (dateString === yesterday.toISOString().split('T')[0]) {
+            return 'Вчера';
+        } else {
+            return date.toLocaleDateString('ru-RU', { 
+                day: 'numeric', 
+                month: 'long',
+                year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+            });
+        }
+    } catch (error) {
+        console.warn('⚠️ Ошибка форматирования даты:', dateString);
+        return dateString;
+    }
+}
+
+// 🎴 ОТОБРАЖЕНИЕ ЭЛЕМЕНТА ИСТОРИИ
+function renderHistoryItem(item) {
+    const time = new Date(item.timestamp).toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+    
+    const typeIcon = getTypeIcon(item.type);
+    const cardNames = Array.isArray(item.cards) ? 
+        item.cards.map(card => typeof card === 'string' ? card : card.name).join(', ') : 
+        'Неизвестная карта';
+    
+    return `
+        <div class="history-item" onclick="viewHistoryDetail('${item.id}')">
+            <div class="history-item-header">
+                <span class="history-type-icon">${typeIcon}</span>
+                <span class="history-time">${time}</span>
+            </div>
+            <div class="history-question">${truncateText(item.question || 'Карта дня', 60)}</div>
+            <div class="history-cards">${truncateText(cardNames, 40)}</div>
+        </div>
+    `;
+}
+
+// 🎭 ПОЛУЧЕНИЕ ИКОНКИ ТИПА
+function getTypeIcon(type) {
+    const icons = {
+        'daily': '🌅',
+        'question': '❓',
+        'spread': '🔮',
+        'relationship': '💕',
+        'celtic': '🍀'
+    };
+    return icons[type] || '🎴';
+}
+
+// ✂️ ОБРЕЗКА ТЕКСТА
+function truncateText(text, maxLength) {
+    if (!text || typeof text !== 'string') return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+// 🔄 ОБНОВЛЕНИЕ ИСТОРИИ
+async function refreshHistory() {
+    try {
+        console.log('🔄 Обновление истории...');
+        
+        showNotification('Обновление истории...', 'info');
+        
+        if (supabase && currentUser) {
+            await loadUserHistoryFromSupabase();
+        } else {
+            await loadLocalHistory();
+        }
+        
+        renderHistory();
+        showNotification('История обновлена', 'success');
+        
+    } catch (error) {
+        console.error('❌ Ошибка обновления истории:', error);
+        showNotification('Ошибка обновления истории', 'error');
+    }
+}
+
+// 📊 ОБНОВЛЕНИЕ СТАТИСТИКИ ИСТОРИИ
+function updateHistoryStats(count) {
+    const statsElement = document.querySelector('.history-stats');
+    if (statsElement) {
+        statsElement.textContent = `Всего предсказаний: ${count}`;
+    }
+}
+
+// 🆔 ГЕНЕРАЦИЯ ID ДЛЯ ИСТОРИИ
+function generateHistoryId() {
+    return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// 🔐 ПОЛУЧЕНИЕ ID СЕССИИ
+function getSessionId() {
+    let sessionId = sessionStorage.getItem('session_id');
+    if (!sessionId) {
+        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem('session_id', sessionId);
+    }
+    return sessionId;
+}
+
+// 📤 ОБНОВЛЕНИЕ ЛОКАЛЬНОЙ ИСТОРИИ
+function updateLocalHistory(newItem) {
+    try {
+        // Добавляем или обновляем элемент в глобальной истории
+        const existingIndex = history.findIndex(item => item.id === newItem.id);
+        if (existingIndex >= 0) {
+            history[existingIndex] = newItem;
+        } else {
+            history.unshift(newItem);
+        }
+        
+        // Сохраняем в localStorage
+        localStorage.setItem('tarot_history', JSON.stringify(history));
+        
+    } catch (error) {
+        console.error('❌ Ошибка обновления локальной истории:', error);
+    }
+}
+
+// 🗑️ ОЧИСТКА ИСТОРИИ
+async function clearHistory() {
+    try {
+        if (!confirm('Вы уверены, что хотите очистить всю историю? Это действие нельзя отменить.')) {
+            return;
+        }
+        
+        console.log('🗑️ Очистка истории...');
+        
+        // Очищаем глобальную переменную
+        history = [];
+        
+        // Очищаем localStorage
+        localStorage.removeItem('tarot_history');
+        
+        // Очищаем в Supabase (если доступно)
+        if (supabase && currentUser) {
+            const { error } = await supabase
+                .from('predictions')
+                .delete()
+                .eq('user_id', currentUser.user_id);
+                
+            if (error) {
+                console.warn('⚠️ Ошибка очистки истории в Supabase:', error);
+            }
+        }
+        
+        // Обновляем UI
+        renderHistory();
+        showNotification('История очищена', 'success');
+        
+    } catch (error) {
+        console.error('❌ Ошибка очистки истории:', error);
+        showNotification('Ошибка очистки истории', 'error');
+    }
+}
+
+// 📤 ЭКСПОРТ ФУНКЦИЙ
+window.saveToHistory = saveToHistory;
+window.loadUserHistoryFromSupabase = loadUserHistoryFromSupabase;
+window.loadLocalHistory = loadLocalHistory;
+window.renderHistory = renderHistory;
+window.refreshHistory = refreshHistory;
+window.clearHistory = clearHistory;
