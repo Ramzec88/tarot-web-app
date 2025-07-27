@@ -1,8 +1,8 @@
 // script.js - Основная логика Tarot Web App (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 
 // Глобальные переменные
-let supabase;
-let tg;
+let supabase = null;
+let tg = null;
 let currentUser = null;
 let questionsLeft = 3;
 let dailyCardDrawn = false;
@@ -15,7 +15,7 @@ let userName = ''; // Имя пользователя
 let userBirthdate = ''; // Дата рождения пользователя
 let localReviews = []; // Локальные отзывы для тестирования
 let testPremiumMode = false; // Флаг тестового премиум режима
-let currentSpread = null; // Объект для хранения данных текущего активного расклада
+let currentSpread = { cards: [], interpretations: [] }; // Объект для хранения данных текущего активного расклада
 let TAROT_CARDS_CACHE = []; // Кэш карт с GitHub
 let CARDS_LOADED = false; // Флаг загрузки
 let CARDS_LOADING_PROMISE = null; // Promise для предотвращения дублирования
