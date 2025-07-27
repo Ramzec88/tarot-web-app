@@ -200,4 +200,179 @@ async function handleStatsCommand(chatId, user) {
 }
 
 // Обработка данных из Web App
-async function handle
+async function handleWebAppData(webAppData, user) {
+    try {
+        const data = JSON.parse(webAppData.data);
+        
+        switch (data.type) {
+            case 'history_share':
+                await handleHistoryShare(user.id, data);
+                break;
+            case 'premium_purchase':
+                await handlePremiumPurchase(user.id, data);
+                break;
+            case 'feedback':
+                await handleFeedback(user.id, data);
+                break;
+            default:
+                console.log('Unknown web app data type:', data.type);
+        }
+
+    } catch (error) {
+        console.error('❌ Error handling web app data:', error);
+    }
+}
+
+// Обработка поделиться историей
+async function handleHistoryShare(userId, data) {
+    try {
+        const { data: userProfile } = await supabase
+            .from('tarot_user_profiles')
+            .select('chat_id')
+            .eq('user_id', userId)
+            .single();
+
+        if (!userProfile) return;
+
+        // Отправляем красиво оформленное сообщение с историей
+        const message = data.text_message || 'История расклада получена из приложения';
+        
+        await sendMessage(userProfile.chat_id, 
+            `📋 История из приложения Таро:\n\n${message}`,
+            {
+                parse_mode: 'Markdown'
+            }
+        );
+
+    } catch (error) {
+        console.error('❌ Error sharing history:', error);
+    }
+}
+
+// Обработка покупки премиум
+async function handlePremiumPurchase(userId, data) {
+    try {
+        // Здесь будет логика проверки оплаты
+        // Пока просто активируем премиум для тестирования
+        
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 30); // 30 дней
+
+        await supabase
+            .from('tarot_user_profiles')
+            .update({
+                is_subscribed: true,
+                subscription_expiry_date: expiryDate.toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+
+        const { data: userProfile } = await supabase
+            .from('tarot_user_profiles')
+            .select('chat_id, first_name')
+            .eq('user_id', userId)
+            .single();
+
+        if (userProfile) {
+            await sendMessage(userProfile.chat_id,
+                `🎉 Поздравляем, ${userProfile.first_name}!\n\n` +
+                `⭐ Премиум подписка активирована на 30 дней!\n\n` +
+                `Теперь вы можете:\n` +
+                `• Задавать неограниченное количество вопросов\n` +
+                `• Использовать эксклюзивные расклады\n` +
+                `• Получать подробные ИИ-толкования\n\n` +
+                `Приятного использования! 🔮`
+            );
+        }
+
+    } catch (error) {
+        console.error('❌ Error handling premium purchase:', error);
+    }
+}
+
+// Обработка отзыва
+async function handleFeedback(userId, data) {
+    try {
+        // Сохраняем отзыв в базу данных
+        await supabase
+            .from('tarot_reviews')
+            .insert([{
+                user_id: userId,
+                rating: data.rating,
+                review_text: data.text,
+                is_anonymous: data.is_anonymous || false,
+                is_approved: false // Требует модерации
+            }]);
+
+        const { data: userProfile } = await supabase
+            .from('tarot_user_profiles')
+            .select('chat_id')
+            .eq('user_id', userId)
+            .single();
+
+        if (userProfile) {
+            await sendMessage(userProfile.chat_id,
+                `🙏 Спасибо за ваш отзыв!\n\n` +
+                `Ваше мнение очень важно для нас. ` +
+                `После модерации отзыв появится в приложении.`
+            );
+        }
+
+    } catch (error) {
+        console.error('❌ Error handling feedback:', error);
+    }
+}
+
+// Отправка сообщения в Telegram
+async function sendMessage(chatId, text, options = {}) {
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: text,
+                ...options
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.json();
+
+    } catch (error) {
+        console.error('❌ Error sending message:', error);
+        throw error;
+    }
+}
+
+// Функция для установки вебхука (вызывается отдельно)
+export async function setWebhook() {
+    try {
+        const webhookUrl = `${process.env.VERCEL_URL}/api/telegram-webhook`;
+        
+        const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/setWebhook`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: webhookUrl,
+                allowed_updates: ['message', 'callback_query']
+            })
+        });
+
+        const result = await response.json();
+        console.log('Webhook set result:', result);
+        
+        return result;
+
+    } catch (error) {
+        console.error('❌ Error setting webhook:', error);
+        throw error;
+    }
+}
