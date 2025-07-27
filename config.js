@@ -1,231 +1,292 @@
-// config.js - Динамическая конфигурация из Environment Variables
+// config.js - Исправленная конфигурация с обработкой ошибок
 // ========================================================================
 
-// 🌐 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ КОНФИГУРАЦИИ
-let SUPABASE_CONFIG = null;
-let API_CONFIG = null;
-let APP_CONFIG = null;
-
-// 🔄 ЗАГРУЗКА КОНФИГУРАЦИИ ИЗ API
-async function loadConfigFromAPI() {
+// 🔧 БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ КОНФИГУРАЦИИ
+async function initializeConfig() {
+    console.log('🔧 Инициализация конфигурации...');
+    
     try {
-        console.log('🔧 Загружаю конфигурацию из API...');
-        
-        const response = await fetch('/api/config', {
-            method: 'GET',
-            headers: {
-                'Cache-Control': 'no-cache'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        // 🗄️ КОНФИГУРАЦИЯ SUPABASE
+        if (typeof window.SUPABASE_CONFIG === 'undefined') {
+            window.SUPABASE_CONFIG = {
+                url: process.env.SUPABASE_URL || 'https://your-project.supabase.co',
+                anonKey: process.env.SUPABASE_ANON_KEY || 'your-anon-key-here'
+            };
+            console.log('⚠️ Использую фоллбэк конфигурацию Supabase');
         }
-        
-        const serverConfig = await response.json();
-        
-        // Инициализируем конфигурацию из серверных данных
-        SUPABASE_CONFIG = {
-            url: serverConfig.supabase.url,
-            anonKey: serverConfig.supabase.anonKey
-        };
-        
-        API_CONFIG = {
-            cardsUrl: serverConfig.api.cardsUrl,
-            cardsFallbackUrl: `https://cdn.jsdelivr.net/gh/${getGitHubRepoFromUrl(serverConfig.api.cardsUrl)}@main/cards.json`,
-            cardsLocalFallback: './cards.json',
-            paymentUrl: serverConfig.api.paymentUrl,
-            
-            // Настройки загрузки карт
-            requestTimeout: 15000,
-            cacheTimeout: 24 * 60 * 60 * 1000,
-            maxRetries: 3,
-            retryDelay: 2000
-        };
-        
-        APP_CONFIG = {
-            freeQuestionsLimit: serverConfig.app.freeQuestionsLimit,
-            premiumPrice: serverConfig.app.premiumPrice,
-            premiumDuration: 30,
-            sessionTimeout: 24 * 60 * 60 * 1000,
-            
-            // Анимации и эффекты
-            typewriterSpeed: 30,
-            cardFlipDuration: 500,
-            sparkleCount: 5,
-            loadingDelay: 2000,
-            
-            // Настройки кэширования
-            enableCaching: true,
-            cacheVersion: '2.0',
-            maxHistoryItems: 100,
-            maxCacheSize: 5 * 1024 * 1024,
-            
-            // Тексты интерфейса
-            texts: {
-                welcome: 'Добро пожаловать в мистический мир карт Таро 🔮',
-                noQuestions: 'Пожалуйста, задайте вопрос',
-                questionsEnded: 'У вас закончились бесплатные вопросы. Оформите премиум для неограниченного доступа!',
-                generating: 'Генерирую персональное предсказание...',
-                cardsThinking: 'Карты размышляют... 🃏',
-                cardsWhispering: 'Карты шепчут тайны... ✨',
-                cardDrawn: 'Карта вытянута! Узнайте что она означает...',
-                loadingCards: 'Загружаю колоду карт...',
-                cardsReady: 'Карты готовы к предсказанию!',
-                connectionError: 'Проблема с подключением. Проверьте интернет.',
-                tryAgain: 'Попробуйте еще раз'
-            },
-            
-            // Уведомления
-            notifications: {
-                cardsCached: '🃏 Карты обновлены!',
-                historyCleared: '📝 История очищена',
-                dataShared: '📤 Данные отправлены в бота',
-                error: '❌ Произошла ошибка',
-                success: '✅ Операция выполнена успешно'
+
+        // 🔗 КОНФИГУРАЦИЯ API
+        if (typeof window.API_CONFIG === 'undefined') {
+            window.API_CONFIG = {
+                n8nWebhookUrl: process.env.N8N_WEBHOOK_URL || 'https://your-n8n.app/webhook/tarot',
+                cardsUrl: 'https://raw.githubusercontent.com/username/tarot-cards/main/cards.json',
+                timeout: 10000,
+                retryAttempts: 3
+            };
+            console.log('⚠️ Использую фоллбэк конфигурацию API');
+        }
+
+        // 📱 КОНФИГУРАЦИЯ ПРИЛОЖЕНИЯ
+        if (typeof window.APP_CONFIG === 'undefined') {
+            window.APP_CONFIG = {
+                appName: 'Шёпот Карт',
+                version: '1.0.0',
+                freeQuestionsLimit: 3,
+                maxHistoryItems: 50,
+                cacheExpiry: 24 * 60 * 60 * 1000, // 24 часа
+                
+                texts: {
+                    loading: 'Карты шепчут...',
+                    cardsReady: 'Карты готовы!',
+                    error: 'Что-то пошло не так...',
+                    noInternet: 'Проверьте соединение с интернетом'
+                },
+                
+                premium: {
+                    monthly: {
+                        price: 299,
+                        currency: 'RUB',
+                        description: 'Месячная подписка'
+                    },
+                    yearly: {
+                        price: 2999,
+                        currency: 'RUB', 
+                        description: 'Годовая подписка'
+                    }
+                }
+            };
+            console.log('⚠️ Использую фоллбэк конфигурацию приложения');
+        }
+
+        // 📊 КОНФИГУРАЦИЯ ТАБЛИЦ SUPABASE
+        if (typeof window.TABLES === 'undefined') {
+            window.TABLES = {
+                users: 'users',
+                predictions: 'predictions',
+                daily_cards: 'daily_cards',
+                subscriptions: 'subscriptions'
+            };
+        }
+
+        // 🔮 КОНФИГУРАЦИЯ TELEGRAM
+        if (typeof window.TELEGRAM_CONFIG === 'undefined') {
+            window.TELEGRAM_CONFIG = {
+                botUsername: 'your_tarot_bot',
+                webAppUrl: 'https://your-app.vercel.app',
+                allowedUpdates: ['message', 'callback_query', 'inline_query']
+            };
+        }
+
+        // 🎴 ФОЛЛБЭК КАРТЫ (если GitHub недоступен)
+        if (typeof window.FALLBACK_CARDS === 'undefined') {
+            window.FALLBACK_CARDS = [
+                {
+                    id: "FB_0",
+                    name: "Загадочная карта",
+                    symbol: "🔮",
+                    meaningUpright: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
+                    meaningReversed: "Возможно, стоит попробовать позже.",
+                    meaning: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
+                    image: "./images/cards/default.jpg",
+                    type: "Фоллбэк",
+                    element: "Эфир"
+                },
+                {
+                    id: "FB_1",
+                    name: "Маг",
+                    symbol: "⚡",
+                    meaningUpright: "Сила воли, мастерство, концентрация. У вас есть все необходимое для достижения целей.",
+                    meaningReversed: "Злоупотребление силой, самообман, недостаток энергии.",
+                    meaning: "Сила воли, мастерство, концентрация.",
+                    image: "./images/cards/magician.jpg",
+                    type: "Старшие Арканы",
+                    element: "Воздух"
+                },
+                {
+                    id: "FB_2", 
+                    name: "Жрица",
+                    symbol: "🌙",
+                    meaningUpright: "Интуиция, тайные знания, внутренняя мудрость.",
+                    meaningReversed: "Секреты, скрытые мотивы, недостаток интуиции.",
+                    meaning: "Интуиция, тайные знания, внутренняя мудрость.",
+                    image: "./images/cards/high-priestess.jpg",
+                    type: "Старшие Арканы",
+                    element: "Вода"
+                }
+            ];
+        }
+
+        // 🎯 КОНФИГУРАЦИЯ РАСКЛАДОВ
+        if (typeof window.SPREADS_CONFIG === 'undefined') {
+            window.SPREADS_CONFIG = {
+                threeCard: {
+                    name: 'Прошлое-Настоящее-Будущее',
+                    description: 'Классический расклад для понимания ситуации',
+                    cardCount: 3,
+                    positions: [
+                        { name: 'Прошлое', description: 'Что привело к текущей ситуации' },
+                        { name: 'Настоящее', description: 'Текущее состояние дел' },
+                        { name: 'Будущее', description: 'Возможное развитие событий' }
+                    ]
+                },
+                celticCross: {
+                    name: 'Кельтский крест',
+                    description: 'Подробный анализ ситуации',
+                    cardCount: 5,
+                    positions: [
+                        { name: 'Суть вопроса', description: 'Основа ситуации' },
+                        { name: 'Препятствие', description: 'Что мешает или помогает' },
+                        { name: 'Прошлое', description: 'Корни ситуации' },
+                        { name: 'Возможное будущее', description: 'Вероятный исход' },
+                        { name: 'Совет', description: 'Рекомендация карт' }
+                    ]
+                },
+                relationship: {
+                    name: 'Расклад отношений', 
+                    description: 'Анализ отношений между двумя людьми',
+                    cardCount: 3,
+                    positions: [
+                        { name: 'Ваши чувства', description: 'Ваше отношение к ситуации' },
+                        { name: 'Чувства партнера', description: 'Отношение другого человека' },
+                        { name: 'Перспективы', description: 'Будущее отношений' }
+                    ]
+                }
+            };
+        }
+
+        // ✅ ПРОВЕРКА ЦЕЛОСТНОСТИ КОНФИГУРАЦИИ
+        const configChecks = [
+            { name: 'SUPABASE_CONFIG', obj: window.SUPABASE_CONFIG, required: ['url'] },
+            { name: 'API_CONFIG', obj: window.API_CONFIG, required: ['cardsUrl'] },
+            { name: 'APP_CONFIG', obj: window.APP_CONFIG, required: ['appName', 'version'] },
+            { name: 'FALLBACK_CARDS', obj: window.FALLBACK_CARDS, required: [] }
+        ];
+
+        let configValid = true;
+        for (const check of configChecks) {
+            if (!check.obj) {
+                console.error(`❌ ${check.name} отсутствует`);
+                configValid = false;
+                continue;
             }
+
+            for (const field of check.required) {
+                if (!check.obj[field]) {
+                    console.error(`❌ ${check.name}.${field} отсутствует`);
+                    configValid = false;
+                }
+            }
+        }
+
+        if (configValid) {
+            console.log('✅ Конфигурация успешно инициализирована и проверена');
+        } else {
+            console.warn('⚠️ Конфигурация инициализирована с предупреждениями');
+        }
+
+        // 📊 ОТЛАДОЧНАЯ ИНФОРМАЦИЯ
+        if (window.location.hostname === 'localhost' || window.location.search.includes('debug=true')) {
+            console.log('🔧 Отладочная информация конфигурации:');
+            console.log('- Supabase URL:', window.SUPABASE_CONFIG.url ? 'Настроен' : 'Отсутствует');
+            console.log('- n8n Webhook:', window.API_CONFIG.n8nWebhookUrl ? 'Настроен' : 'Отсутствует');
+            console.log('- Карты URL:', window.API_CONFIG.cardsUrl ? 'Настроен' : 'Отсутствует');
+            console.log('- Фоллбэк карт:', window.FALLBACK_CARDS.length);
+        }
+
+        return configValid;
+
+    } catch (error) {
+        console.error('❌ Критическая ошибка инициализации конфигурации:', error);
+        
+        // Экстренная минимальная конфигурация
+        window.APP_CONFIG = {
+            appName: 'Шёпот Карт',
+            version: '1.0.0',
+            freeQuestionsLimit: 3
         };
         
-        console.log('✅ Конфигурация загружена из API');
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Ошибка загрузки конфигурации из API:', error);
+        window.FALLBACK_CARDS = [
+            {
+                id: "EMERGENCY",
+                name: "Аварийная карта",
+                symbol: "⚠️", 
+                meaning: "Приложение запущено в аварийном режиме",
+                type: "Системная"
+            }
+        ];
+
         return false;
     }
 }
 
-// 🔄 ФОЛЛБЭК КОНФИГУРАЦИЯ (если API недоступен)
-function loadFallbackConfig() {
-    console.log('⚠️ Используется фоллбэк конфигурация');
+// 🔍 ФУНКЦИИ ДЛЯ ПОЛУЧЕНИЯ КОНФИГУРАЦИИ (с проверками)
+function getSupabaseConfig() {
+    if (!window.SUPABASE_CONFIG) {
+        console.warn('⚠️ SUPABASE_CONFIG не инициализирован');
+        return null;
+    }
+    return window.SUPABASE_CONFIG;
+}
+
+function getAPIConfig() {
+    if (!window.API_CONFIG) {
+        console.warn('⚠️ API_CONFIG не инициализирован');
+        return null;
+    }
+    return window.API_CONFIG;
+}
+
+function getAppConfig() {
+    if (!window.APP_CONFIG) {
+        console.warn('⚠️ APP_CONFIG не инициализирован');
+        return null;
+    }
+    return window.APP_CONFIG;
+}
+
+// 🧪 ФУНКЦИЯ ДЛЯ ОТЛАДКИ КОНФИГУРАЦИИ
+function debugConfig() {
+    console.log('🔧 Состояние конфигурации:', {
+        supabase: !!window.SUPABASE_CONFIG,
+        api: !!window.API_CONFIG,
+        app: !!window.APP_CONFIG,
+        tables: !!window.TABLES,
+        telegram: !!window.TELEGRAM_CONFIG,
+        fallbackCards: window.FALLBACK_CARDS ? window.FALLBACK_CARDS.length : 0,
+        spreads: window.SPREADS_CONFIG ? Object.keys(window.SPREADS_CONFIG).length : 0
+    });
     
-    SUPABASE_CONFIG = {
-        url: 'https://your-fallback-project.supabase.co',
-        anonKey: 'your-fallback-anon-key'
-    };
-    
-    API_CONFIG = {
-        cardsUrl: 'https://raw.githubusercontent.com/YOUR_USERNAME/tarot-web-app/main/cards.json',
-        cardsFallbackUrl: 'https://cdn.jsdelivr.net/gh/YOUR_USERNAME/tarot-web-app@main/cards.json',
-        cardsLocalFallback: './cards.json',
-        paymentUrl: 'https://digital.wildberries.ru/offer/491728',
-        requestTimeout: 15000,
-        cacheTimeout: 24 * 60 * 60 * 1000,
-        maxRetries: 3,
-        retryDelay: 2000
-    };
-    
-    APP_CONFIG = {
-        freeQuestionsLimit: 3,
-        premiumPrice: 299,
-        premiumDuration: 30,
-        sessionTimeout: 24 * 60 * 60 * 1000,
-        typewriterSpeed: 30,
-        cardFlipDuration: 500,
-        sparkleCount: 5,
-        loadingDelay: 2000,
-        enableCaching: true,
-        cacheVersion: '2.0',
-        maxHistoryItems: 100,
-        maxCacheSize: 5 * 1024 * 1024,
-        texts: {
-            welcome: 'Добро пожаловать в мистический мир карт Таро 🔮',
-            noQuestions: 'Пожалуйста, задайте вопрос',
-            questionsEnded: 'У вас закончились бесплатные вопросы. Оформите премиум для неограниченного доступа!',
-            generating: 'Генерирую персональное предсказание...',
-            cardsThinking: 'Карты размышляют... 🃏',
-            cardsWhispering: 'Карты шепчут тайны... ✨',
-            cardDrawn: 'Карта вытянута! Узнайте что она означает...',
-            loadingCards: 'Загружаю колоду карт...',
-            cardsReady: 'Карты готовы к предсказанию!',
-            connectionError: 'Проблема с подключением. Проверьте интернет.',
-            tryAgain: 'Попробуйте еще раз'
-        },
-        notifications: {
-            cardsCached: '🃏 Карты обновлены!',
-            historyCleared: '📝 История очищена',
-            dataShared: '📤 Данные отправлены в бота',
-            error: '❌ Произошла ошибка',
-            success: '✅ Операция выполнена успешно'
-        }
+    return {
+        initialized: !!(window.SUPABASE_CONFIG && window.API_CONFIG && window.APP_CONFIG),
+        timestamp: new Date().toISOString()
     };
 }
 
-// 🚀 ИНИЦИАЛИЗАЦИЯ КОНФИГУРАЦИИ
-async function initializeConfig() {
-    const configLoaded = await loadConfigFromAPI();
+// 🔄 ПЕРЕЗАГРУЗКА КОНФИГУРАЦИИ
+async function reloadConfig() {
+    console.log('🔄 Перезагрузка конфигурации...');
     
-    if (!configLoaded) {
-        loadFallbackConfig();
-    }
+    // Очищаем существующую конфигурацию
+    delete window.SUPABASE_CONFIG;
+    delete window.API_CONFIG;
+    delete window.APP_CONFIG;
+    delete window.TABLES;
+    delete window.TELEGRAM_CONFIG;
+    delete window.FALLBACK_CARDS;
+    delete window.SPREADS_CONFIG;
     
-    // Добавляем статические данные, которые не меняются
-    window.TABLES = {
-        userProfiles: 'tarot_user_profiles',
-        questions: 'tarot_questions',
-        answers: 'tarot_answers',
-        dailyCards: 'tarot_daily_cards',
-        spreads: 'tarot_spreads',
-        reviews: 'tarot_reviews'
-    };
-    
-    window.FALLBACK_CARDS = [
-        {
-            id: "FB_0",
-            name: "Загадочная карта",
-            symbol: "🔮",
-            meaningUpright: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
-            meaningReversed: "Возможно, стоит попробовать позже.",
-            meaning: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
-            image: "./images/cards/default.jpg",
-            type: "Фоллбэк",
-            element: "Эфир"
-        },
-        {
-            id: "FB_1",
-            name: "Маг",
-            symbol: "⚡",
-            meaningUpright: "Сила воли, мастерство, концентрация. У вас есть все необходимое для достижения целей.",
-            meaningReversed: "Злоупотребление силой, самообман, недостаток энергии.",
-            meaning: "Сила воли, мастерство, концентрация.",
-            image: "./images/cards/magician.jpg",
-            type: "Старшие Арканы",
-            element: "Воздух"
-        }
-    ];
-    
-    window.SPREADS_CONFIG = {
-        threeCard: {
-            name: 'Прошлое-Настоящее-Будущее',
-            description: 'Классический расклад для понимания ситуации',
-            cardCount: 3,
-            positions: [
-                { name: 'Прошлое', description: 'Что привело к текущей ситуации' },
-                { name: 'Настоящее', description: 'Текущее состояние дел' },
-                { name: 'Будущее', description: 'Возможное развитие событий' }
-            ]
-        },
-        celticCross: {
-            name: 'Кельтский крест',
-            description: 'Подробный анализ ситуации',
-            cardCount: 5,
-            positions: [
-                { name: 'Суть вопроса', description: 'Основа ситуации' },
-                { name: 'Препятствие', description: 'Что мешает или помогает' },
-                { name: 'Прошлое', description: 'Корни ситуации' },
-                { name: 'Возможное будущее', description: 'Вероятный исход' },
-                { name: 'Совет', description: 'Рекомендация карт' }
-            ]
-        }
-    };
-    
-    // Делаем конфигурацию доступной глобально
-    window.SUPABASE_CONFIG = SUPABASE_CONFIG;
-    window.API_CONFIG = API_CONFIG;
-    window.APP_CONFIG = APP_CONFIG;
-    
-    console.log('🔧 Конфигурация инициализирована');
-    return true;
+    // Инициализируем заново
+    return await initializeConfig();
+}
+
+// 📋 ПРОВЕРКА ГОТОВНОСТИ КОНФИГУРАЦИИ
+function isConfigReady() {
+    return !!(
+        window.SUPABASE_CONFIG &&
+        window.API_CONFIG &&
+        window.APP_CONFIG &&
+        window.FALLBACK_CARDS
+    );
 }
 
 // 🛠️ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -234,517 +295,147 @@ function getGitHubRepoFromUrl(url) {
         const match = url.match(/github\.com\/([^\/]+\/[^\/]+)/);
         return match ? match[1] : 'YOUR_USERNAME/tarot-web-app';
     } catch (error) {
+        console.warn('⚠️ Ошибка парсинга GitHub URL:', error);
         return 'YOUR_USERNAME/tarot-web-app';
     }
 }
 
-// 🔍 ФУНКЦИИ ДЛЯ ПОЛУЧЕНИЯ КОНФИГУРАЦИИ
-function getSupabaseConfig() {
-    return SUPABASE_CONFIG;
+function validateURL(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
-function getAPIConfig() {
-    return API_CONFIG;
+// 🔐 БЕЗОПАСНОЕ ПОЛУЧЕНИЕ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ
+function getEnvVar(name, defaultValue = '') {
+    try {
+        // Пытаемся получить из process.env (если доступно)
+        if (typeof process !== 'undefined' && process.env && process.env[name]) {
+            return process.env[name];
+        }
+        
+        // Пытаемся получить из глобальных переменных
+        if (typeof window !== 'undefined' && window[name]) {
+            return window[name];
+        }
+        
+        // Возвращаем значение по умолчанию
+        return defaultValue;
+    } catch (error) {
+        console.warn(`⚠️ Ошибка получения переменной ${name}:`, error);
+        return defaultValue;
+    }
 }
 
-function getAppConfig() {
-    return APP_CONFIG;
+// 📊 СТАТИСТИКА КОНФИГУРАЦИИ
+function getConfigStats() {
+    return {
+        totalConfigs: 6,
+        loadedConfigs: [
+            !!window.SUPABASE_CONFIG,
+            !!window.API_CONFIG,
+            !!window.APP_CONFIG,
+            !!window.TABLES,
+            !!window.TELEGRAM_CONFIG,
+            !!window.FALLBACK_CARDS
+        ].filter(Boolean).length,
+        fallbackCardsCount: window.FALLBACK_CARDS ? window.FALLBACK_CARDS.length : 0,
+        spreadsCount: window.SPREADS_CONFIG ? Object.keys(window.SPREADS_CONFIG).length : 0,
+        lastInitialized: new Date().toISOString()
+    };
 }
 
-// 🧪 ФУНКЦИЯ ДЛЯ ОТЛАДКИ
-function debugConfig() {
-    console.log('🔧 Текущая конфигурация:', {
-        supabase: !!SUPABASE_CONFIG,
-        api: !!API_CONFIG,
-        app: !!APP_CONFIG,
-        supabaseUrl: SUPABASE_CONFIG?.url ? 'Настроен' : 'Не настроен',
-        cardsUrl: API_CONFIG?.cardsUrl ? 'Настроен' : 'Не настроен'
-    });
+// 🚨 ЭКСТРЕННОЕ ВОССТАНОВЛЕНИЕ
+function emergencyConfigRecovery() {
+    console.warn('🚨 Запуск экстренного восстановления конфигурации...');
+    
+    try {
+        // Минимально необходимая конфигурация для работы
+        window.APP_CONFIG = {
+            appName: 'Шёпот Карт',
+            version: '1.0.0-emergency',
+            freeQuestionsLimit: 1,
+            texts: {
+                loading: 'Загрузка...',
+                error: 'Ошибка',
+                cardsReady: 'Готово'
+            }
+        };
+
+        window.FALLBACK_CARDS = [
+            {
+                id: "EMERGENCY_1",
+                name: "Звезда Надежды",
+                symbol: "⭐",
+                meaning: "Даже в трудные времена есть свет в конце туннеля",
+                type: "Экстренная"
+            }
+        ];
+
+        window.SPREADS_CONFIG = {
+            simple: {
+                name: 'Простой расклад',
+                description: 'Одна карта на вопрос',
+                cardCount: 1,
+                positions: [{ name: 'Ответ', description: 'Основной ответ на вопрос' }]
+            }
+        };
+
+        console.log('✅ Экстренная конфигурация применена');
+        return true;
+    } catch (error) {
+        console.error('❌ Критическая ошибка экстренного восстановления:', error);
+        return false;
+    }
 }
 
-// Экспорт для использования в других файлах
+// 🔄 АВТОМАТИЧЕСКАЯ ПРОВЕРКА И ВОССТАНОВЛЕНИЕ
+function setupConfigWatchdog() {
+    setInterval(() => {
+        if (!isConfigReady()) {
+            console.warn('⚠️ Конфигурация повреждена, восстанавливаю...');
+            emergencyConfigRecovery();
+        }
+    }, 30000); // Проверка каждые 30 секунд
+}
+
+// 📤 ЭКСПОРТ ДЛЯ ИСПОЛЬЗОВАНИЯ В ДРУГИХ ФАЙЛАХ
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         initializeConfig,
         getSupabaseConfig,
-        getAPIConfig,
+        getAPIConfig, 
         getAppConfig,
-        debugConfig
+        debugConfig,
+        reloadConfig,
+        isConfigReady,
+        getConfigStats,
+        emergencyConfigRecovery,
+        setupConfigWatchdog
     };
 }
 
-// Экспорт функций для глобального доступа
-window.initializeConfig = initializeConfig;
-window.getSupabaseConfig = getSupabaseConfig;
-window.getAPIConfig = getAPIConfig;
-window.getAppConfig = getAppConfig;
-window.debugConfig = debugConfig;
-
-// 📊 НАЗВАНИЯ ТАБЛИЦ В SUPABASE
-const TABLES = {
-    userProfiles: 'tarot_user_profiles',
-    questions: 'tarot_questions', 
-    answers: 'tarot_answers',
-    dailyCards: 'tarot_daily_cards',
-    spreads: 'tarot_spreads',
-    reviews: 'tarot_reviews'
-};
-
-// 🔗 API КОНФИГУРАЦИЯ (публичные endpoints)
-const API_CONFIG = {
-    // n8n вебхуки для бизнес-логики и ИИ-предсказаний
-    generatePrediction: 'https://romanmedn8n.ru/webhook/tarot-prediction',
-    
-    // 🃏 КАРТЫ ТАРО - загрузка с GitHub (публичные URL)
-    cardsUrl: 'https://raw.githubusercontent.com/YOUR_USERNAME/tarot-web-app/main/cards.json',
-    
-    // Резервный URL через jsDelivr CDN для надежности
-    cardsFallbackUrl: 'https://cdn.jsdelivr.net/gh/YOUR_USERNAME/tarot-web-app@main/cards.json',
-    
-    // Локальный фоллбэк (если GitHub недоступен)
-    cardsLocalFallback: './cards.json',
-    
-    // ⚙️ Настройки загрузки карт
-    requestTimeout: 15000, // 15 секунд на запрос
-    cacheTimeout: 24 * 60 * 60 * 1000, // 24 часа кэш
-    maxRetries: 3,
-    retryDelay: 2000,
-    
-    // 💳 URL для оплаты премиум-подписки
-    paymentUrl: 'https://digital.wildberries.ru/offer/491728'
-};
-
-// 📱 TELEGRAM КОНФИГУРАЦИЯ (публичная часть)
-const TELEGRAM_CONFIG = {
-    botUsername: 'YourTarotBot' // Замените на username вашего бота
-    // ⚠️ botToken НЕ должен быть в клиентском коде!
-};
-
-// ⚙️ НАСТРОЙКИ ПРИЛОЖЕНИЯ
-const APP_CONFIG = {
-    // Лимиты и подписка
-    freeQuestionsLimit: 3,
-    premiumPrice: 299,
-    premiumDuration: 30, // дней
-    sessionTimeout: 24 * 60 * 60 * 1000, // 24 часа
-    
-    // Анимации и эффекты
-    typewriterSpeed: 30, // скорость печатного эффекта
-    cardFlipDuration: 500, // длительность переворота карты
-    sparkleCount: 5, // количество блесток
-    loadingDelay: 2000, // задержка имитации "мышления" карт
-    
-    // Настройки кэширования
-    enableCaching: true,
-    cacheVersion: '2.0',
-    maxHistoryItems: 100,
-    maxCacheSize: 5 * 1024 * 1024, // 5MB
-    
-    // Тексты интерфейса
-    texts: {
-        welcome: 'Добро пожаловать в мистический мир карт Таро 🔮',
-        noQuestions: 'Пожалуйста, задайте вопрос',
-        questionsEnded: 'У вас закончились бесплатные вопросы. Оформите премиум для неограниченного доступа!',
-        generating: 'Генерирую персональное предсказание...',
-        cardsThinking: 'Карты размышляют... 🃏',
-        cardsWhispering: 'Карты шепчут тайны... ✨',
-        cardDrawn: 'Карта вытянута! Узнайте что она означает...',
-        loadingCards: 'Загружаю колоду карт...',
-        cardsReady: 'Карты готовы к предсказанию!',
-        connectionError: 'Проблема с подключением. Проверьте интернет.',
-        tryAgain: 'Попробуйте еще раз'
-    },
-    
-    // Уведомления
-    notifications: {
-        cardsCached: '🃏 Карты обновлены!',
-        historyCleared: '📝 История очищена',
-        dataShared: '📤 Данные отправлены в бота',
-        error: '❌ Произошла ошибка',
-        success: '✅ Операция выполнена успешно'
-    }
-};
-
-// 🃏 ФОЛЛБЭК КАРТЫ (на случай проблем с загрузкой)
-const FALLBACK_CARDS = [
-    {
-        id: "FB_0",
-        name: "Загадочная карта",
-        symbol: "🔮",
-        meaningUpright: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
-        meaningReversed: "Возможно, стоит попробовать позже.",
-        meaning: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
-        image: "./images/cards/default.jpg",
-        type: "Фоллбэк",
-        element: "Эфир"
-    },
-    {
-        id: "FB_1",
-        name: "Маг",
-        symbol: "⚡",
-        meaningUpright: "Сила воли, мастерство, концентрация. У вас есть все необходимое для достижения целей.",
-        meaningReversed: "Злоупотребление силой, самообман, недостаток энергии.",
-        meaning: "Сила воли, мастерство, концентрация.",
-        image: "./images/cards/magician.jpg",
-        type: "Старшие Арканы",
-        element: "Воздух"
-    },
-    {
-        id: "FB_2",
-        name: "Верховная Жрица",
-        symbol: "🌙",
-        meaningUpright: "Интуиция, тайны, внутренний голос. Время прислушаться к своей мудрости.",
-        meaningReversed: "Скрытые мотивы, недостаток внутреннего голоса.",
-        meaning: "Интуиция, тайны, внутренний голос.",
-        image: "./images/cards/high_priestess.jpg",
-        type: "Старшие Арканы",
-        element: "Вода"
-    }
-];
-
-// 📋 РАСКЛАДЫ КАРТ
-const SPREADS_CONFIG = {
-    // Простой расклад из 3 карт
-    threeCard: {
-        name: 'Прошлое-Настоящее-Будущее',
-        description: 'Классический расклад для понимания ситуации',
-        cardCount: 3,
-        positions: [
-            { name: 'Прошлое', description: 'Что привело к текущей ситуации' },
-            { name: 'Настоящее', description: 'Текущее состояние дел' },
-            { name: 'Будущее', description: 'Возможное развитие событий' }
-        ]
-    },
-    
-    // Расклад "Кельтский крест" (упрощенный)
-    celticCross: {
-        name: 'Кельтский крест',
-        description: 'Подробный анализ ситуации',
-        cardCount: 5,
-        positions: [
-            { name: 'Суть вопроса', description: 'Основа ситуации' },
-            { name: 'Препятствие', description: 'Что мешает или помогает' },
-            { name: 'Прошлое', description: 'Корни ситуации' },
-            { name: 'Возможное будущее', description: 'Вероятный исход' },
-            { name: 'Совет', description: 'Рекомендация карт' }
-        ]
-    },
-    
-    // Расклад для отношений
-    relationship: {
-        name: 'Расклад отношений',
-        description: 'Анализ отношений между двумя людьми',
-        cardCount: 3,
-        positions: [
-            { name: 'Ваши чувства', description: 'Ваше отношение к ситуации' },
-            { name: 'Чувства партнера', description: 'Отношение другого человека' },
-            { name: 'Перспективы', description: 'Будущее отношений' }
-        ]
-    }
-};
-
-// 🎨 НАСТРОЙКИ ТЕМЫ И СТИЛЕЙ
-const THEME_CONFIG = {
-    colors: {
-        primary: '#6366f1', // Индиго
-        secondary: '#8b5cf6', // Фиолетовый
-        accent: '#f59e0b', // Янтарный
-        background: '#0f0f23', // Темно-синий
-        surface: '#1e1e3f', // Поверхность
-        text: '#e2e8f0', // Светло-серый текст
-        textSecondary: '#94a3b8', // Вторичный текст
-        success: '#10b981', // Зеленый
-        warning: '#f59e0b', // Оранжевый
-        error: '#ef4444', // Красный
-        gold: '#ffd700' // Золотой для премиум
-    },
-    
-    animations: {
-        fast: '200ms',
-        normal: '300ms',
-        slow: '500ms',
-        sparkle: '1000ms',
-        typewriter: '50ms'
-    }
-};
-
-// 🔧 ОТЛАДОЧНЫЕ ФУНКЦИИ (для разработки)
-const DEBUG_CONFIG = {
-    enabled: false, // Включить в development режиме
-    logLevel: 'info', // 'debug', 'info', 'warn', 'error'
-    mockData: false, // Использовать mock данные
-    skipAnimations: false, // Пропускать анимации для тестирования
-    showPerformanceMetrics: false
-};
-
-// 📈 АНАЛИТИКА И МЕТРИКИ
-const ANALYTICS_CONFIG = {
-    enabled: true,
-    trackEvents: [
-        'card_drawn',
-        'question_asked',
-        'spread_completed',
-        'premium_purchased',
-        'app_launched'
-    ],
-    sessionTimeout: 30 * 60 * 1000 // 30 минут
-};
-
-// 🔒 ВАЖНАЯ ИНФОРМАЦИЯ О БЕЗОПАСНОСТИ
-console.log(`
-🔒 БЕЗОПАСНОСТЬ:
-- Все приватные ключи должны быть в Environment Variables на Vercel
-- Service Role Key НЕ должен быть в клиентском коде  
-- Bot Token доступен только серверным функциям
-- Anon Key безопасен для клиентского использования
-`);
-
-// Экспорт для использования в других файлах (если нужно)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        SUPABASE_CONFIG,
-        TABLES,
-        API_CONFIG,
-        TELEGRAM_CONFIG,
-        APP_CONFIG,
-        FALLBACK_CARDS,
-        SPREADS_CONFIG,
-        THEME_CONFIG,
-        DEBUG_CONFIG,
-        ANALYTICS_CONFIG
-    };
+// 🏁 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeConfig().then(success => {
+            if (success) {
+                console.log('🎉 Конфигурация готова к использованию');
+                setupConfigWatchdog();
+            } else {
+                console.warn('⚠️ Конфигурация инициализирована с ошибками');
+                emergencyConfigRecovery();
+            }
+        });
+    });
 }
 
-// 📊 НАЗВАНИЯ ТАБЛИЦ В SUPABASE
-const TABLES = {
-    userProfiles: 'tarot_user_profiles',
-    questions: 'tarot_questions', 
-    answers: 'tarot_answers',
-    dailyCards: 'tarot_daily_cards',
-    spreads: 'tarot_spreads',
-    reviews: 'tarot_reviews'
-};
-
-// 🔗 API КОНФИГУРАЦИЯ
-const API_CONFIG = {
-    // n8n вебхуки для бизнес-логики и ИИ-предсказаний
-    createUser: 'https://romanmedn8n.ru/webhook/tarot-create-user',
-    saveProfile: 'https://romanmedn8n.ru/webhook/tarot-save-profile',
-    getProfile: 'https://romanmedn8n.ru/webhook/tarot-get-profile',
-    saveQuestion: 'https://romanmedn8n.ru/webhook/tarot-save-question',
-    saveAnswer: 'https://romanmedn8n.ru/webhook/tarot-save-answer',
-    saveDailyCard: 'https://romanmedn8n.ru/webhook/tarot-save-daily-card',
-    getHistory: 'https://romanmedn8n.ru/webhook/tarot-get-history',
-    updateSubscription: 'https://romanmedn8n.ru/webhook/tarot-update-subscription',
-    generatePrediction: 'https://romanmedn8n.ru/webhook/tarot-prediction',
-    
-    // 🃏 КАРТЫ ТАРО - загрузка с GitHub (быстро и надежно)
-    cardsUrl: 'https://raw.githubusercontent.com/YOUR_USERNAME/tarot-web-app/main/cards.json',
-    
-    // Резервный URL через jsDelivr CDN для надежности
-    cardsFallbackUrl: 'https://cdn.jsdelivr.net/gh/YOUR_USERNAME/tarot-web-app@main/cards.json',
-    
-    // Локальный фоллбэк (если GitHub недоступен)
-    cardsLocalFallback: './cards.json',
-    
-    // ⚙️ Настройки загрузки карт
-    requestTimeout: 15000, // 15 секунд на запрос
-    cacheTimeout: 24 * 60 * 60 * 1000, // 24 часа кэш
-    maxRetries: 3,
-    retryDelay: 2000,
-    
-    // 💳 URL для оплаты премиум-подписки
-    paymentUrl: 'https://digital.wildberries.ru/offer/491728'
-};
-
-// 📱 TELEGRAM КОНФИГУРАЦИЯ
-const TELEGRAM_CONFIG = {
-    botToken: 'YOUR_BOT_TOKEN', // Замените на токен вашего бота
-    botUsername: 'YourTarotBot' // Замените на username вашего бота
-};
-
-// ⚙️ НАСТРОЙКИ ПРИЛОЖЕНИЯ
-const APP_CONFIG = {
-    // Лимиты и подписка
-    freeQuestionsLimit: 3,
-    premiumPrice: 299,
-    premiumDuration: 30, // дней
-    sessionTimeout: 24 * 60 * 60 * 1000, // 24 часа
-    
-    // Анимации и эффекты
-    typewriterSpeed: 30, // скорость печатного эффекта
-    cardFlipDuration: 500, // длительность переворота карты
-    sparkleCount: 5, // количество блесток
-    loadingDelay: 2000, // задержка имитации "мышления" карт
-    
-    // Настройки кэширования
-    enableCaching: true,
-    cacheVersion: '2.0',
-    maxHistoryItems: 100,
-    maxCacheSize: 5 * 1024 * 1024, // 5MB
-    
-    // Тексты интерфейса
-    texts: {
-        welcome: 'Добро пожаловать в мистический мир карт Таро 🔮',
-        noQuestions: 'Пожалуйста, задайте вопрос',
-        questionsEnded: 'У вас закончились бесплатные вопросы. Оформите премиум для неограниченного доступа!',
-        generating: 'Генерирую персональное предсказание...',
-        cardsThinking: 'Карты размышляют... 🃏',
-        cardsWhispering: 'Карты шепчут тайны... ✨',
-        cardDrawn: 'Карта вытянута! Узнайте что она означает...',
-        loadingCards: 'Загружаю колоду карт...',
-        cardsReady: 'Карты готовы к предсказанию!',
-        connectionError: 'Проблема с подключением. Проверьте интернет.',
-        tryAgain: 'Попробуйте еще раз'
-    },
-    
-    // Уведомления
-    notifications: {
-        cardsCached: '🃏 Карты обновлены!',
-        historyCleared: '📝 История очищена',
-        dataShared: '📤 Данные отправлены в бота',
-        error: '❌ Произошла ошибка',
-        success: '✅ Операция выполнена успешно'
-    }
-};
-
-// 🃏 ФОЛЛБЭК КАРТЫ (на случай проблем с загрузкой)
-const FALLBACK_CARDS = [
-    {
-        id: "FB_0",
-        name: "Загадочная карта",
-        symbol: "🔮",
-        meaningUpright: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
-        meaningReversed: "Возможно, стоит попробовать позже.",
-        meaning: "Карты временно недоступны, но энергия Вселенной все равно с вами.",
-        image: "./images/cards/default.jpg",
-        type: "Фоллбэк",
-        element: "Эфир"
-    },
-    {
-        id: "FB_1",
-        name: "Маг",
-        symbol: "⚡",
-        meaningUpright: "Сила воли, мастерство, концентрация. У вас есть все необходимое для достижения целей.",
-        meaningReversed: "Злоупотребление силой, самообман, недостаток энергии.",
-        meaning: "Сила воли, мастерство, концентрация.",
-        image: "./images/cards/magician.jpg",
-        type: "Старшие Арканы",
-        element: "Воздух"
-    },
-    {
-        id: "FB_2",
-        name: "Верховная Жрица",
-        symbol: "🌙",
-        meaningUpright: "Интуиция, тайны, внутренний голос. Время прислушаться к своей мудрости.",
-        meaningReversed: "Скрытые мотивы, недостаток внутреннего голоса.",
-        meaning: "Интуиция, тайны, внутренний голос.",
-        image: "./images/cards/high_priestess.jpg",
-        type: "Старшие Арканы",
-        element: "Вода"
-    }
-];
-
-// 📋 РАСКЛАДЫ КАРТ
-const SPREADS_CONFIG = {
-    // Простой расклад из 3 карт
-    threeCard: {
-        name: 'Прошлое-Настоящее-Будущее',
-        description: 'Классический расклад для понимания ситуации',
-        cardCount: 3,
-        positions: [
-            { name: 'Прошлое', description: 'Что привело к текущей ситуации' },
-            { name: 'Настоящее', description: 'Текущее состояние дел' },
-            { name: 'Будущее', description: 'Возможное развитие событий' }
-        ]
-    },
-    
-    // Расклад "Кельтский крест" (упрощенный)
-    celticCross: {
-        name: 'Кельтский крест',
-        description: 'Подробный анализ ситуации',
-        cardCount: 5,
-        positions: [
-            { name: 'Суть вопроса', description: 'Основа ситуации' },
-            { name: 'Препятствие', description: 'Что мешает или помогает' },
-            { name: 'Прошлое', description: 'Корни ситуации' },
-            { name: 'Возможное будущее', description: 'Вероятный исход' },
-            { name: 'Совет', description: 'Рекомендация карт' }
-        ]
-    },
-    
-    // Расклад для отношений
-    relationship: {
-        name: 'Расклад отношений',
-        description: 'Анализ отношений между двумя людьми',
-        cardCount: 3,
-        positions: [
-            { name: 'Ваши чувства', description: 'Ваше отношение к ситуации' },
-            { name: 'Чувства партнера', description: 'Отношение другого человека' },
-            { name: 'Перспективы', description: 'Будущее отношений' }
-        ]
-    }
-};
-
-// 🎨 НАСТРОЙКИ ТЕМЫ И СТИЛЕЙ
-const THEME_CONFIG = {
-    colors: {
-        primary: '#6366f1', // Индиго
-        secondary: '#8b5cf6', // Фиолетовый
-        accent: '#f59e0b', // Янтарный
-        background: '#0f0f23', // Темно-синий
-        surface: '#1e1e3f', // Поверхность
-        text: '#e2e8f0', // Светло-серый текст
-        textSecondary: '#94a3b8', // Вторичный текст
-        success: '#10b981', // Зеленый
-        warning: '#f59e0b', // Оранжевый
-        error: '#ef4444', // Красный
-        gold: '#ffd700' // Золотой для премиум
-    },
-    
-    animations: {
-        fast: '200ms',
-        normal: '300ms',
-        slow: '500ms',
-        sparkle: '1000ms',
-        typewriter: '50ms'
-    }
-};
-
-// 🔧 ОТЛАДОЧНЫЕ ФУНКЦИИ (для разработки)
-const DEBUG_CONFIG = {
-    enabled: false, // Включить в development режиме
-    logLevel: 'info', // 'debug', 'info', 'warn', 'error'
-    mockData: false, // Использовать mock данные
-    skipAnimations: false, // Пропускать анимации для тестирования
-    showPerformanceMetrics: false
-};
-
-// 📈 АНАЛИТИКА И МЕТРИКИ
-const ANALYTICS_CONFIG = {
-    enabled: true,
-    trackEvents: [
-        'card_drawn',
-        'question_asked',
-        'spread_completed',
-        'premium_purchased',
-        'app_launched'
-    ],
-    sessionTimeout: 30 * 60 * 1000 // 30 минут
-};
-
-// Экспорт для использования в других файлах (если нужно)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        SUPABASE_CONFIG,
-        TABLES,
-        API_CONFIG,
-        TELEGRAM_CONFIG,
-        APP_CONFIG,
-        FALLBACK_CARDS,
-        SPREADS_CONFIG,
-        THEME_CONFIG,
-        DEBUG_CONFIG,
-        ANALYTICS_CONFIG
-    };
+// 🔧 ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ ОТЛАДКИ
+if (typeof window !== 'undefined') {
+    window.debugTarotConfig = debugConfig;
+    window.reloadTarotConfig = reloadConfig;
+    window.getTarotConfigStats = getConfigStats;
 }
