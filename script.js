@@ -57,12 +57,12 @@ async function initApp() {
     }
 }
 
-// ⏳ ОЖИДАНИЕ ГОТОВНОСТИ КОНФИГУРАЦИИ
+// ⏰ ОЖИДАНИЕ ГОТОВНОСТИ КОНФИГУРАЦИИ
 async function waitForConfig() {
-    console.log('⏳ Ожидание готовности конфигурации...');
+    console.log('⏰ Ожидание готовности конфигурации...');
     
-    const maxAttempts = 50;
     let attempts = 0;
+    const maxAttempts = 50; // 5 секунд максимум
     
     while (attempts < maxAttempts) {
         if (window.isConfigReady && window.isConfigReady()) {
@@ -70,38 +70,37 @@ async function waitForConfig() {
             return;
         }
         
-        attempts++;
         await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
     }
     
-    throw new Error('Таймаут ожидания конфигурации');
+    console.warn('⚠️ Конфигурация не загружена за 5 секунд, продолжаем...');
 }
 
-// 🔗 ИНИЦИАЛИЗАЦИЯ SUPABASE
+// 🔧 ИНИЦИАЛИЗАЦИЯ SUPABASE
 async function initSupabase() {
+    console.log('🔧 Инициализация Supabase...');
+    
     try {
-        const config = window.getSupabaseConfig();
-        
-        if (!config || !config.url || !config.anonKey) {
-            console.warn('⚠️ Supabase конфигурация недоступна, работаем без БД');
+        // Проверяем наличие библиотеки Supabase
+        if (typeof window.supabase === 'undefined') {
+            console.warn('⚠️ Библиотека Supabase не загружена');
             return false;
         }
         
-        if (!window.supabase || !window.supabase.createClient) {
-            console.warn('⚠️ Supabase библиотека не загружена');
-            return false;
-        }
-        
-        supabase = window.supabase.createClient(config.url, config.anonKey, {
-            auth: {
-                autoRefreshToken: true,
-                persistSession: true,
-                detectSessionInUrl: false
+        // Инициализируем через глобальную функцию
+        if (window.initSupabase && typeof window.initSupabase === 'function') {
+            const success = window.initSupabase();
+            if (success) {
+                // Получаем инициализированный клиент
+                supabase = window.supabaseClient || null;
+                console.log('✅ Supabase инициализирован');
+                return true;
             }
-        });
+        }
         
-        console.log('✅ Supabase клиент инициализирован');
-        return true;
+        console.warn('⚠️ Не удалось инициализировать Supabase');
+        return false;
         
     } catch (error) {
         console.error('❌ Ошибка инициализации Supabase:', error);
@@ -111,160 +110,154 @@ async function initSupabase() {
 
 // 📱 ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP
 function initTelegramWebApp() {
+    console.log('📱 Инициализация Telegram WebApp...');
+    
     try {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             
-            // Настраиваем Telegram WebApp
-            tg.ready();
+            // Настройка темы
+            tg.setHeaderColor('#1a1a2e');
+            tg.setBackgroundColor('#16213e');
+            
+            // Расширяем приложение
             tg.expand();
             
-            // Настраиваем тему
-            document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#1a1a2e');
-            document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#ffffff');
+            // Готовность к отображению
+            tg.ready();
             
             console.log('✅ Telegram WebApp инициализирован');
-            console.log('👤 Данные пользователя:', tg.initDataUnsafe?.user);
             
+            // Сохраняем информацию о пользователе
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                console.log('👤 Пользователь Telegram найден:', tg.initDataUnsafe.user);
+                return tg.initDataUnsafe.user;
+            }
         } else {
-            console.log('⚠️ Telegram WebApp недоступен (возможно, открыто не в Telegram)');
+            console.warn('⚠️ Telegram WebApp недоступен');
         }
+        
+        return null;
         
     } catch (error) {
         console.error('❌ Ошибка инициализации Telegram WebApp:', error);
+        return null;
     }
 }
 
 // 👤 ИНИЦИАЛИЗАЦИЯ ПОЛЬЗОВАТЕЛЯ
 async function initUser() {
+    console.log('👤 Инициализация пользователя...');
+    
     try {
-        // Получаем данные пользователя из Telegram
-        const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+        const telegramUser = initTelegramWebApp();
         
         if (telegramUser) {
-            console.log('👤 Telegram пользователь найден:', telegramUser);
+            currentUser = telegramUser;
             
-            // Если есть Supabase, пытаемся создать/получить профиль
-            if (supabase) {
-                currentUser = await createOrGetUserProfile(telegramUser);
-            }
-            
-            // Если профиль создан/получен, обновляем состояние
-            if (currentUser) {
-                appState.questionsLeft = currentUser.questions_left || 3;
-                appState.isPremium = currentUser.is_premium || false;
-            }
-        } else {
-            console.log('⚠️ Telegram пользователь не найден, работаем в гостевом режиме');
-            
-            // Пытаемся загрузить данные из localStorage
-            const localData = localStorage.getItem('tarot_user_data');
-            if (localData) {
-                const userData = JSON.parse(localData);
-                appState.questionsLeft = userData.questionsLeft || 3;
-                appState.isPremium = userData.isPremium || false;
+            // Загружаем или создаем профиль пользователя
+            if (supabase && window.createOrGetUserProfile) {
+                const userProfile = await window.createOrGetUserProfile(telegramUser);
+                if (userProfile) {
+                    // Обновляем состояние приложения данными из профиля
+                    appState.questionsLeft = userProfile.questions_left || 3;
+                    appState.isPremium = userProfile.is_premium || false;
+                }
             }
         }
         
-        console.log('✅ Пользователь инициализирован');
+        // Загружаем данные из localStorage
+        loadUserData();
+        
+        console.log('✅ Пользователь инициализирован:', currentUser);
         
     } catch (error) {
         console.error('❌ Ошибка инициализации пользователя:', error);
-        
-        // Fallback к localStorage
-        const localData = localStorage.getItem('tarot_user_data');
-        if (localData) {
-            const userData = JSON.parse(localData);
-            appState.questionsLeft = userData.questionsLeft || 3;
-            appState.isPremium = userData.isPremium || false;
-        }
     }
 }
 
-// 👤 СОЗДАНИЕ ИЛИ ПОЛУЧЕНИЕ ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ
-async function createOrGetUserProfile(telegramUser) {
-    if (!supabase) return null;
-    
+// 💾 ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+function loadUserData() {
     try {
-        const tables = window.getTablesConfig();
-        if (!tables) return null;
-        
-        // Ищем существующего пользователя по telegram_user_id
-        const { data: existingUser, error: searchError } = await supabase
-            .from(tables.userProfiles)
-            .select('*')
-            .eq('telegram_user_id', telegramUser.id)
-            .single();
-            
-        if (existingUser && !searchError) {
-            console.log('✅ Существующий пользователь найден');
-            return existingUser;
+        const userData = localStorage.getItem('tarot_user_data');
+        if (userData) {
+            const parsed = JSON.parse(userData);
+            appState.questionsLeft = parsed.questionsLeft || 3;
+            appState.isPremium = parsed.isPremium || false;
         }
         
-        // Создаем нового пользователя
-        const newUserData = {
-            telegram_user_id: telegramUser.id,
-            first_name: telegramUser.first_name,
-            last_name: telegramUser.last_name || null,
-            username: telegramUser.username || null,
-            display_name: telegramUser.first_name,
-            questions_left: 3,
-            is_premium: false,
-            created_at: new Date().toISOString()
-        };
-        
-        const { data: newUser, error: createError } = await supabase
-            .from(tables.userProfiles)
-            .insert([newUserData])
-            .select()
-            .single();
-            
-        if (createError) {
-            console.error('❌ Ошибка создания пользователя:', createError);
-            return null;
-        }
-        
-        console.log('✅ Новый пользователь создан');
-        return newUser;
+        console.log('💾 Данные пользователя загружены:', appState);
         
     } catch (error) {
-        console.error('❌ Ошибка работы с профилем пользователя:', error);
-        return null;
+        console.error('❌ Ошибка загрузки данных пользователя:', error);
     }
 }
 
-// 🔗 НАСТРОЙКА ОБРАБОТЧИКОВ СОБЫТИЙ
+// 🎛️ НАСТРОЙКА ОБРАБОТЧИКОВ СОБЫТИЙ
 function setupEventListeners() {
-    console.log('🔗 Настройка обработчиков событий...');
+    console.log('🎛️ Настройка обработчиков событий...');
     
-    // Обработчики табов
-    setupTabEventListeners();
+    // Навигационные табы
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tab = e.target.dataset.tab;
+            if (tab) switchTab(tab);
+        });
+    });
     
-    // Обработчик карты дня
+    // Карта дня
     const dailyCard = document.getElementById('daily-card');
     if (dailyCard) {
         dailyCard.addEventListener('click', handleDailyCardClick);
     }
     
-    // Обработчик кнопки вопроса
+    // Кнопка задать вопрос
     const askBtn = document.getElementById('ask-btn');
     if (askBtn) {
         askBtn.addEventListener('click', handleAskQuestion);
     }
     
-    // Обработчик уточняющего вопроса
+    // Кнопка дополнительного вопроса
     const followUpBtn = document.getElementById('follow-up-btn');
     if (followUpBtn) {
         followUpBtn.addEventListener('click', handleFollowUpQuestion);
     }
     
-    // Обработчик Premium кнопки
-    const buyPremiumBtn = document.getElementById('buy-premium-btn');
-    if (buyPremiumBtn) {
-        buyPremiumBtn.addEventListener('click', handleBuyPremium);
+    // Кнопки премиума
+    const premiumBtns = document.querySelectorAll('.premium-btn, .buy-premium-btn');
+    premiumBtns.forEach(btn => {
+        btn.addEventListener('click', handleBuyPremium);
+    });
+    
+    // Расклады
+    const spreadCards = document.querySelectorAll('.spread-card');
+    spreadCards.forEach(card => {
+        card.addEventListener('click', (e) => {
+            const spreadType = e.currentTarget.dataset.spread;
+            if (spreadType) selectSpread(spreadType);
+        });
+    });
+    
+    // Рейтинг
+    const ratingStars = document.querySelectorAll('.rating-star');
+    ratingStars.forEach((star, index) => {
+        star.addEventListener('click', () => handleRatingClick(index + 1));
+    });
+    
+    // Отправка отзыва
+    const reviewForm = document.getElementById('review-form');
+    if (reviewForm) {
+        reviewForm.addEventListener('submit', handleSubmitReview);
     }
     
-    // Обработчики модального окна профиля
+    // Очистка истории
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', handleClearHistory);
+    }
+    
+    // Модальное окно профиля
     const profileForm = document.getElementById('profile-form');
     if (profileForm) {
         profileForm.addEventListener('submit', handleSaveProfile);
@@ -275,305 +268,280 @@ function setupEventListeners() {
         skipProfileBtn.addEventListener('click', skipProfile);
     }
     
-    // Обработчики раскладов
-    document.querySelectorAll('.spread-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const spreadType = this.getAttribute('data-spread');
-            selectSpread(spreadType);
-        });
-    });
-    
-    // Обработчики баннеров
-    document.querySelectorAll('.banner-buttons .btn, .btn[data-tab]').forEach(button => {
-        button.addEventListener('click', function() {
-            const tab = this.getAttribute('data-tab');
-            if (tab) switchTab(tab);
-        });
-    });
-    
-    // Обработчик очистки истории
-    const clearHistoryBtn = document.getElementById('clear-history-btn');
-    if (clearHistoryBtn) {
-        clearHistoryBtn.addEventListener('click', handleClearHistory);
-    }
-    
-    // Обработчик отправки отзыва
-    const submitReviewBtn = document.getElementById('submit-review-btn');
-    if (submitReviewBtn) {
-        submitReviewBtn.addEventListener('click', handleSubmitReview);
-    }
-    
-    // Обработчик звезд рейтинга
-    const ratingStars = document.getElementById('rating-stars');
-    if (ratingStars) {
-        ratingStars.addEventListener('click', handleRatingClick);
-    }
-    
-    // Обработчик кнопки "Назад" в раскладах
-    const backToSpreadsBtn = document.getElementById('back-to-spreads');
-    if (backToSpreadsBtn) {
-        backToSpreadsBtn.addEventListener('click', function() {
-            document.getElementById('spread-detail').style.display = 'none';
-            document.querySelectorAll('.spreads-grid .spread-card').forEach(card => {
-                card.style.display = 'block';
-            });
-        });
-    }
-    
-    // Обработчики для ввода по Enter
-    const questionInput = document.getElementById('question-input');
-    if (questionInput) {
-        questionInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                handleAskQuestion();
-            }
-        });
-    }
-    
-    const followupInput = document.getElementById('followup-input');
-    if (followupInput) {
-        followupInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                handleFollowUpQuestion();
-            }
-        });
-    }
-    
     console.log('✅ Обработчики событий настроены');
 }
 
-// 🔗 НАСТРОЙКА ОБРАБОТЧИКОВ ТАБОВ
-function setupTabEventListeners() {
-    const navTabs = document.querySelectorAll('.nav-tab');
+// 🎯 ПЕРЕКЛЮЧЕНИЕ ТАБОВ
+function switchTab(tabName) {
+    console.log('🎯 Переключение на таб:', tabName);
     
-    navTabs.forEach(tab => {
-        tab.addEventListener('click', function(e) {
-            e.preventDefault();
-            const tabName = this.getAttribute('data-tab');
-            if (tabName) {
-                switchTab(tabName);
-            }
-        });
+    // Обновляем состояние
+    appState.currentTab = tabName;
+    
+    // Скрываем все секции
+    const sections = document.querySelectorAll('.tab-section');
+    sections.forEach(section => section.classList.remove('active'));
+    
+    // Показываем выбранную секцию
+    const targetSection = document.getElementById(`${tabName}-section`);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+    
+    // Обновляем активные табы
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    
+    // Специальная логика для табов
+    if (tabName === 'daily') {
+        checkTodayCard();
+    } else if (tabName === 'history') {
+        loadUserHistory();
+    } else if (tabName === 'reviews') {
+        loadReviews();
+    }
+    
+    updateUI();
+}
+
+// 🖼️ ОБНОВЛЕНИЕ UI
+function updateUI() {
+    console.log('🖼️ Обновление UI...');
+    
+    // Обновляем счетчик вопросов
+    const questionsLeftEl = document.querySelectorAll('.questions-left');
+    questionsLeftEl.forEach(el => {
+        el.textContent = appState.questionsLeft;
+    });
+    
+    // Обновляем статус премиума
+    const premiumElements = document.querySelectorAll('.premium-status');
+    premiumElements.forEach(el => {
+        el.textContent = appState.isPremium ? 'Премиум активен' : 'Базовая версия';
+        el.className = `premium-status ${appState.isPremium ? 'premium' : 'basic'}`;
+    });
+    
+    // Показываем/скрываем кнопки премиума
+    const premiumBtns = document.querySelectorAll('.buy-premium-btn');
+    premiumBtns.forEach(btn => {
+        btn.style.display = appState.isPremium ? 'none' : 'block';
+    });
+    
+    // Обновляем лимиты
+    const limitWarnings = document.querySelectorAll('.limit-warning');
+    limitWarnings.forEach(warning => {
+        const shouldShow = !appState.isPremium && appState.questionsLeft <= 1;
+        warning.style.display = shouldShow ? 'block' : 'none';
     });
 }
 
-// 🔄 ПЕРЕКЛЮЧЕНИЕ ТАБОВ
-function switchTab(tabName) {
-    try {
-        console.log(`🔄 Переключение на таб: ${tabName}`);
-        
-        appState.currentTab = tabName;
-        
-        // Убираем активный класс у всех табов
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        
-        // Добавляем активный класс текущему табу
-        const currentTab = document.querySelector(`[data-tab="${tabName}"]`);
-        if (currentTab) {
-            currentTab.classList.add('active');
-        }
-        
-        // Скрываем все контенты табов
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-            content.style.display = 'none';
-        });
-        
-        // Показываем нужный контент
-        const targetContent = document.getElementById(`${tabName}-tab`);
-        if (targetContent) {
-            targetContent.classList.add('active');
-            targetContent.style.display = 'block';
-        }
-        
-        // Выполняем специфичную логику для таба
-        handleTabSpecificLogic(tabName);
-        
-        // Расширяем WebApp при переключении
-        if (window.Telegram?.WebApp) {
-            window.Telegram.WebApp.expand();
-        }
-        
-    } catch (error) {
-        console.error(`❌ Ошибка переключения таба ${tabName}:`, error);
-    }
-}
-
-// 🎯 ЛОГИКА ДЛЯ КОНКРЕТНЫХ ТАБОВ
-function handleTabSpecificLogic(tabName) {
-    switch (tabName) {
-        case 'daily':
-            handleDailyTab();
-            break;
-        case 'question':
-            handleQuestionTab();
-            break;
-        case 'spreads':
-            handleSpreadsTab();
-            break;
-        case 'history':
-            handleHistoryTab();
-            break;
-        case 'reviews':
-            handleReviewsTab();
-            break;
-        case 'premium':
-            handlePremiumTab();
-            break;
-    }
-}
-
-// 📅 ЛОГИКА ТАБА "КАРТА ДНЯ"
-function handleDailyTab() {
-    console.log('📅 Обработка таба "Карта дня"');
-    checkTodayCard();
-}
-
-// ❓ ЛОГИКА ТАБА "ВОПРОС"
-function handleQuestionTab() {
-    console.log('❓ Обработка таба "Вопрос"');
-    updateQuestionsCounter();
-    
-    // Показываем/скрываем баннер подписки
-    const subscriptionBanner = document.getElementById('subscription-banner-question');
-    if (subscriptionBanner) {
-        if (!appState.isPremium && appState.questionsLeft <= 0) {
-            subscriptionBanner.style.display = 'block';
-        } else {
-            subscriptionBanner.style.display = 'none';
-        }
-    }
-    
-    // Скрываем секции ответов при переходе на таб
-    const firstAnswerSection = document.getElementById('first-answer-section');
-    const followUpSection = document.getElementById('follow-up-section');
-    const followupAnswerSection = document.getElementById('followup-answer-section');
-    
-    if (firstAnswerSection) firstAnswerSection.style.display = 'none';
-    if (followUpSection) followUpSection.style.display = 'none';
-    if (followupAnswerSection) followupAnswerSection.style.display = 'none';
-}
-
-// 🃏 ЛОГИКА ТАБА "РАСКЛАДЫ"
-function handleSpreadsTab() {
-    console.log('🃏 Обработка таба "Расклады"');
-    
-    if (!appState.isPremium) {
-        showPremiumRequired('spreads');
-    }
-    
-    // Скрываем детали расклада
-    const spreadDetail = document.getElementById('spread-detail');
-    if (spreadDetail) {
-        spreadDetail.style.display = 'none';
-    }
-}
-
-// 📖 ЛОГИКА ТАБА "ИСТОРИЯ"
-function handleHistoryTab() {
-    console.log('📖 Обработка таба "История"');
-    loadUserHistory();
-}
-
-// ⭐ ЛОГИКА ТАБА "ОТЗЫВЫ"
-function handleReviewsTab() {
-    console.log('⭐ Обработка таба "Отзывы"');
-    loadReviews();
-}
-
-// 👑 ЛОГИКА ТАБА "PREMIUM"
-function handlePremiumTab() {
-    console.log('👑 Обработка таба "Premium"');
-    // Дополнительная логика для Premium таба
-}
-
-// 🔄 ОБНОВЛЕНИЕ UI
-function updateUI() {
-    // Обновляем счетчик вопросов
-    updateQuestionsCounter();
-    
-    // Обновляем статус подписки
-    updateSubscriptionStatus();
-}
-
-// 🔢 ОБНОВЛЕНИЕ СЧЕТЧИКА ВОПРОСОВ
-function updateQuestionsCounter() {
-    const questionsCount = document.getElementById('questions-count');
-    if (questionsCount) {
-        questionsCount.textContent = appState.questionsLeft;
-    }
-}
-
-// 💳 ОБНОВЛЕНИЕ СТАТУСА ПОДПИСКИ
-function updateSubscriptionStatus() {
-    const statusElement = document.getElementById('subscription-status');
-    if (statusElement) {
-        const icon = statusElement.querySelector('.status-icon');
-        const text = statusElement.querySelector('.status-text');
-        
-        if (appState.isPremium) {
-            if (icon) icon.textContent = '👑';
-            if (text) text.textContent = 'Premium';
-            statusElement.classList.add('premium');
-        } else {
-            if (icon) icon.textContent = '🌑';
-            if (text) text.textContent = 'Базовая версия';
-            statusElement.classList.remove('premium');
-        }
-    }
-}
-
-// 🃏 ОБРАБОТЧИК КЛИКА ПО КАРТЕ ДНЯ
+// 🃏 ОБРАБОТЧИК КАРТЫ ДНЯ
 async function handleDailyCardClick() {
     console.log('🃏 Клик по карте дня');
     
     const dailyCard = document.getElementById('daily-card');
-    const loading = document.getElementById('daily-loading');
     const aiContainer = document.getElementById('daily-ai-container');
+    
+    if (!dailyCard) return;
     
     try {
         // Показываем загрузку
-        if (loading) loading.style.display = 'block';
+        dailyCard.innerHTML = '<div class="card-loading">Получаю карту дня...</div>';
         
         // Получаем карту дня
         const cardData = await getDailyCard();
         
         if (cardData) {
-            // Обновляем карту
+            // Обновляем отображение карты
             updateCardDisplay(dailyCard, cardData);
             
-            // Получаем толкование от ИИ
-            const interpretation = await getAIInterpretation(cardData, 'daily');
-            
-            // Показываем толкование
-            if (aiContainer && interpretation) {
-                aiContainer.innerHTML = createAIResponseHTML(interpretation);
+            // Показываем ИИ интерпретацию
+            if (aiContainer && cardData.aiInterpretation) {
+                aiContainer.innerHTML = `
+                    <div class="ai-interpretation">
+                        <h4>✨ Значение карты</h4>
+                        <p>${cardData.aiInterpretation}</p>
+                    </div>
+                `;
             }
+            
+            // Сохраняем в историю
+            saveToHistory({
+                type: 'daily_card',
+                date: new Date().toISOString(),
+                card: cardData
+            });
         }
         
     } catch (error) {
         console.error('❌ Ошибка получения карты дня:', error);
+        resetCardDisplay(dailyCard, 'Ошибка загрузки.<br>Нажмите для повтора');
         showErrorMessage('Не удалось получить карту дня. Попробуйте еще раз.');
+    }
+}
+
+// 🎴 ПОЛУЧЕНИЕ КАРТЫ ДНЯ
+async function getDailyCard() {
+    console.log('🎴 Получение карты дня...');
+    
+    try {
+        const today = new Date().toDateString();
+        const lastCardDate = localStorage.getItem('tarot_last_daily_card_date');
+        
+        // Проверяем, есть ли уже карта на сегодня
+        if (lastCardDate === today) {
+            const savedCard = localStorage.getItem('tarot_daily_card_data');
+            if (savedCard) {
+                console.log('📱 Загрузка сохраненной карты дня');
+                return JSON.parse(savedCard);
+            }
+        }
+        
+        // Получаем новую карту через API
+        const apiConfig = window.getAPIConfig && window.getAPIConfig();
+        
+        if (!apiConfig || !apiConfig.dailyCardEndpoint) {
+            throw new Error('API конфигурация недоступна');
+        }
+        
+        const response = await fetch(apiConfig.dailyCardEndpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'daily_card',
+                user_id: currentUser ? currentUser.id : 'anonymous',
+                date: today
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const cardData = await response.json();
+        
+        // Сохраняем карту дня
+        localStorage.setItem('tarot_daily_card_data', JSON.stringify(cardData));
+        localStorage.setItem('tarot_last_daily_card_date', today);
+        
+        return cardData;
+        
+    } catch (error) {
+        console.error('❌ Ошибка получения карты дня:', error);
+        throw error;
+    }
+}
+
+// ❓ ОБРАБОТЧИК ЗАДАТЬ ВОПРОС
+async function handleAskQuestion() {
+    console.log('❓ Обработка вопроса');
+    
+    const questionInput = document.getElementById('question-input');
+    const askBtn = document.getElementById('ask-btn');
+    const firstAnswerSection = document.getElementById('first-answer-section');
+    const followUpSection = document.getElementById('follow-up-section');
+    const loading = document.getElementById('question-loading');
+    
+    if (!questionInput || !questionInput.value.trim()) {
+        showErrorMessage('Пожалуйста, введите ваш вопрос');
+        return;
+    }
+    
+    // Проверяем лимит вопросов
+    if (!appState.isPremium && appState.questionsLeft <= 0) {
+        showPremiumRequired('questions');
+        return;
+    }
+    
+    const question = questionInput.value.trim();
+    
+    try {
+        // Блокируем кнопку и показываем загрузку
+        if (askBtn) {
+            askBtn.disabled = true;
+            askBtn.textContent = 'Получаю ответ...';
+        }
+        if (loading) loading.style.display = 'block';
+        if (firstAnswerSection) firstAnswerSection.style.display = 'block';
+        
+        // Получаем карту для ответа
+        const cardData = await getAnswerCard(question);
+        
+        if (cardData) {
+            // Обновляем отображение ответа
+            displayAnswer(cardData, question);
+            
+            // Уменьшаем количество вопросов
+            if (!appState.isPremium) {
+                appState.questionsLeft = Math.max(0, appState.questionsLeft - 1);
+                saveUserData();
+                updateUI();
+            }
+            
+            // Показываем секцию дополнительного вопроса
+            if (followUpSection) {
+                followUpSection.style.display = 'block';
+            }
+            
+            // Сохраняем в историю
+            saveToHistory({
+                type: 'question',
+                date: new Date().toISOString(),
+                question: question,
+                card: cardData
+            });
+            
+            // Очищаем поле ввода
+            questionInput.value = '';
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка получения ответа:', error);
+        showErrorMessage('Не удалось получить ответ. Попробуйте еще раз.');
+        
     } finally {
+        // Восстанавливаем кнопку
+        if (askBtn) {
+            askBtn.disabled = false;
+            askBtn.textContent = 'Получить ответ';
+        }
         if (loading) loading.style.display = 'none';
     }
 }
 
-// 🃏 ПОЛУЧЕНИЕ КАРТЫ ДЛЯ ОТВЕТА
+// 🎴 ПОЛУЧЕНИЕ КАРТЫ ДЛЯ ОТВЕТА
 async function getAnswerCard(question) {
+    console.log('🎴 Получение карты для ответа на вопрос:', question);
+    
     try {
-        // Получаем случайную карту из колоды
-        const cards = window.getFallbackCards();
-        const randomCard = cards[Math.floor(Math.random() * cards.length)];
+        const apiConfig = window.getAPIConfig && window.getAPIConfig();
         
-        return {
-            ...randomCard,
-            question: question,
-            type: 'answer',
-            timestamp: new Date().toISOString()
-        };
+        if (!apiConfig || !apiConfig.questionEndpoint) {
+            throw new Error('API конфигурация недоступна');
+        }
+        
+        const response = await fetch(apiConfig.questionEndpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'question',
+                question: question,
+                user_id: currentUser ? currentUser.id : 'anonymous'
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const cardData = await response.json();
+        return cardData;
         
     } catch (error) {
         console.error('❌ Ошибка получения карты для ответа:', error);
@@ -581,437 +549,793 @@ async function getAnswerCard(question) {
     }
 }
 
-// 🤖 ПОЛУЧЕНИЕ ТОЛКОВАНИЯ ОТ ИИ
-async function getAIInterpretation(cardData, type, question = null) {
+// 📝 ОТОБРАЖЕНИЕ ОТВЕТА
+function displayAnswer(cardData, question) {
+    const answerCard = document.getElementById('answer-card');
+    const answerAI = document.getElementById('answer-ai');
+    
+    if (answerCard) {
+        updateCardDisplay(answerCard, cardData);
+    }
+    
+    if (answerAI && cardData.aiInterpretation) {
+        answerAI.innerHTML = `
+            <div class="answer-content">
+                <h4>🔮 Ответ на ваш вопрос</h4>
+                <p class="question-text">"${question}"</p>
+                <div class="interpretation">
+                    ${cardData.aiInterpretation}
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ❓ ОБРАБОТЧИК ДОПОЛНИТЕЛЬНОГО ВОПРОСА
+async function handleFollowUpQuestion() {
+    console.log('❓ Обработка дополнительного вопроса');
+    
+    const followUpInput = document.getElementById('follow-up-input');
+    const followUpBtn = document.getElementById('follow-up-btn');
+    const followUpAnswer = document.getElementById('follow-up-answer');
+    const followUpLoading = document.getElementById('follow-up-loading');
+    
+    if (!followUpInput || !followUpInput.value.trim()) {
+        showErrorMessage('Пожалуйста, введите дополнительный вопрос');
+        return;
+    }
+    
+    // Проверяем лимит вопросов
+    if (!appState.isPremium && appState.questionsLeft <= 0) {
+        showPremiumRequired('questions');
+        return;
+    }
+    
+    const question = followUpInput.value.trim();
+    
     try {
-        const apiConfig = window.getAPIConfig();
-        if (!apiConfig || !apiConfig.n8nWebhookUrl) {
-            console.warn('⚠️ N8N webhook недоступен, используем fallback толкование');
-            return getFallbackInterpretation(cardData, type, question);
+        // Блокируем кнопку и показываем загрузку
+        if (followUpBtn) {
+            followUpBtn.disabled = true;
+            followUpBtn.textContent = 'Получаю ответ...';
+        }
+        if (followUpLoading) followUpLoading.style.display = 'block';
+        
+        // Получаем ответ
+        const response = await getFollowUpAnswer(question);
+        
+        if (response && followUpAnswer) {
+            followUpAnswer.innerHTML = `
+                <div class="follow-up-content">
+                    <h4>💫 Дополнительный ответ</h4>
+                    <p class="question-text">"${question}"</p>
+                    <div class="interpretation">
+                        ${response.answer}
+                    </div>
+                </div>
+            `;
+            followUpAnswer.style.display = 'block';
+            
+            // Уменьшаем количество вопросов
+            if (!appState.isPremium) {
+                appState.questionsLeft = Math.max(0, appState.questionsLeft - 1);
+                saveUserData();
+                updateUI();
+            }
+            
+            // Сохраняем в историю
+            saveToHistory({
+                type: 'follow_up',
+                date: new Date().toISOString(),
+                question: question,
+                answer: response.answer
+            });
+            
+            // Очищаем поле ввода
+            followUpInput.value = '';
         }
         
-        const requestData = {
-            card: cardData,
-            type: type,
-            question: question,
-            user: currentUser
-        };
+    } catch (error) {
+        console.error('❌ Ошибка получения дополнительного ответа:', error);
+        showErrorMessage('Не удалось получить ответ. Попробуйте еще раз.');
         
-        const response = await fetch(apiConfig.n8nWebhookUrl, {
+    } finally {
+        // Восстанавливаем кнопку
+        if (followUpBtn) {
+            followUpBtn.disabled = false;
+            followUpBtn.textContent = 'Задать вопрос';
+        }
+        if (followUpLoading) followUpLoading.style.display = 'none';
+    }
+}
+
+// 🔮 ПОЛУЧЕНИЕ ДОПОЛНИТЕЛЬНОГО ОТВЕТА
+async function getFollowUpAnswer(question) {
+    console.log('🔮 Получение дополнительного ответа:', question);
+    
+    try {
+        const apiConfig = window.getAPIConfig && window.getAPIConfig();
+        
+        if (!apiConfig || !apiConfig.followUpEndpoint) {
+            throw new Error('API конфигурация недоступна');
+        }
+        
+        const response = await fetch(apiConfig.followUpEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(requestData),
-            timeout: apiConfig.timeout || 10000
+            body: JSON.stringify({
+                type: 'follow_up',
+                question: question,
+                user_id: currentUser ? currentUser.id : 'anonymous'
+            })
         });
         
-        if (response.ok) {
-            const result = await response.json();
-            return result.interpretation || result.message || result.answer;
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const answerData = await response.json();
+        return answerData;
+        
+    } catch (error) {
+        console.error('❌ Ошибка получения дополнительного ответа:', error);
+        throw error;
+    }
+}
+
+// 💎 ОБРАБОТЧИК ПОКУПКИ ПРЕМИУМА
+async function handleBuyPremium() {
+    console.log('💎 Обработка покупки премиума');
+    
+    try {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            
+            // Показываем инвойс для оплаты
+            tg.showPopup({
+                title: 'Премиум доступ',
+                message: 'Хотите получить безлимитный доступ ко всем функциям приложения?',
+                buttons: [
+                    {id: 'buy', type: 'default', text: 'Купить за 299₽'},
+                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
+                ]
+            }, (buttonId) => {
+                if (buttonId === 'buy') {
+                    // В реальном приложении здесь будет обращение к Telegram Payments API
+                    // Пока что эмулируем успешную покупку
+                    appState.isPremium = true;
+                    appState.questionsLeft = 999; // Безлимитный доступ
+                    saveUserData();
+                    updateUI();
+                    showMessage('Премиум доступ активирован!', 'premium');
+                }
+            });
         } else {
-            console.warn('⚠️ N8N webhook вернул ошибку, используем fallback');
-            return getFallbackInterpretation(cardData, type, question);
+            // Fallback для тестирования вне Telegram
+            const confirmed = confirm('Активировать премиум доступ для тестирования?');
+            if (confirmed) {
+                appState.isPremium = true;
+                appState.questionsLeft = 999;
+                saveUserData();
+                updateUI();
+                showMessage('Премиум доступ активирован!', 'premium');
+            }
         }
         
     } catch (error) {
-        console.error('❌ Ошибка получения толкования от ИИ:', error);
-        return getFallbackInterpretation(cardData, type, question);
+        console.error('❌ Ошибка обработки покупки премиума:', error);
+        showErrorMessage('Не удалось обработать покупку. Попробуйте еще раз.');
     }
 }
 
-// 🎭 FALLBACK ТОЛКОВАНИЕ
-function getFallbackInterpretation(cardData, type, question) {
-    const interpretations = {
-        daily: `Карта "${cardData.name}" предвещает ${cardData.keywords[0]} в вашем дне. ${cardData.description} Обратите внимание на возможности, связанные с ${cardData.keywords.join(', ')}.`,
-        question: `Карта "${cardData.name}" отвечает на ваш вопрос "${question}". ${cardData.description} Ключевые энергии: ${cardData.keywords.join(', ')}.`,
-        followup: `Уточняя ваш вопрос "${question}", карта "${cardData.name}" указывает на ${cardData.keywords[0]}. ${cardData.description}`
+// 🔒 ПОКАЗ ТРЕБОВАНИЯ ПРЕМИУМА
+function showPremiumRequired(context = 'general') {
+    const messages = {
+        questions: 'У вас закончились бесплатные вопросы. Получите премиум доступ для безлимитных консультаций!',
+        spreads: 'Расклады доступны только в премиум версии. Получите полный доступ ко всем функциям!',
+        general: 'Эта функция доступна только в премиум версии.'
     };
     
-    return interpretations[type] || `Карта "${cardData.name}": ${cardData.description}`;
+    const message = messages[context] || messages.general;
+    
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        
+        tg.showPopup({
+            title: 'Требуется премиум',
+            message: message,
+            buttons: [
+                {id: 'buy', type: 'default', text: 'Получить премиум'},
+                {id: 'cancel', type: 'cancel', text: 'Позже'}
+            ]
+        }, (buttonId) => {
+            if (buttonId === 'buy') {
+                handleBuyPremium();
+            }
+        });
+    } else {
+        showMessage(message, 'premium');
+    }
 }
 
-// 🎨 СОЗДАНИЕ HTML ДЛЯ ОТВЕТА ИИ
-function createAIResponseHTML(interpretation) {
-    return `
-        <div class="ai-response">
-            <div class="ai-response-header">
-                <div class="ai-icon">🔮</div>
-                <h4>Толкование карт</h4>
-            </div>
-            <div class="ai-response-content">
-                <p>${interpretation}</p>
-            </div>
-        </div>
-    `;
-}
-
-// 🎨 ОБНОВЛЕНИЕ ОТОБРАЖЕНИЯ КАРТЫ
+// 🎴 ОБНОВЛЕНИЕ ОТОБРАЖЕНИЯ КАРТЫ
 function updateCardDisplay(cardElement, cardData) {
-    if (!cardElement) return;
+    if (!cardElement || !cardData) return;
     
     cardElement.innerHTML = `
-        <div class="card-front">
-            <div class="card-header">
-                <div class="card-number">${cardData.arcana === 'major' ? cardData.number : ''}</div>
-                <div class="card-symbol">${cardData.image || '🃏'}</div>
+        <div class="card-inner">
+            <div class="card-image">
+                ${cardData.image ? `<img src="${cardData.image}" alt="${cardData.name}" />` : '🎴'}
             </div>
-            <div class="card-name">${cardData.name}</div>
-            <div class="card-keywords">${cardData.keywords.slice(0, 2).join(' • ')}</div>
+            <div class="card-info">
+                <h3>${cardData.name}</h3>
+                <p class="card-description">${cardData.description || ''}</p>
+            </div>
         </div>
     `;
     
-    cardElement.classList.add('flipped');
+    cardElement.classList.add('revealed');
 }
 
 // 🔄 СБРОС ОТОБРАЖЕНИЯ КАРТЫ
-function resetCardDisplay(cardElement, text) {
+function resetCardDisplay(cardElement, text = 'Нажмите для получения карты') {
     if (!cardElement) return;
     
     cardElement.innerHTML = `
-        <div class="card-back">
-            <div class="card-symbol">🔮</div>
-            <div class="card-text">${text}</div>
+        <div class="card-placeholder">
+            <div class="card-back">🎴</div>
+            <p>${text}</p>
         </div>
     `;
     
-    cardElement.classList.remove('flipped');
+    cardElement.classList.remove('revealed');
 }
 
-// 💳 ОБРАБОТЧИК ПОКУПКИ PREMIUM
-function handleBuyPremium() {
-    console.log('💳 Обработка покупки Premium');
+// 📅 ПРОВЕРКА КАРТЫ ДНЯ
+function checkTodayCard() {
+    const today = new Date().toDateString();
+    const lastCardDate = localStorage.getItem('tarot_last_daily_card_date');
     
-    const apiConfig = window.getAPIConfig();
-    const paymentUrl = apiConfig?.paymentUrl || 'https://www.wildberries.ru/catalog/199937445/detail.aspx';
-    
-    // Открываем страницу оплаты
-    if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.openLink(paymentUrl);
+    if (lastCardDate !== today) {
+        // Сбрасываем карту дня для нового дня
+        localStorage.removeItem('tarot_daily_card_data');
+        localStorage.setItem('tarot_last_daily_card_date', today);
+        
+        // Сбрасываем отображение карты
+        const dailyCard = document.getElementById('daily-card');
+        if (dailyCard) {
+            resetCardDisplay(dailyCard, 'Нажмите, чтобы<br>узнать карту дня');
+        }
+        
+        const aiContainer = document.getElementById('daily-ai-container');
+        if (aiContainer) {
+            aiContainer.innerHTML = '';
+        }
     } else {
-        window.open(paymentUrl, '_blank');
+        // Загружаем сохраненную карту дня
+        const savedCard = localStorage.getItem('tarot_daily_card_data');
+        if (savedCard) {
+            try {
+                const cardData = JSON.parse(savedCard);
+                const dailyCard = document.getElementById('daily-card');
+                const aiContainer = document.getElementById('daily-ai-container');
+                
+                if (dailyCard) {
+                    updateCardDisplay(dailyCard, cardData);
+                }
+                
+                if (aiContainer && cardData.aiInterpretation) {
+                    aiContainer.innerHTML = `
+                        <div class="ai-interpretation">
+                            <h4>✨ Значение карты</h4>
+                            <p>${cardData.aiInterpretation}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ Ошибка загрузки сохраненной карты дня:', error);
+            }
+        }
     }
-}
-
-// 🔒 ПОКАЗ ТРЕБОВАНИЯ PREMIUM
-function showPremiumRequired(context) {
-    const messages = {
-        questions: 'Для продолжения задавания вопросов требуется Premium подписка',
-        spreads: 'Эксклюзивные расклады доступны только в Premium версии'
-    };
-    
-    const message = messages[context] || 'Для доступа к этой функции требуется Premium';
-    
-    showMessage(message, 'premium');
-    
-    // Переключаемся на таб Premium
-    setTimeout(() => {
-        switchTab('premium');
-    }, 2000);
 }
 
 // 🃏 ВЫБОР РАСКЛАДА
 function selectSpread(spreadType) {
-    console.log(`🃏 Выбор расклада: ${spreadType}`);
+    console.log('🃏 Выбор расклада:', spreadType);
     
+    // Проверяем премиум доступ
     if (!appState.isPremium) {
         showPremiumRequired('spreads');
         return;
     }
     
-    const spreadsConfig = window.getSpreadsConfig();
-    const spread = spreadsConfig[spreadType];
+    const spreadConfigs = window.getSpreadsConfig && window.getSpreadsConfig();
     
-    if (!spread) {
-        showErrorMessage('Расклад не найден');
+    if (!spreadConfigs || !spreadConfigs[spreadType]) {
+        showErrorMessage('Расклад недоступен');
         return;
     }
     
-    // Скрываем сетку раскладов
-    document.querySelectorAll('.spreads-grid .spread-card').forEach(card => {
-        card.style.display = 'none';
-    });
+    // Сохраняем выбранный расклад
+    appState.selectedSpread = spreadType;
     
-    // Показываем детали расклада
-    const spreadDetail = document.getElementById('spread-detail');
-    const spreadTitle = document.getElementById('spread-title');
-    const spreadContent = document.getElementById('spread-content');
-    
-    if (spreadDetail) spreadDetail.style.display = 'block';
-    if (spreadTitle) spreadTitle.textContent = spread.name;
-    if (spreadContent) {
-        spreadContent.innerHTML = createSpreadHTML(spread);
-    }
+    // Переключаемся на экран выполнения расклада
+    showSpreadPerform(spreadType);
 }
 
-// 🎨 СОЗДАНИЕ HTML ДЛЯ РАСКЛАДА
-function createSpreadHTML(spread) {
-    return `
-        <div class="spread-description">
-            <p>${spread.description}</p>
-        </div>
-        <div class="spread-cards">
-            ${spread.cards.map((card, index) => `
-                <div class="spread-position">
-                    <div class="position-number">${index + 1}</div>
-                    <div class="position-name">${card.name}</div>
-                    <div class="position-description">${card.description}</div>
-                    <div class="tarot-card spread-card" data-position="${index}">
-                        <div class="card-back">
-                            <div class="card-symbol">🔮</div>
-                        </div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-        <div class="spread-actions">
-            <button class="btn btn-primary" onclick="performSpread('${spread.name}')">
-                Выполнить расклад ✨
-            </button>
+// 🎯 ПОКАЗ ЭКРАНА ВЫПОЛНЕНИЯ РАСКЛАДА
+function showSpreadPerform(spreadType) {
+    const spreadsSection = document.getElementById('spreads-section');
+    const spreadConfigs = window.getSpreadsConfig && window.getSpreadsConfig();
+    
+    if (!spreadsSection || !spreadConfigs || !spreadConfigs[spreadType]) return;
+    
+    const config = spreadConfigs[spreadType];
+    
+    spreadsSection.innerHTML = `
+        <div class="spread-perform">
+            <div class="spread-header">
+                <button class="back-btn" onclick="loadSpreadsMenu()">← Назад</button>
+                <h2>${config.name}</h2>
+                <p>${config.description}</p>
+            </div>
+            
+            <div class="spread-question">
+                <label for="spread-question-input">Ваш вопрос для расклада:</label>
+                <textarea id="spread-question-input" placeholder="Введите ваш вопрос..." rows="3"></textarea>
+                <button class="perform-spread-btn" onclick="performSpread('${spreadType}')">
+                    Выполнить расклад
+                </button>
+            </div>
+            
+            <div id="spread-result" class="spread-result" style="display: none;">
+                <!-- Результат расклада -->
+            </div>
         </div>
     `;
 }
 
-// 🎯 ВЫПОЛНЕНИЕ РАСКЛАДА
-async function performSpread(spreadName) {
-    console.log(`🎯 Выполнение расклада: ${spreadName}`);
+// 🎲 ВЫПОЛНЕНИЕ РАСКЛАДА
+async function performSpread(spreadType) {
+    console.log('🎲 Выполнение расклада:', spreadType);
     
-    const spreadsConfig = window.getSpreadsConfig();
-    const spread = Object.values(spreadsConfig).find(s => s.name === spreadName);
+    const questionInput = document.getElementById('spread-question-input');
+    const performBtn = document.querySelector('.perform-spread-btn');
+    const resultDiv = document.getElementById('spread-result');
     
-    if (!spread) {
-        showErrorMessage('Расклад не найден');
+    if (!questionInput || !questionInput.value.trim()) {
+        showErrorMessage('Пожалуйста, введите вопрос для расклада');
         return;
     }
     
+    const question = questionInput.value.trim();
+    
     try {
-        const cards = window.getFallbackCards();
-        const spreadCards = [];
-        
-        // Получаем карты для каждой позиции
-        for (let i = 0; i < spread.cards.length; i++) {
-            const randomCard = cards[Math.floor(Math.random() * cards.length)];
-            spreadCards.push({
-                ...randomCard,
-                position: i,
-                positionName: spread.cards[i].name,
-                positionDescription: spread.cards[i].description
-            });
+        // Блокируем кнопку
+        if (performBtn) {
+            performBtn.disabled = true;
+            performBtn.textContent = 'Выполняю расклад...';
         }
         
-        // Обновляем отображение карт
-        const spreadPositions = document.querySelectorAll('.spread-position');
-        spreadPositions.forEach((position, index) => {
-            const cardElement = position.querySelector('.tarot-card');
-            if (cardElement && spreadCards[index]) {
-                updateCardDisplay(cardElement, spreadCards[index]);
-            }
-        });
+        // Получаем расклад
+        const spreadResult = await getSpreadResult(spreadType, question);
         
-        // Сохраняем в историю
-        saveToHistory({
-            type: 'spread',
-            spreadName: spreadName,
-            cards: spreadCards,
-            timestamp: new Date().toISOString()
-        });
-        
-        showMessage('Расклад выполнен успешно!', 'info');
+        if (spreadResult && resultDiv) {
+            // Отображаем результат
+            displaySpreadResult(spreadResult, resultDiv);
+            resultDiv.style.display = 'block';
+            
+            // Сохраняем в историю
+            saveToHistory({
+                type: 'spread',
+                spreadType: spreadType,
+                question: question,
+                result: spreadResult,
+                date: new Date().toISOString()
+            });
+        }
         
     } catch (error) {
         console.error('❌ Ошибка выполнения расклада:', error);
         showErrorMessage('Не удалось выполнить расклад. Попробуйте еще раз.');
+        
+    } finally {
+        // Восстанавливаем кнопку
+        if (performBtn) {
+            performBtn.disabled = false;
+            performBtn.textContent = 'Выполнить расклад';
+        }
     }
 }
 
-// 📖 ЗАГРУЗКА ИСТОРИИ ПОЛЬЗОВАТЕЛЯ
+// 🔮 ПОЛУЧЕНИЕ РЕЗУЛЬТАТА РАСКЛАДА
+async function getSpreadResult(spreadType, question) {
+    console.log('🔮 Получение результата расклада:', spreadType, question);
+    
+    try {
+        const apiConfig = window.getAPIConfig && window.getAPIConfig();
+        
+        if (!apiConfig || !apiConfig.spreadEndpoint) {
+            throw new Error('API конфигурация недоступна');
+        }
+        
+        const response = await fetch(apiConfig.spreadEndpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'spread',
+                spreadType: spreadType,
+                question: question,
+                user_id: currentUser ? currentUser.id : 'anonymous'
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const spreadData = await response.json();
+        return spreadData;
+        
+    } catch (error) {
+        console.error('❌ Ошибка получения результата расклада:', error);
+        throw error;
+    }
+}
+
+// 📊 ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА РАСКЛАДА
+function displaySpreadResult(spreadResult, container) {
+    if (!spreadResult || !container) return;
+    
+    let html = `
+        <div class="spread-cards">
+            <h3>🔮 Результат расклада</h3>
+    `;
+    
+    if (spreadResult.cards && Array.isArray(spreadResult.cards)) {
+        spreadResult.cards.forEach((card, index) => {
+            html += `
+                <div class="spread-card-result">
+                    <div class="position-label">${card.position || `Позиция ${index + 1}`}</div>
+                    <div class="card-display">
+                        ${card.image ? `<img src="${card.image}" alt="${card.name}" />` : '🎴'}
+                        <h4>${card.name}</h4>
+                        <p>${card.description || ''}</p>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    
+    if (spreadResult.interpretation) {
+        html += `
+            <div class="spread-interpretation">
+                <h4>✨ Толкование расклада</h4>
+                <div class="interpretation-text">
+                    ${spreadResult.interpretation}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// 🔙 ЗАГРУЗКА МЕНЮ РАСКЛАДОВ
+function loadSpreadsMenu() {
+    const spreadsSection = document.getElementById('spreads-section');
+    if (!spreadsSection) return;
+    
+    const spreadConfigs = window.getSpreadsConfig && window.getSpreadsConfig();
+    
+    let html = `
+        <div class="spreads-menu">
+            <h2>🃏 Расклады Таро</h2>
+            <p>Выберите подходящий расклад для вашего вопроса</p>
+            
+            <div class="spreads-grid">
+    `;
+    
+    if (spreadConfigs) {
+        Object.entries(spreadConfigs).forEach(([key, config]) => {
+            html += `
+                <div class="spread-card" data-spread="${key}">
+                    <div class="spread-icon">${config.icon || '🎴'}</div>
+                    <h3>${config.name}</h3>
+                    <p>${config.description}</p>
+                    <div class="spread-info">
+                        <span class="cards-count">${config.cardsCount || 3} карт</span>
+                        ${!appState.isPremium ? '<span class="premium-badge">Premium</span>' : ''}
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        html += '<p>Расклады загружаются...</p>';
+    }
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    spreadsSection.innerHTML = html;
+    
+    // Добавляем обработчики
+    setTimeout(() => {
+        const spreadCards = document.querySelectorAll('.spread-card');
+        spreadCards.forEach(card => {
+            card.addEventListener('click', (e) => {
+                const spreadType = e.currentTarget.dataset.spread;
+                if (spreadType) selectSpread(spreadType);
+            });
+        });
+    }, 100);
+}
+
+// 📚 ЗАГРУЗКА ИСТОРИИ ПОЛЬЗОВАТЕЛЯ
 function loadUserHistory() {
-    console.log('📖 Загрузка истории пользователя');
+    console.log('📚 Загрузка истории пользователя');
     
-    const historyList = document.getElementById('history-list');
-    const historyEmpty = document.getElementById('history-empty');
-    
-    if (!historyList) return;
+    const historyContainer = document.getElementById('history-container');
+    if (!historyContainer) return;
     
     try {
         const history = JSON.parse(localStorage.getItem('tarot_user_history') || '[]');
         
         if (history.length === 0) {
-            historyList.style.display = 'none';
-            if (historyEmpty) historyEmpty.style.display = 'block';
+            historyContainer.innerHTML = `
+                <div class="empty-history">
+                    <p>📝 Ваша история пуста</p>
+                    <p>Задайте вопрос или получите карту дня, чтобы начать!</p>
+                </div>
+            `;
             return;
         }
         
-        if (historyEmpty) historyEmpty.style.display = 'none';
-        historyList.style.display = 'block';
+        // Сортируем по дате (новые сверху)
+        history.sort((a, b) => new Date(b.date) - new Date(a.date));
         
-        historyList.innerHTML = history.reverse().map(item => createHistoryItemHTML(item)).join('');
+        let html = '<div class="history-list">';
+        
+        history.forEach((item, index) => {
+            const date = new Date(item.date).toLocaleDateString('ru-RU');
+            const time = new Date(item.date).toLocaleTimeString('ru-RU', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            html += `<div class="history-item">`;
+            
+            if (item.type === 'daily_card') {
+                html += `
+                    <div class="history-header">
+                        <span class="history-type">🎴 Карта дня</span>
+                        <span class="history-date">${date} ${time}</span>
+                    </div>
+                    <div class="history-content">
+                        <strong>${item.card.name}</strong>
+                        <p>${item.card.description || ''}</p>
+                    </div>
+                `;
+            } else if (item.type === 'question') {
+                html += `
+                    <div class="history-header">
+                        <span class="history-type">❓ Вопрос</span>
+                        <span class="history-date">${date} ${time}</span>
+                    </div>
+                    <div class="history-content">
+                        <p class="question-text">"${item.question}"</p>
+                        <strong>${item.card.name}</strong>
+                        <p>${item.card.description || ''}</p>
+                    </div>
+                `;
+            } else if (item.type === 'spread') {
+                html += `
+                    <div class="history-header">
+                        <span class="history-type">🃏 Расклад</span>
+                        <span class="history-date">${date} ${time}</span>
+                    </div>
+                    <div class="history-content">
+                        <p class="question-text">"${item.question}"</p>
+                        <p><strong>Тип:</strong> ${item.spreadType}</p>
+                    </div>
+                `;
+            } else if (item.type === 'follow_up') {
+                html += `
+                    <div class="history-header">
+                        <span class="history-type">💫 Доп. вопрос</span>
+                        <span class="history-date">${date} ${time}</span>
+                    </div>
+                    <div class="history-content">
+                        <p class="question-text">"${item.question}"</p>
+                        <p>${item.answer}</p>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        
+        historyContainer.innerHTML = html;
         
     } catch (error) {
         console.error('❌ Ошибка загрузки истории:', error);
-        if (historyEmpty) historyEmpty.style.display = 'block';
-    }
-}
-
-// 🎨 СОЗДАНИЕ HTML ДЛЯ ЭЛЕМЕНТА ИСТОРИИ
-function createHistoryItemHTML(item) {
-    const date = new Date(item.timestamp).toLocaleDateString('ru-RU');
-    const time = new Date(item.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    
-    let content = `
-        <div class="history-item">
-            <div class="history-header">
-                <div class="history-type">${getHistoryTypeText(item.type)}</div>
-                <div class="history-date">${date} ${time}</div>
-            </div>
-    `;
-    
-    if (item.question) {
-        content += `<div class="history-question">"${item.question}"</div>`;
-    }
-    
-    if (item.card) {
-        content += `
-            <div class="history-card">
-                <span class="card-icon">${item.card.image || '🃏'}</span>
-                <span class="card-name">${item.card.name}</span>
+        historyContainer.innerHTML = `
+            <div class="error-message">
+                <p>Ошибка загрузки истории</p>
             </div>
         `;
     }
-    
-    if (item.cards && item.cards.length > 0) {
-        content += `
-            <div class="history-cards">
-                ${item.cards.map(card => `
-                    <span class="card-icon">${card.image || '🃏'}</span>
-                `).join('')}
-                <span class="cards-count">${item.cards.length} карт</span>
-            </div>
-        `;
-    }
-    
-    if (item.interpretation) {
-        content += `<div class="history-interpretation">${item.interpretation}</div>`;
-    }
-    
-    content += '</div>';
-    return content;
-}
-
-// 📝 ПОЛУЧЕНИЕ ТЕКСТА ТИПА ИСТОРИИ
-function getHistoryTypeText(type) {
-    const types = {
-        daily: '📅 Карта дня',
-        question: '❓ Вопрос',
-        followup: '🔍 Уточнение',
-        spread: '🃏 Расклад'
-    };
-    return types[type] || '🔮 Предсказание';
 }
 
 // 🗑️ ОЧИСТКА ИСТОРИИ
 function handleClearHistory() {
-    if (confirm('Вы уверены, что хотите очистить всю историю?')) {
+    if (confirm('Вы уверены, что хотите очистить всю историю? Это действие нельзя отменить.')) {
         localStorage.removeItem('tarot_user_history');
         loadUserHistory();
         showMessage('История очищена', 'info');
     }
 }
 
-// ⭐ ЗАГРУЗКА ОТЗЫВОВ
-function loadReviews() {
-    console.log('⭐ Загрузка отзывов');
+// 📝 ЗАГРУЗКА ОТЗЫВОВ
+async function loadReviews() {
+    console.log('📝 Загрузка отзывов');
     
-    const reviewsList = document.getElementById('reviews-list');
-    if (!reviewsList) return;
+    const reviewsContainer = document.getElementById('reviews-container');
+    if (!reviewsContainer) return;
     
-    // Пример отзывов (в реальном приложении загружались бы из Supabase)
-    const mockReviews = [
-        {
-            name: 'Анна',
-            rating: 5,
-            text: 'Очень точные предсказания! Карта дня всегда попадает в точку.',
-            date: '2024-01-15'
-        },
-        {
-            name: 'Михаил',
-            rating: 4,
-            text: 'Интересное приложение, помогает принимать решения.',
-            date: '2024-01-14'
-        },
-        {
-            name: 'Елена',
-            rating: 5,
-            text: 'Premium версия того стоит! Расклады очень детальные.',
-            date: '2024-01-13'
+    try {
+        // Показываем загрузку
+        reviewsContainer.innerHTML = '<div class="loading">Загрузка отзывов...</div>';
+        
+        if (supabase && window.TABLES) {
+            // Загружаем из Supabase
+            const { data: reviews, error } = await supabase
+                .from(window.TABLES.reviews)
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+                
+            if (!error && reviews) {
+                displayReviews(reviews, reviewsContainer);
+                return;
+            }
         }
-    ];
-    
-    reviewsList.innerHTML = mockReviews.map(review => `
-        <div class="review-item">
-            <div class="review-header">
-                <div class="review-author">${review.name}</div>
-                <div class="review-rating">${'⭐'.repeat(review.rating)}</div>
+        
+        // Fallback - загружаем из localStorage
+        const localReviews = JSON.parse(localStorage.getItem('tarot_reviews') || '[]');
+        displayReviews(localReviews, reviewsContainer);
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки отзывов:', error);
+        reviewsContainer.innerHTML = `
+            <div class="error-message">
+                <p>Ошибка загрузки отзывов</p>
             </div>
-            <div class="review-text">${review.text}</div>
-            <div class="review-date">${new Date(review.date).toLocaleDateString('ru-RU')}</div>
-        </div>
-    `).join('');
+        `;
+    }
+}
+
+// 📋 ОТОБРАЖЕНИЕ ОТЗЫВОВ
+function displayReviews(reviews, container) {
+    if (!container) return;
+    
+    if (!reviews || reviews.length === 0) {
+        container.innerHTML = `
+            <div class="empty-reviews">
+                <p>📝 Отзывов пока нет</p>
+                <p>Станьте первым, кто оставит отзыв!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="reviews-list">';
+    
+    reviews.forEach(review => {
+        const date = new Date(review.created_at || review.date).toLocaleDateString('ru-RU');
+        const stars = '⭐'.repeat(review.rating || 5);
+        
+        html += `
+            <div class="review-item">
+                <div class="review-header">
+                    <span class="review-rating">${stars}</span>
+                    <span class="review-date">${date}</span>
+                </div>
+                <div class="review-content">
+                    <p class="review-name">${review.display_name || review.name || 'Аноним'}</p>
+                    <p class="review-text">${review.review_text || review.text}</p>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // ⭐ ОБРАБОТЧИК КЛИКА ПО ЗВЕЗДАМ
-function handleRatingClick(e) {
-    if (e.target.classList.contains('star')) {
-        const rating = parseInt(e.target.getAttribute('data-rating'));
-        appState.currentRating = rating;
-        
-        // Обновляем отображение звезд
-        const stars = document.querySelectorAll('.star');
-        stars.forEach((star, index) => {
-            if (index < rating) {
-                star.classList.add('active');
-            } else {
-                star.classList.remove('active');
-            }
-        });
-    }
+function handleRatingClick(rating) {
+    console.log('⭐ Выбран рейтинг:', rating);
+    
+    appState.currentRating = rating;
+    
+    // Обновляем отображение звезд
+    const stars = document.querySelectorAll('.rating-star');
+    stars.forEach((star, index) => {
+        star.classList.toggle('active', index < rating);
+    });
 }
 
-// 📝 ОТПРАВКА ОТЗЫВА
-async function handleSubmitReview() {
-    const reviewText = document.getElementById('review-text');
-    const submitBtn = document.getElementById('submit-review-btn');
+// 📤 ОТПРАВКА ОТЗЫВА
+async function handleSubmitReview(e) {
+    e.preventDefault();
     
-    if (!reviewText || !reviewText.value.trim()) {
-        showErrorMessage('Пожалуйста, напишите отзыв');
+    const form = e.target;
+    const formData = new FormData(form);
+    const name = formData.get('review_name');
+    const text = formData.get('review_text');
+    const rating = appState.currentRating;
+    
+    if (!rating) {
+        showErrorMessage('Пожалуйста, выберите рейтинг');
         return;
     }
     
-    if (appState.currentRating === 0) {
-        showErrorMessage('Пожалуйста, поставьте оценку');
+    if (!text || text.trim().length < 10) {
+        showErrorMessage('Пожалуйста, напишите отзыв (минимум 10 символов)');
         return;
     }
+    
+    const submitBtn = form.querySelector('.submit-review-btn');
     
     try {
+        // Блокируем кнопку
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Отправляю...';
+        submitBtn.textContent = 'Отправка...';
         
         const reviewData = {
-            rating: appState.currentRating,
-            text: reviewText.value.trim(),
-            user: currentUser?.display_name || 'Анонимный пользователь',
-            timestamp: new Date().toISOString()
+            display_name: name || 'Аноним',
+            review_text: text.trim(),
+            rating: rating,
+            created_at: new Date().toISOString(),
+            user_id: currentUser ? currentUser.id : null
         };
         
-        // Здесь можно добавить отправку в Supabase
-        console.log('Отзыв для отправки:', reviewData);
+        // Сохраняем в Supabase
+        if (supabase && window.TABLES) {
+            const { error } = await supabase
+                .from(window.TABLES.reviews)
+                .insert([reviewData]);
+                
+            if (error) {
+                console.error('❌ Ошибка сохранения отзыва в Supabase:', error);
+            }
+        }
+        
+        // Также сохраняем локально
+        const localReviews = JSON.parse(localStorage.getItem('tarot_reviews') || '[]');
+        localReviews.push(reviewData);
+        localStorage.setItem('tarot_reviews', JSON.stringify(localReviews));
         
         // Очищаем форму
-        reviewText.value = '';
+        form.reset();
         appState.currentRating = 0;
-        document.querySelectorAll('.star').forEach(star => star.classList.remove('active'));
         
-        showMessage('Спасибо за отзыв!', 'info');
+        // Сбрасываем звезды
+        const stars = document.querySelectorAll('.rating-star');
+        stars.forEach(star => star.classList.remove('active'));
+        
+        showMessage('Спасибо за ваш отзыв!', 'info');
         
         // Перезагружаем отзывы
         loadReviews();
@@ -1242,7 +1566,8 @@ window.tarotApp = {
     loadUserHistory,
     handleClearHistory,
     handleSubmitReview,
-    handleRatingClick
+    handleRatingClick,
+    loadSpreadsMenu
 };
 
 // 🏁 АВТОМАТИЧЕСКИЙ ЗАПУСК ПРИЛОЖЕНИЯ
@@ -1256,250 +1581,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ Script.js загружен полностью');
-    }
-}
-
-// 📅 ПРОВЕРКА КАРТЫ ДНЯ
-function checkTodayCard() {
-    const today = new Date().toDateString();
-    const lastCardDate = localStorage.getItem('tarot_last_daily_card_date');
-    
-    if (lastCardDate !== today) {
-        // Сбрасываем карту дня для нового дня
-        localStorage.removeItem('tarot_daily_card_data');
-        localStorage.setItem('tarot_last_daily_card_date', today);
-        
-        // Сбрасываем отображение карты
-        const dailyCard = document.getElementById('daily-card');
-        if (dailyCard) {
-            resetCardDisplay(dailyCard, 'Нажмите, чтобы<br>узнать карту дня');
-        }
-        
-        const aiContainer = document.getElementById('daily-ai-container');
-        if (aiContainer) {
-            aiContainer.innerHTML = '';
-        }
-    } else {
-        // Загружаем сохраненную карту дня
-        const savedCardData = localStorage.getItem('tarot_daily_card_data');
-        if (savedCardData) {
-            try {
-                const cardData = JSON.parse(savedCardData);
-                const dailyCard = document.getElementById('daily-card');
-                const aiContainer = document.getElementById('daily-ai-container');
-                
-                if (dailyCard) {
-                    updateCardDisplay(dailyCard, cardData);
-                }
-                
-                if (aiContainer && cardData.interpretation) {
-                    aiContainer.innerHTML = createAIResponseHTML(cardData.interpretation);
-                }
-            } catch (error) {
-                console.error('❌ Ошибка загрузки сохраненной карты:', error);
-            }
-        }
-    }
-}
-
-// 🃏 ПОЛУЧЕНИЕ КАРТЫ ДНЯ
-async function getDailyCard() {
-    try {
-        // Проверяем, есть ли уже карта на сегодня
-        const today = new Date().toDateString();
-        const savedCardData = localStorage.getItem('tarot_daily_card_data');
-        const lastCardDate = localStorage.getItem('tarot_last_daily_card_date');
-        
-        if (savedCardData && lastCardDate === today) {
-            return JSON.parse(savedCardData);
-        }
-        
-        // Получаем случайную карту из колоды
-        const cards = window.getFallbackCards();
-        const randomCard = cards[Math.floor(Math.random() * cards.length)];
-        
-        // Сохраняем карту дня
-        const cardData = {
-            ...randomCard,
-            date: today,
-            type: 'daily'
-        };
-        
-        localStorage.setItem('tarot_daily_card_data', JSON.stringify(cardData));
-        localStorage.setItem('tarot_last_daily_card_date', today);
-        
-        return cardData;
-        
-    } catch (error) {
-        console.error('❌ Ошибка получения карты дня:', error);
-        throw error;
-    }
-}
-
-// ❓ ОБРАБОТЧИК ЗАДАТЬ ВОПРОС
-async function handleAskQuestion() {
-    console.log('❓ Обработка вопроса');
-    
-    const questionInput = document.getElementById('question-input');
-    const askBtn = document.getElementById('ask-btn');
-    const firstAnswerSection = document.getElementById('first-answer-section');
-    const followUpSection = document.getElementById('follow-up-section');
-    const loading = document.getElementById('question-loading');
-    
-    if (!questionInput || !questionInput.value.trim()) {
-        showErrorMessage('Пожалуйста, введите ваш вопрос');
-        return;
-    }
-    
-    // Проверяем лимит вопросов
-    if (!appState.isPremium && appState.questionsLeft <= 0) {
-        showPremiumRequired('questions');
-        return;
-    }
-    
-    const question = questionInput.value.trim();
-    
-    try {
-        // Блокируем кнопку и показываем загрузку
-        if (askBtn) {
-            askBtn.disabled = true;
-            askBtn.textContent = 'Получаю ответ...';
-        }
-        if (loading) loading.style.display = 'block';
-        if (firstAnswerSection) firstAnswerSection.style.display = 'block';
-        
-        // Получаем карту для ответа
-        const cardData = await getAnswerCard(question);
-        
-        if (cardData) {
-            // Обновляем отображение карты
-            const answerCard = document.getElementById('answer-card');
-            if (answerCard) {
-                updateCardDisplay(answerCard, cardData);
-            }
-            
-            // Получаем толкование от ИИ
-            const interpretation = await getAIInterpretation(cardData, 'question', question);
-            
-            // Показываем толкование
-            const aiContainer = document.getElementById('first-ai-container');
-            if (aiContainer && interpretation) {
-                aiContainer.innerHTML = createAIResponseHTML(interpretation);
-            }
-            
-            // Уменьшаем счетчик вопросов (если не Premium)
-            if (!appState.isPremium) {
-                appState.questionsLeft = Math.max(0, appState.questionsLeft - 1);
-                updateQuestionsCounter();
-                saveUserData();
-            }
-            
-            // Показываем секцию уточняющего вопроса
-            if (followUpSection) {
-                followUpSection.style.display = 'block';
-            }
-            
-            // Очищаем поле ввода
-            questionInput.value = '';
-            
-            // Сохраняем в историю
-            saveToHistory({
-                type: 'question',
-                question: question,
-                card: cardData,
-                interpretation: interpretation,
-                timestamp: new Date().toISOString()
-            });
-        }
-        
-    } catch (error) {
-        console.error('❌ Ошибка получения ответа на вопрос:', error);
-        showErrorMessage('Не удалось получить ответ. Попробуйте еще раз.');
-    } finally {
-        if (askBtn) {
-            askBtn.disabled = false;
-            askBtn.textContent = 'Получить ответ ✨';
-        }
-        if (loading) loading.style.display = 'none';
-    }
-}
-
-// 🔍 ОБРАБОТЧИК УТОЧНЯЮЩЕГО ВОПРОСА
-async function handleFollowUpQuestion() {
-    console.log('🔍 Обработка уточняющего вопроса');
-    
-    const followupInput = document.getElementById('followup-input');
-    const followUpBtn = document.getElementById('follow-up-btn');
-    const followupAnswerSection = document.getElementById('followup-answer-section');
-    const loading = document.getElementById('followup-loading');
-    
-    if (!followupInput || !followupInput.value.trim()) {
-        showErrorMessage('Пожалуйста, введите уточняющий вопрос');
-        return;
-    }
-    
-    // Проверяем лимит вопросов (уточняющие тоже считаются)
-    if (!appState.isPremium && appState.questionsLeft <= 0) {
-        showPremiumRequired('questions');
-        return;
-    }
-    
-    const question = followupInput.value.trim();
-    
-    try {
-        // Блокируем кнопку и показываем загрузку
-        if (followUpBtn) {
-            followUpBtn.disabled = true;
-            followUpBtn.textContent = 'Уточняю...';
-        }
-        if (loading) loading.style.display = 'block';
-        if (followupAnswerSection) followupAnswerSection.style.display = 'block';
-        
-        // Получаем карту для ответа
-        const cardData = await getAnswerCard(question);
-        
-        if (cardData) {
-            // Обновляем отображение карты
-            const followupCard = document.getElementById('followup-card');
-            if (followupCard) {
-                updateCardDisplay(followupCard, cardData);
-            }
-            
-            // Получаем толкование от ИИ
-            const interpretation = await getAIInterpretation(cardData, 'followup', question);
-            
-            // Показываем толкование
-            const aiContainer = document.getElementById('followup-ai-container');
-            if (aiContainer && interpretation) {
-                aiContainer.innerHTML = createAIResponseHTML(interpretation);
-            }
-            
-            // Уменьшаем счетчик вопросов (если не Premium)
-            if (!appState.isPremium) {
-                appState.questionsLeft = Math.max(0, appState.questionsLeft - 1);
-                updateQuestionsCounter();
-                saveUserData();
-            }
-            
-            // Очищаем поле ввода
-            followupInput.value = '';
-            
-            // Сохраняем в историю
-            saveToHistory({
-                type: 'followup',
-                question: question,
-                card: cardData,
-                interpretation: interpretation,
-                timestamp: new Date().toISOString()
-            });
-        }
-        
-    } catch (error) {
-        console.error('❌ Ошибка получения уточняющего ответа:', error);
-        showErrorMessage('Не удалось получить ответ. Попробуйте еще раз.');
-    } finally {
-        if (followUpBtn) {
-            followUpBtn.disabled = false;
-            followUpBtn.textContent = 'Уточнить ✨';
-        }
-        if (loading) loading.style.display = 'none';
