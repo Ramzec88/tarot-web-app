@@ -39,6 +39,7 @@
 <div class="nav-tab secondary" data-tab="reviews">Отзывы</div>
 <div class="nav-tab premium-tab" data-tab="premium">Premium</div>
 </div>
+
 <!-- Карта дня -->
 <div class="tab-content active" id="daily-tab">
 <div class="card-container">
@@ -48,91 +49,135 @@
 <div class="card-text">Нажмите, чтобы<br/>узнать карту дня</div>
 </div>
 </div>
-<div class="loading" id="daily-loading">Карты шепчут...</div>
+<div class="loading" id="daily-loading" style="display: none;">
+    <div class="magic-sparkles">✨ ⭐ ✨</div>
+    <div>Карты шепчут...</div>
+</div>
 </div>
 <!-- Место для ИИ-толкования карты дня -->
 <div id="daily-ai-container"></div>
-<!-- Информационный баннер для карты дня -->
+
+<!-- Информационный баннер для карты дня (ИСПРАВЛЕН: добавлены рабочие кнопки) -->
 <div class="daily-info-banner" id="daily-info-banner" style="display: none;">
 <div class="banner-icon">🌟</div>
 <div class="banner-content">
-<h4>Откройте больше возможностей!</h4>
-<p>• Задавайте персональные вопросы<br/>• Получайте эксклюзивные расклады<br/>• Изучайте детальную историю</p>
+<h4>Узнайте больше о своём будущем</h4>
+<p>Задайте персональный вопрос или изучите премиум расклады</p>
 <div class="banner-buttons">
-<button class="btn btn-outline" data-tab="question">Задать вопрос</button>
-<button class="btn btn-premium" data-tab="premium">Premium</button>
+<button class="banner-btn" onclick="switchToTab('question')">
+    <span class="btn-icon">❓</span>
+    Задать вопрос
+</button>
+<button class="banner-btn premium" onclick="switchToTab('premium')">
+    <span class="btn-icon">👑</span>
+    Премиум
+</button>
 </div>
 </div>
 </div>
 </div>
-<!-- Вопросы -->
+
+<!-- Вопрос -->
 <div class="tab-content" id="question-tab">
-<div class="questions-left">
-                Осталось бесплатных вопросов: <span id="questions-count">3</span>
-</div>
+<div class="question-container">
 <div class="question-form">
-<input class="question-input" id="question-input" maxlength="200" placeholder="Задайте свой вопрос картам..." type="text"/>
-<button class="btn" id="ask-btn">Получить ответ ✨</button>
+<h3>🔮 Задайте ваш вопрос картам</h3>
+<textarea 
+    id="question-input" 
+    class="question-textarea" 
+    placeholder="Опишите вашу ситуацию или задайте конкретный вопрос..." 
+    maxlength="500">
+</textarea>
+<div class="char-counter">
+    <span id="char-count">0</span>/500
 </div>
-<!-- Контейнер для первого ответа -->
-<div class="answer-section" id="first-answer-section" style="display: none;">
-<div class="card-container">
-<div class="tarot-card" id="answer-card">
-<div class="card-back">
-<div class="card-symbol">🔮</div>
-<div class="card-text">Ваш ответ</div>
+<button class="question-btn" id="ask-question-btn">
+    <span class="btn-icon">🔮</span>
+    Спросить у карт
+</button>
 </div>
+
+<!-- ИСПРАВЛЕНО: Блоки скрыты по умолчанию -->
+<div class="question-card-container" id="question-cards" style="display: none;">
+    <div class="loading" id="question-loading" style="display: none;">
+        <div class="magic-sparkles">✨ ⭐ ✨</div>
+        <div>Карты размышляют...</div>
+    </div>
+    <div class="tarot-cards-grid" id="question-cards-grid"></div>
 </div>
-<div class="loading" id="question-loading">Карты размышляют...</div>
+
+<!-- ИСПРАВЛЕНО: Блок ответа скрыт по умолчанию и переименован в "ИИ-предсказание" -->
+<div class="ai-answer-container" id="ai-answer-container" style="display: none;">
+    <div class="ai-answer-header">
+        <h4>🔮 ИИ-предсказание</h4>
+    </div>
+    <div class="loading" id="ai-loading" style="display: none;">
+        <div class="magic-messages" id="magic-messages">
+            <div class="magic-message">✨ Карты открывают тайны...</div>
+        </div>
+    </div>
+    <div class="ai-answer-box" id="ai-answer-text"></div>
 </div>
-<!-- Место для ИИ-толкования первого ответа -->
-<div id="first-ai-container"></div>
+
+<!-- ИСПРАВЛЕНО: Блок уточнения скрыт по умолчанию и появляется только после предсказания -->
+<div class="followup-container" id="followup-container" style="display: none;">
+    <div class="followup-form">
+        <h4>🎯 Хотите уточнить?</h4>
+        <p>Если предсказание вызвало дополнительные вопросы, задайте уточняющий вопрос</p>
+        <textarea 
+            id="followup-input" 
+            class="question-textarea" 
+            placeholder="Уточните ваш вопрос..."
+            maxlength="300">
+        </textarea>
+        <button class="question-btn" id="ask-followup-btn">
+            <span class="btn-icon">🎯</span>
+            Уточнить
+        </button>
+    </div>
+    
+    <!-- Контейнер для карты уточнения -->
+    <div class="followup-card-container" id="followup-cards" style="display: none;">
+        <div class="loading" id="followup-loading" style="display: none;">
+            <div class="magic-sparkles">✨ ⭐ ✨</div>
+            <div>Карты размышляют...</div>
+        </div>
+        <div class="tarot-cards-grid" id="followup-cards-grid"></div>
+    </div>
+    
+    <!-- Блок для ИИ-уточнения -->
+    <div class="ai-answer-container" id="followup-ai-container" style="display: none;">
+        <div class="ai-answer-header">
+            <h4>🎯 ИИ-уточнение</h4>
+        </div>
+        <div class="loading" id="followup-ai-loading" style="display: none;">
+            <div class="magic-messages" id="followup-magic-messages">
+                <div class="magic-message">✨ Карты раскрывают детали...</div>
+            </div>
+        </div>
+        <div class="ai-answer-box" id="followup-ai-text"></div>
+    </div>
 </div>
-<!-- Блок уточняющего вопроса -->
-<div class="follow-up-section" id="follow-up-section" style="display: none;">
-<div class="follow-up-header">
-<h4>🔍 Есть уточняющий вопрос?</h4>
-<p class="follow-up-notice">
-<span class="notice-icon">ℹ️</span>
-                        Для базовой версии уточняющий вопрос засчитывается как отдельный вопрос
-                    </p>
-</div>
-<div class="follow-up-form">
-<input class="question-input" id="follow-up-input" placeholder="Задайте уточняющий вопрос..." type="text"/>
-<button class="btn btn-secondary" id="follow-up-btn">Уточнить ✨</button>
-</div>
-</div>
-<!-- Контейнер для уточняющего ответа -->
-<div class="answer-section" id="followup-answer-section" style="display: none;">
-<div class="card-container">
-<div class="tarot-card" id="followup-answer-card">
-<div class="card-back">
-<div class="card-symbol">🔮</div>
-<div class="card-text">Уточнение</div>
-</div>
-</div>
-<div class="loading" id="followup-loading">Карты размышляют...</div>
-</div>
-<!-- Место для ИИ-толкования уточняющего ответа -->
-<div id="followup-ai-container"></div>
-</div>
-<!-- Баннер подписки (показывается после последнего бесплатного вопроса) -->
+
+<!-- ИСПРАВЛЕНО: Баннер подписки появляется только после исчерпания бесплатных вопросов -->
 <div class="subscription-banner" id="subscription-banner-question" style="display: none;">
-<div class="banner-icon">⭐</div>
-<div class="banner-content">
-<h4>Премиум подписка на 30 дней</h4>
-<p>• Неограниченные вопросы<br/>• Эксклюзивные расклады<br/>• Подробные толкования</p>
-<a class="premium-btn" href="https://www.wildberries.ru/catalog/199937445/detail.aspx" target="_blank">
-                        Купить за 299₽ 💳
-                    </a>
+    <div class="banner-icon">⭐</div>
+    <div class="banner-content">
+        <h4>Бесплатные вопросы закончились</h4>
+        <p>Получите премиум подписку для неограниченных вопросов</p>
+        <div class="premium-features">
+            <div class="feature">• Неограниченные вопросы</div>
+            <div class="feature">• Эксклюзивные расклады</div>
+            <div class="feature">• Подробные толкования</div>
+        </div>
+        <button class="premium-btn" onclick="switchToTab('premium')">
+            Купить Premium за 299₽ 💳
+        </button>
+    </div>
 </div>
 </div>
-<div class="premium-banner" id="premium-banner" style="display: none;">
-<h3>🌟 Премиум подписка</h3>
-<p>Неограниченные вопросы, эксклюзивные расклады и подробные толкования</p>
-<button class="btn" style="margin-top: 10px; background: #1a1a2e;">Подписаться за 299₽/месяц</button>
 </div>
-</div>
+
 <!-- Расклады -->
 <div class="tab-content" id="spreads-tab">
 <div class="spreads-grid">
@@ -163,152 +208,141 @@
 </div>
 <div class="spread-detail" id="spread-detail" style="display: none;">
 <button class="back-btn" onclick="closeSpread()">← Назад</button>
-<div class="spread-title" id="spread-title"></div>
-<div class="spread-cards-container" id="spread-cards-container"></div>
-<button class="btn" id="draw-spread-btn" onclick="drawSpread()">Сделать расклад ✨</button>
-<div class="loading" id="spread-loading">Карты раскладываются...</div>
+<div class="spread-detail-content"></div>
 </div>
 </div>
+
 <!-- История -->
 <div class="tab-content" id="history-tab">
+<div class="history-container">
 <div class="history-header">
-<h3>📖 История раскладов</h3>
-<button class="clear-history-btn" id="clear-history-btn">Очистить</button>
+<h3>📚 История предсказаний</h3>
+<p>Ваши прошлые вопросы и ответы карт</p>
 </div>
 <div class="history-list" id="history-list">
-<div class="empty-history">
+<div class="history-empty">
 <div class="empty-icon">🔮</div>
-<p>Здесь будет храниться история ваших раскладов</p>
+<p>Здесь появится история ваших вопросов к картам</p>
 </div>
 </div>
 </div>
+</div>
+
 <!-- Отзывы -->
 <div class="tab-content" id="reviews-tab">
+<div class="reviews-container">
 <div class="reviews-header">
 <h3>⭐ Отзывы пользователей</h3>
-<div class="reviews-stats">
-<span class="rating">4.8 ★★★★★</span>
-<span class="reviews-count">(<span id="reviews-total">127</span> отзывов)</span>
+<p>Что говорят о приложении другие пользователи</p>
+</div>
+
+<div class="review-form" id="review-form">
+<h4>Оставьте свой отзыв</h4>
+<div class="rating-input">
+<span>Ваша оценка: </span>
+<div class="stars" id="stars-input">
+<span class="star" data-rating="1">⭐</span>
+<span class="star" data-rating="2">⭐</span>
+<span class="star" data-rating="3">⭐</span>
+<span class="star" data-rating="4">⭐</span>
+<span class="star" data-rating="5">⭐</span>
 </div>
 </div>
-<!-- Форма добавления отзыва -->
-<div class="review-form">
-<h4>✍️ Оставить отзыв</h4>
-<div class="rating-selector">
-<span>Оценка:</span>
-<div class="stars" id="rating-stars">
-<span class="star" data-rating="1">★</span>
-<span class="star" data-rating="2">★</span>
-<span class="star" data-rating="3">★</span>
-<span class="star" data-rating="4">★</span>
-<span class="star" data-rating="5">★</span>
+<textarea 
+    id="review-text" 
+    class="review-textarea" 
+    placeholder="Поделитесь своим опытом использования приложения..." 
+    maxlength="300">
+</textarea>
+<button class="submit-review-btn" id="submit-review-btn">
+<span class="btn-icon">📝</span>
+Отправить отзыв
+</button>
 </div>
-</div>
-<textarea class="review-input" id="review-text" maxlength="300" placeholder="Поделитесь впечатлениями о приложении..."></textarea>
-<div class="review-options">
-<label class="checkbox-container">
-<input id="anonymous-review" type="checkbox"/>
-<span class="checkmark"></span>
-                        Анонимный отзыв
-                    </label>
-</div>
-<button class="btn" id="submit-review-btn">Отправить отзыв</button>
-</div>
-<!-- Список отзывов -->
+
 <div class="reviews-list" id="reviews-list">
-<!-- Отзывы будут загружаться динамически -->
 <div class="review-item">
 <div class="review-header">
-<div class="review-author">@maria_k</div>
-<div class="review-rating">★★★★★</div>
-<div class="review-date">3 дня назад</div>
+<div class="review-avatar">🌟</div>
+<div class="review-info">
+<div class="review-name">Анна К.</div>
+<div class="review-rating">⭐⭐⭐⭐⭐</div>
+<div class="review-date">2 дня назад</div>
 </div>
-<div class="review-text">Невероятно точные предсказания! Карта дня всегда в точку попадает. ИИ-толкования очень подробные и полезные.</div>
+</div>
+<div class="review-text">Очень точные предсказания! Карта дня помогает настроиться на правильный лад.</div>
 </div>
 <div class="review-item">
 <div class="review-header">
-<div class="review-author">Анонимно</div>
-<div class="review-rating">★★★★★</div>
+<div class="review-avatar">🔮</div>
+<div class="review-info">
+<div class="review-name">Михаил Р.</div>
+<div class="review-rating">⭐⭐⭐⭐</div>
 <div class="review-date">5 дней назад</div>
 </div>
-<div class="review-text">Премиум подписка стоит своих денег! Неограниченные вопросы и эксклюзивные расклады - то что нужно.</div>
 </div>
-<div class="review-item">
-<div class="review-header">
-<div class="review-author">@alexey_777</div>
-<div class="review-rating">★★★★☆</div>
-<div class="review-date">1 неделю назад</div>
-</div>
-<div class="review-text">Отличное приложение для ежедневного гадания. Интерфейс красивый, всё работает быстро.</div>
+<div class="review-text">Интересное приложение. Расклады красивые, интерфейс удобный.</div>
 </div>
 </div>
 </div>
+</div>
+
 <!-- Premium -->
 <div class="tab-content" id="premium-tab">
-<div class="premium-page">
-<div class="premium-hero">
+<div class="premium-container">
+<div class="premium-header">
 <div class="premium-icon">👑</div>
-<h2>Premium подписка</h2>
-<p class="premium-subtitle">Откройте все возможности мистического мира Таро</p>
+<h2>Премиум подписка</h2>
+<p>Откройте все возможности мистических предсказаний</p>
 </div>
+
 <div class="premium-features">
 <div class="feature-item">
-<div class="feature-icon">🔮</div>
-<div class="feature-content">
-<h4>Неограниченные вопросы</h4>
-<p>Задавайте столько вопросов, сколько хотите. Без лимитов и ограничений.</p>
+<div class="feature-icon">∞</div>
+<div class="feature-text">
+<strong>Неограниченные вопросы</strong>
+<p>Спрашивайте карты сколько угодно раз</p>
 </div>
 </div>
 <div class="feature-item">
-<div class="feature-icon">🃏</div>
-<div class="feature-content">
-<h4>Эксклюзивные расклады</h4>
-<p>Доступ к премиум раскладам: Кельтский крест, Любовь, Карьера, Неделя впереди.</p>
+<div class="feature-icon">🎴</div>
+<div class="feature-text">
+<strong>Эксклюзивные расклады</strong>
+<p>Кельтский крест, расклад на любовь и карьеру</p>
 </div>
 </div>
 <div class="feature-item">
-<div class="feature-icon">🤖</div>
-<div class="feature-content">
-<h4>Подробные ИИ-толкования</h4>
-<p>Глубокие персональные интерпретации от продвинутого ИИ с учетом контекста.</p>
+<div class="feature-icon">🔍</div>
+<div class="feature-text">
+<strong>Подробные толкования</strong>
+<p>Глубокий анализ каждой карты и ситуации</p>
 </div>
 </div>
 <div class="feature-item">
-<div class="feature-icon">📚</div>
-<div class="feature-content">
-<h4>Полная история раскладов</h4>
-<p>Сохранение и синхронизация всех ваших раскладов в облаке.</p>
-</div>
-</div>
-<div class="feature-item">
-<div class="feature-icon">🔔</div>
-<div class="feature-content">
-<h4>Уведомления и напоминания</h4>
-<p>Ежедневные напоминания о карте дня и важных астрологических событиях.</p>
-</div>
-</div>
-<div class="feature-item">
-<div class="feature-icon">⚡</div>
-<div class="feature-content">
-<h4>Приоритетная поддержка</h4>
-<p>Быстрые ответы на вопросы и первоочередная техническая поддержка.</p>
+<div class="feature-icon">📱</div>
+<div class="feature-text">
+<strong>Без рекламы</strong>
+<p>Чистый интерфейс для концентрации</p>
 </div>
 </div>
 </div>
+
 <div class="premium-pricing">
-<div class="pricing-card">
-<div class="pricing-period">30 дней</div>
-<div class="pricing-price">299₽</div>
-<div class="pricing-description">
-<div class="price-benefit">• Всего 10₽ в день</div>
-<div class="price-benefit">• Отмена в любое время</div>
+<div class="price-card featured">
+<div class="price-label">Рекомендуем</div>
+<div class="price-value">299₽</div>
+<div class="price-period">на 30 дней</div>
+<div class="price-benefits">
+<div class="price-benefit">• Полный доступ ко всем функциям</div>
+<div class="price-benefit">• Приоритетная поддержка</div>
 <div class="price-benefit">• Мгновенная активация</div>
 </div>
 <a class="premium-buy-btn" href="https://www.wildberries.ru/catalog/199937445/detail.aspx" target="_blank">
-                            🛒 Купить Premium за 299₽
-                        </a>
+    🛒 Купить Premium за 299₽
+</a>
 </div>
 </div>
+
 <div class="premium-how-to">
 <h4>💳 Как купить подписку:</h4>
 <div class="how-to-steps">
@@ -330,16 +364,17 @@
 </div>
 </div>
 </div>
+
 <div class="premium-guarantee">
 <div class="guarantee-icon">🛡️</div>
 <div class="guarantee-text">
 <strong>Гарантия возврата средств</strong><br/>
-                        Если Premium не оправдает ожидания в первые 7 дней - вернем деньги
-                    </div>
+Если Premium не оправдает ожидания в первые 7 дней - вернем деньги
 </div>
 </div>
 </div>
 </div>
+
 <!-- Модальное окно профиля -->
 <div class="profile-modal" id="profile-modal" style="display: none;">
 <div class="profile-modal-overlay">
@@ -363,11 +398,11 @@
 <div class="form-actions">
 <button class="btn btn-primary" id="save-profile-btn" type="submit">
 <span class="btn-icon">✨</span>
-                            Начать гадание
-                        </button>
+Начать гадание
+</button>
 <button class="btn btn-secondary" id="skip-profile-btn" type="button">
-                            Пропустить
-                        </button>
+Пропустить
+</button>
 </div>
 </form>
 <div class="profile-footer">
@@ -379,6 +414,7 @@
 </div>
 </div>
 </div>
+
 <!-- Основной скрипт приложения -->
 <script src="./script.js"></script>
 </body>
