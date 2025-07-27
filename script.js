@@ -340,7 +340,10 @@ function setupEventListeners() {
                 }
             });
         }
-        
+
+        // Обработчики профиля
+        setupProfileEventListeners();
+
         console.log('✅ Обработчики событий настроены');
         
     } catch (error) {
@@ -669,21 +672,166 @@ function showErrorMessage(message) {
 // 🔍 ПРОВЕРКА И ПОКАЗ ПРИВЕТСТВИЯ
 function checkAndShowWelcome() {
     console.log('🔍 Проверка приветствия...');
-    
     try {
         const hasShownWelcome = localStorage.getItem('tarot_welcome_shown');
-        
         if (!hasShownWelcome && currentUser && currentUser.isAnonymous) {
             // Показать модальное окно приветствия если оно есть
             const welcomeModal = document.getElementById('profile-modal');
             if (welcomeModal) {
                 welcomeModal.style.display = 'flex';
-                setTimeout(() => welcomeModal.classList.add('show'), 100);
+                // Небольшая задержка для плавного появления
+                setTimeout(() => {
+                    welcomeModal.classList.add('show');
+                }, 100);
             }
         }
-        
     } catch (error) {
         console.error('❌ Ошибка проверки приветствия:', error);
+    }
+}
+
+// ================= ПРОФИЛЬ: ДОБАВЛЕННЫЕ ФУНКЦИИ =================
+
+// 📋 ОБРАБОТКА ПРОФИЛЯ - ЗАКРЫТИЕ МОДАЛЬНОГО ОКНА
+function closeProfileModal() {
+    console.log('🚪 Закрытие модального окна профиля...');
+    try {
+        const profileModal = document.getElementById('profile-modal');
+        if (profileModal) {
+            // Добавляем класс для анимации закрытия
+            profileModal.classList.add('hide');
+            // Через время анимации скрываем окно
+            setTimeout(() => {
+                profileModal.style.display = 'none';
+                profileModal.classList.remove('show', 'hide');
+            }, 300);
+            // Отмечаем, что приветствие показано
+            localStorage.setItem('tarot_welcome_shown', 'true');
+            console.log('✅ Модальное окно профиля закрыто');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка закрытия модального окна:', error);
+    }
+}
+
+// 📋 ОБРАБОТКА ОТПРАВКИ ФОРМЫ ПРОФИЛЯ
+async function handleProfileSubmit(event) {
+    event.preventDefault();
+    console.log('📋 Обработка отправки формы профиля...');
+    try {
+        const submitBtn = document.getElementById('save-profile-btn');
+        const displayNameInput = document.getElementById('display-name');
+        const birthDateInput = document.getElementById('birth-date');
+        // Показываем состояние загрузки
+        if (submitBtn) {
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+        }
+        // Получаем данные из формы
+        const profileData = {
+            displayName: displayNameInput ? displayNameInput.value.trim() : '',
+            birthDate: birthDateInput ? birthDateInput.value : '',
+            createdAt: new Date().toISOString()
+        };
+        console.log('📝 Данные профиля:', profileData);
+        // Валидация
+        if (!profileData.displayName) {
+            showErrorMessage('Пожалуйста, введите ваше имя');
+            return;
+        }
+        if (profileData.displayName.length < 2) {
+            showErrorMessage('Имя должно содержать не менее 2 символов');
+            return;
+        }
+        // Сохраняем данные локально
+        saveUserData(profileData);
+        // Обновляем глобальные данные пользователя
+        if (currentUser) {
+            currentUser.displayName = profileData.displayName;
+            currentUser.birthDate = profileData.birthDate;
+            currentUser.isAnonymous = false;
+        }
+        // Пытаемся сохранить в Supabase (если доступен)
+        try {
+            if (supabase && currentUser && currentUser.id) {
+                // Здесь можно добавить сохранение в Supabase
+                console.log('💾 Сохранение профиля в Supabase...');
+            }
+        } catch (supabaseError) {
+            console.warn('⚠️ Не удалось сохранить в Supabase:', supabaseError);
+        }
+        // Показываем сообщение об успехе
+        showMessage(`Добро пожаловать, ${profileData.displayName}! 🎉`, 'success');
+        // Закрываем модальное окно
+        setTimeout(() => {
+            closeProfileModal();
+        }, 1000);
+        console.log('✅ Профиль успешно сохранен');
+    } catch (error) {
+        console.error('❌ Ошибка сохранения профиля:', error);
+        showErrorMessage('Произошла ошибка при сохранении профиля');
+    } finally {
+        // Убираем состояние загрузки
+        const submitBtn = document.getElementById('save-profile-btn');
+        if (submitBtn) {
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+// 📋 ОБРАБОТКА КНОПКИ "ПРОПУСТИТЬ"
+function handleProfileSkip() {
+    console.log('⏭️ Пропуск заполнения профиля...');
+    try {
+        // Показываем сообщение
+        showMessage('Вы можете заполнить профиль позже в настройках', 'info');
+        // Закрываем модальное окно
+        closeProfileModal();
+        console.log('✅ Профиль пропущен');
+    } catch (error) {
+        console.error('❌ Ошибка при пропуске профиля:', error);
+    }
+}
+
+// 🎛️ НАСТРОЙКА ОБРАБОТЧИКОВ ПРОФИЛЯ
+function setupProfileEventListeners() {
+    console.log('🎛️ Настройка обработчиков профиля...');
+    try {
+        // Форма профиля
+        const profileForm = document.getElementById('profile-form');
+        if (profileForm) {
+            profileForm.addEventListener('submit', handleProfileSubmit);
+        }
+        // Кнопка "Начать гадание"
+        const saveProfileBtn = document.getElementById('save-profile-btn');
+        if (saveProfileBtn) {
+            saveProfileBtn.addEventListener('click', function(e) {
+                // Если это не submit формы, вызываем обработчик вручную
+                if (e.target.type !== 'submit') {
+                    e.preventDefault();
+                    handleProfileSubmit(e);
+                }
+            });
+        }
+        // Кнопка "Пропустить"
+        const skipProfileBtn = document.getElementById('skip-profile-btn');
+        if (skipProfileBtn) {
+            skipProfileBtn.addEventListener('click', handleProfileSkip);
+        }
+        // Закрытие по клику на оверлей
+        const profileModalOverlay = document.querySelector('.profile-modal-overlay');
+        if (profileModalOverlay) {
+            profileModalOverlay.addEventListener('click', function(e) {
+                // Закрываем только если клик был именно на оверлей, а не на контент
+                if (e.target === profileModalOverlay) {
+                    handleProfileSkip();
+                }
+            });
+        }
+        console.log('✅ Обработчики профиля настроены');
+    } catch (error) {
+        console.error('❌ Ошибка настройки обработчиков профиля:', error);
     }
 }
 
