@@ -1057,23 +1057,54 @@ function checkUserPermissions(userId, action) {
 }
 
 // 🔄 ЭКСПОРТ ФУНКЦИЙ ДЛЯ ИСПОЛЬЗОВАНИЯ В ДРУГИХ ФАЙЛАХ
-// Делаем функции глобальными для упрощения работы
-window.createOrGetUserProfile = createOrGetUserProfile;
-window.updateUserProfile = updateUserProfile;
-window.getUserProfile = getUserProfile;
-window.saveDailyCardToSupabase = saveDailyCardToSupabase;
-window.getTodayDailyCard = getTodayDailyCard;
-window.saveQuestionToSupabase = saveQuestionToSupabase;
-window.saveAnswerToSupabase = saveAnswerToSupabase;
-window.saveSpreadToSupabase = saveSpreadToSupabase;
-window.getUserHistory = getUserHistory;
-window.saveReviewToSupabase = saveReviewToSupabase;
-window.getApprovedReviews = getApprovedReviews;
-window.checkUserSubscription = checkUserSubscription;
-window.decrementFreeQuestions = decrementFreeQuestions;
-window.saveCompleteQuestionSession = saveCompleteQuestionSession;
-window.saveCompleteDailyCardSession = saveCompleteDailyCardSession;
-window.sendPredictionToN8N = sendPredictionToN8N;
-window.syncUserToN8N = syncUserToN8N;
+// Если это окружение браузера (не Node.js)
+if (typeof window !== 'undefined') {
+    window.initSupabase = initSupabase;
+    window.createOrGetUserProfile = createOrGetUserProfile;
+    window.updateUserProfile = updateUserProfile;
+    window.getUserProfile = getUserProfile;
+    window.saveDailyCardToSupabase = saveDailyCardToSupabase;
+    window.getTodayDailyCard = getTodayDailyCard;
+    window.saveQuestionToSupabase = saveQuestionToSupabase;
+    window.saveAnswerToSupabase = saveAnswerToSupabase;
+    window.saveSpreadToSupabase = saveSpreadToSupabase;
+    window.getUserHistory = getUserHistory;
+    window.saveReviewToSupabase = saveReviewToSupabase;
+    window.getApprovedReviews = getApprovedReviews;
+    window.checkUserSubscription = checkUserSubscription;
+    window.decrementFreeQuestions = decrementFreeQuestions;
+    window.saveCompleteQuestionSession = saveCompleteQuestionSession;
+    window.saveCompleteDailyCardSession = saveCompleteDailyCardSession;
+    window.initTelegramUser = initTelegramUser; // Эту функцию особенно важно экспортировать
+    window.searchUserHistory = searchUserHistory;
+    window.getUserStatistics = getUserStatistics;
+    window.sendPredictionToN8N = sendPredictionToN8N;
+    window.syncUserToN8N = syncUserToN8N;
+}
 
-console.log('📜 Supabase-functions.js загружен. Функции доступны глобально.');
+// Оставьте блок module.exports, если вы также используете это в Node.js
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        initSupabase,
+        createOrGetUserProfile,
+        updateUserProfile,
+        getUserProfile,
+        saveDailyCardToSupabase,
+        getTodayDailyCard,
+        saveQuestionToSupabase,
+        saveAnswerToSupabase,
+        saveSpreadToSupabase,
+        getUserHistory,
+        saveReviewToSupabase,
+        getApprovedReviews,
+        checkUserSubscription,
+        decrementFreeQuestions,
+        saveCompleteQuestionSession,
+        saveCompleteDailyCardSession,
+        initTelegramUser,
+        searchUserHistory,
+        getUserStatistics,
+        sendPredictionToN8N,
+        syncUserToN8N
+    };
+}
