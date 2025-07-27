@@ -1118,6 +1118,30 @@ function getAppStats() {
     };
 }
 
+// Интеграция с отладчиком (только в development)
+if (window.location.hostname === 'localhost' || window.location.search.includes('debug=true')) {
+    window.TarotDebug = {
+        log: (message, level = 'info') => {
+            console.log(`[${level.toUpperCase()}] ${message}`);
+            // Отправка в отладчик если открыт
+            if (window.TarotDebugger) {
+                window.TarotDebugger.log(message, level);
+            }
+        },
+        trackApiCall: () => {
+            if (window.TarotDebugger) {
+                const state = window.TarotDebugger.getState();
+                state.apiCalls++;
+            }
+        },
+        trackError: (error) => {
+            if (window.TarotDebugger) {
+                window.TarotDebugger.log(error.message, 'error');
+            }
+        }
+    };
+}
+
 // 🚀 ЗАПУСК ПРИЛОЖЕНИЯ
 document.addEventListener('DOMContentLoaded', initApp);
 
