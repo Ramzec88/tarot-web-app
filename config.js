@@ -1,32 +1,55 @@
-// config.js - Исправленная конфигурация с надежной обработкой ошибок
+// config.js - Обновленная конфигурация
 // ========================================================================
+
+// Глобальные переменные для конфигурации (будут заполнены после инициализации)
+window.SUPABASE_CONFIG = null;
+window.API_CONFIG = null;
+window.APP_CONFIG = null;
+window.TABLES = {
+    userProfiles: 'tarot_user_profiles',
+    dailyCards: 'tarot_daily_cards',
+    reviews: 'tarot_reviews',
+    spreads: 'tarot_spreads',
+    questions: 'tarot_questions',
+    answers: 'tarot_answers'
+}; // Определяем TABLES сразу, без predictions
+window.TELEGRAM_CONFIG = {
+    botUsername: 'ShepotKartBot',
+    webAppUrl: 'https://tarot-web-app-one.vercel.app', // Укажите ваш фактический URL на Vercel
+    supportBot: '@Helppodark_bot'
+};
+window.FALLBACK_CARDS = getDefaultCards(); // Загружаем дефолтные карты
+window.SPREADS_CONFIG = getDefaultSpreads(); // Загружаем дефолтные расклады
+
 
 // 🔧 ИНИЦИАЛИЗАЦИЯ КОНФИГУРАЦИИ С ПОЛНОЙ ВАЛИДАЦИЕЙ
 async function initializeConfig() {
     console.log('🔧 Инициализация конфигурации Шёпот Карт...');
-    
+
     try {
-        // Загружаем конфигурацию из API если возможно
-        await loadConfigFromAPI();
-        
-        // Проверяем и устанавливаем fallback конфигурации
-        setupFallbackConfigs();
-        
+        // Загружаем конфигурацию из API
+        const apiConfigSuccess = await loadConfigFromAPI();
+
+        // Если загрузка из API не удалась, используем fallback
+        if (!apiConfigSuccess) {
+            console.warn('⚠️ Не удалось загрузить конфигурацию из API, использую FALLBACK...');
+            setupFallbackConfigs();
+        }
+
         // Валидируем все конфигурации
         const isValid = validateAllConfigs();
-        
+
         if (isValid) {
             console.log('✅ Конфигурация успешно инициализирована');
             return true;
         } else {
-            console.warn('⚠️ Конфигурация инициализирована с предупреждениями');
+            console.error('❌ Критическая ошибка: Конфигурация невалидна!');
+            emergencyConfigRecovery(); // Если конфиг невалиден, переходим в аварийный режим
             return false;
         }
-        
+
     } catch (error) {
         console.error('❌ Критическая ошибка инициализации конфигурации:', error);
-        
-        // Аварийное восстановление
         emergencyConfigRecovery();
         return false;
     }
@@ -36,57 +59,62 @@ async function initializeConfig() {
 async function loadConfigFromAPI() {
     try {
         console.log('🌐 Попытка загрузки конфигурации из API...');
-        
-        // Пытаемся загрузить публичную конфигурацию
-        const response = await fetch('/api/config', {
+
+        const response = await fetch('/api/config', { // Используем относительный путь, Vercel сам перенаправит
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
             }
         });
-        
+
         if (response.ok) {
             const config = await response.json();
-            
-            // Устанавливаем полученные конфигурации
+
+            // Устанавливаем полученные конфигурации в глобальные переменные
+            // Проверяем наличие свойств перед присвоением
             if (config.supabase) {
                 window.SUPABASE_CONFIG = config.supabase;
                 console.log('✅ Supabase конфигурация загружена из API');
             }
-            
+
             if (config.api) {
                 window.API_CONFIG = {
-                    n8nWebhookUrl: process.env.N8N_WEBHOOK_URL || 'https://your-n8n.app/webhook/tarot',
-                    cardsUrl: config.api.cardsUrl || 'https://raw.githubusercontent.com/username/tarot-cards/main/cards.json',
-                    paymentUrl: config.api.paymentUrl,
+                    n8nWebhookUrl: config.api.n8nWebhookUrl || getEnvVar('N8N_WEBHOOK_URL', 'https://your-n8n.app/webhook/tarot'),
+                    cardsUrl: config.api.cardsUrl || getEnvVar('GITHUB_CARDS_URL', 'https://raw.githubusercontent.com/username/tarot-cards/main/cards.json'),
+                    paymentUrl: config.api.paymentUrl || 'https://www.wildberries.ru/catalog/199937445/detail.aspx', // Используем ваш URL Wildberries
                     timeout: 10000,
                     retryAttempts: 3
                 };
                 console.log('✅ API конфигурация загружена из API');
             }
-            
+
             if (config.app) {
                 window.APP_CONFIG = {
-                    ...getDefaultAppConfig(),
+                    ...getDefaultAppConfig(), // Начнем с дефолтных значений
                     freeQuestionsLimit: config.app.freeQuestionsLimit || 3,
                     premiumPrice: config.app.premiumPrice || 299
                 };
                 console.log('✅ App конфигурация загружена из API');
             }
-            
+
+            // TABLES, TELEGRAM_CONFIG, FALLBACK_CARDS, SPREADS_CONFIG не приходят из /api/config
+            // Они будут использовать свои дефолтные значения, что сейчас нормально.
+
             return true;
+        } else {
+            console.warn(`⚠️ API config вернул статус: ${response.status}`);
+            return false;
         }
-        
+
     } catch (error) {
-        console.warn('⚠️ Не удалось загрузить конфигурацию из API:', error);
+        console.warn('⚠️ Ошибка при загрузке конфигурации из API:', error);
+        return false;
     }
-    
-    return false;
 }
 
-// 🛡️ УСТАНОВКА FALLBACK КОНФИГУРАЦИЙ
+// 🛡️ УСТАНОВКА FALLBACK КОНФИГУРАЦИЙ (для случаев, когда API недоступно)
 function setupFallbackConfigs() {
-    // 🗄️ КОНФИГУРАЦИЯ SUPABASE
+    // Если SUPABASE_CONFIG еще не установлен из API, используем env vars или заглушки
     if (!window.SUPABASE_CONFIG) {
         window.SUPABASE_CONFIG = {
             url: getEnvVar('SUPABASE_URL', 'https://your-project.supabase.co'),
@@ -95,7 +123,7 @@ function setupFallbackConfigs() {
         console.log('⚠️ Использую fallback конфигурацию Supabase');
     }
 
-    // 🔗 КОНФИГУРАЦИЯ API
+    // Если API_CONFIG еще не установлен из API, используем env vars или заглушки
     if (!window.API_CONFIG) {
         window.API_CONFIG = {
             n8nWebhookUrl: getEnvVar('N8N_WEBHOOK_URL', 'https://your-n8n.app/webhook/tarot'),
@@ -106,25 +134,28 @@ function setupFallbackConfigs() {
         console.log('⚠️ Использую fallback конфигурацию API');
     }
 
-    // 📱 КОНФИГУРАЦИЯ ПРИЛОЖЕНИЯ
+    // Если APP_CONFIG еще не установлен из API, используем дефолтные значения
     if (!window.APP_CONFIG) {
         window.APP_CONFIG = getDefaultAppConfig();
         console.log('⚠️ Использую fallback конфигурацию приложения');
     }
-    
-    // 📋 КОНФИГУРАЦИЯ ТАБЛИЦ SUPABASE
+
+    // TABLES, TELEGRAM_CONFIG, FALLBACK_CARDS, SPREADS_CONFIG всегда будут инициализированы
+    // либо при их объявлении в начале файла, либо здесь, если их нет.
+    // Учитывая, что они уже объявлены в начале файла, эти if'ы могут быть излишни,
+    // но оставляем для безопасности, если структура файла изменится.
     if (!window.TABLES) {
         window.TABLES = {
             userProfiles: 'tarot_user_profiles',
-            predictions: 'tarot_predictions',
             dailyCards: 'tarot_daily_cards',
             reviews: 'tarot_reviews',
-            spreads: 'tarot_spreads'
+            spreads: 'tarot_spreads',
+            questions: 'tarot_questions',
+            answers: 'tarot_answers'
         };
         console.log('⚠️ Использую fallback конфигурацию таблиц');
     }
-    
-    // 📱 КОНФИГУРАЦИЯ TELEGRAM
+
     if (!window.TELEGRAM_CONFIG) {
         window.TELEGRAM_CONFIG = {
             botUsername: 'ShepotKartBot',
@@ -133,19 +164,18 @@ function setupFallbackConfigs() {
         };
         console.log('⚠️ Использую fallback конфигурацию Telegram');
     }
-    
-    // 🃏 FALLBACK КАРТЫ
-    if (!window.FALLBACK_CARDS) {
+
+    if (!window.FALLBACK_CARDS || window.FALLBACK_CARDS.length === 0) {
         window.FALLBACK_CARDS = getDefaultCards();
         console.log('⚠️ Использую fallback карты');
     }
-    
-    // 🔮 КОНФИГУРАЦИЯ РАСКЛАДОВ
-    if (!window.SPREADS_CONFIG) {
+
+    if (!window.SPREADS_CONFIG || Object.keys(window.SPREADS_CONFIG).length === 0) {
         window.SPREADS_CONFIG = getDefaultSpreads();
         console.log('⚠️ Использую fallback расклады');
     }
 }
+
 
 // 📱 КОНФИГУРАЦИЯ ПРИЛОЖЕНИЯ ПО УМОЛЧАНИЮ
 function getDefaultAppConfig() {
@@ -155,7 +185,7 @@ function getDefaultAppConfig() {
         freeQuestionsLimit: 3,
         maxHistoryItems: 50,
         cacheExpiry: 24 * 60 * 60 * 1000, // 24 часа
-        
+
         texts: {
             loading: 'Карты шепчут...',
             cardsReady: 'Карты готовы!',
@@ -168,7 +198,7 @@ function getDefaultAppConfig() {
             questionsLeft: 'Остались вопросы:',
             noQuestionsLeft: 'Бесплатные вопросы закончились'
         },
-        
+
         ui: {
             animationDuration: 300,
             showAnimations: true,
@@ -178,7 +208,9 @@ function getDefaultAppConfig() {
     };
 }
 
-// 🃏 КАРТЫ ПО УМОЛЧАНИЮ
+// 🃏 КАРТЫ ПО УМОЛЧАНИЮ (это должно быть в отдельном файле, или убедитесь, что cards.json загружается)
+// Для целей тестирования, если cards.json не грузится по API_CONFIG.cardsUrl,
+// это будет использоваться как запасной вариант.
 function getDefaultCards() {
     return [
         {
@@ -189,6 +221,10 @@ function getDefaultCards() {
             type: "Старший аркан",
             number: 0
         },
+        // ... (добавьте сюда другие карты, если это ваш реальный дефолтный список)
+        // Для сейчас достаточно первых 5-10 карт, чтобы не засорять файл.
+        // Если cards.json всегда будет локальным, то эта функция может быть удалена,
+        // а приложение будет просто загружать cards.json.
         {
             id: "MAGICIAN",
             name: "Маг",
@@ -263,12 +299,12 @@ function validateAllConfigs() {
         { name: 'SUPABASE_CONFIG', obj: window.SUPABASE_CONFIG, required: ['url', 'anonKey'] },
         { name: 'API_CONFIG', obj: window.API_CONFIG, required: ['n8nWebhookUrl', 'cardsUrl'] },
         { name: 'APP_CONFIG', obj: window.APP_CONFIG, required: ['appName', 'version', 'freeQuestionsLimit'] },
-        { name: 'TABLES', obj: window.TABLES, required: ['userProfiles', 'predictions'] },
+        { name: 'TABLES', obj: window.TABLES, required: ['userProfiles', 'dailyCards', 'reviews', 'spreads', 'questions', 'answers'] }, // Обновлен список обязательных таблиц
         { name: 'FALLBACK_CARDS', obj: window.FALLBACK_CARDS, required: [] }
     ];
 
     let allValid = true;
-    
+
     for (const validation of validations) {
         if (!validation.obj) {
             console.error(`❌ ${validation.name} отсутствует`);
@@ -282,7 +318,7 @@ function validateAllConfigs() {
                 allValid = false;
             }
         }
-        
+
         // Дополнительные проверки
         if (validation.name === 'SUPABASE_CONFIG') {
             if (!isValidUrl(validation.obj.url)) {
@@ -290,10 +326,14 @@ function validateAllConfigs() {
                 allValid = false;
             }
         }
-        
+
         if (validation.name === 'API_CONFIG') {
             if (!isValidUrl(validation.obj.cardsUrl)) {
                 console.error('❌ API_CONFIG.cardsUrl имеет неверный формат');
+                allValid = false;
+            }
+            if (!isValidUrl(validation.obj.n8nWebhookUrl)) { // Проверяем и n8nWebhookUrl
+                console.error('❌ API_CONFIG.n8nWebhookUrl имеет неверный формат');
                 allValid = false;
             }
         }
@@ -305,7 +345,7 @@ function validateAllConfigs() {
 // 🚨 ЭКСТРЕННОЕ ВОССТАНОВЛЕНИЕ
 function emergencyConfigRecovery() {
     console.warn('🚨 Запуск экстренного восстановления конфигурации...');
-    
+
     try {
         window.APP_CONFIG = {
             appName: 'Шёпот Карт',
@@ -337,9 +377,19 @@ function emergencyConfigRecovery() {
             }
         };
 
+        // Также установить базовые значения для Supabase и API, чтобы избежать ошибок
+        window.SUPABASE_CONFIG = { url: 'http://localhost', anonKey: 'emergency_key' };
+        window.API_CONFIG = { n8nWebhookUrl: 'http://localhost', cardsUrl: 'http://localhost' };
+        window.TABLES = {
+            userProfiles: 'tarot_user_profiles', dailyCards: 'tarot_daily_cards',
+            reviews: 'tarot_reviews', spreads: 'tarot_spreads',
+            questions: 'tarot_questions', answers: 'tarot_answers'
+        };
+
+
         console.log('✅ Экстренная конфигурация применена');
         return true;
-        
+
     } catch (error) {
         console.error('❌ Критическая ошибка экстренного восстановления:', error);
         return false;
@@ -349,18 +399,14 @@ function emergencyConfigRecovery() {
 // 🔧 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 function getEnvVar(name, defaultValue = '') {
     try {
-        // Проверяем переменные окружения (если доступны)
         if (typeof process !== 'undefined' && process.env && process.env[name]) {
             return process.env[name];
         }
-        
-        // Проверяем глобальные переменные
         if (typeof window !== 'undefined' && window[name]) {
             return window[name];
         }
-        
         return defaultValue;
-        
+
     } catch (error) {
         console.warn(`⚠️ Ошибка получения переменной ${name}:`, error);
         return defaultValue;
@@ -379,7 +425,7 @@ function isValidUrl(string) {
 // 📊 ФУНКЦИИ ДЛЯ ПОЛУЧЕНИЯ КОНФИГУРАЦИИ
 function getSupabaseConfig() {
     if (!window.SUPABASE_CONFIG) {
-        console.warn('⚠️ SUPABASE_CONFIG не инициализирован');
+        console.warn('⚠️ SUPABASE_CONFIG не инициализирован. Инициализация конфигов могла не завершиться.');
         return null;
     }
     return window.SUPABASE_CONFIG;
@@ -387,7 +433,7 @@ function getSupabaseConfig() {
 
 function getAPIConfig() {
     if (!window.API_CONFIG) {
-        console.warn('⚠️ API_CONFIG не инициализирован');
+        console.warn('⚠️ API_CONFIG не инициализирован. Инициализация конфигов могла не завершиться.');
         return null;
     }
     return window.API_CONFIG;
@@ -395,11 +441,44 @@ function getAPIConfig() {
 
 function getAppConfig() {
     if (!window.APP_CONFIG) {
-        console.warn('⚠️ APP_CONFIG не инициализирован');
+        console.warn('⚠️ APP_CONFIG не инициализирован. Инициализация конфигов могла не завершиться.');
         return null;
     }
     return window.APP_CONFIG;
 }
+
+function getTablesConfig() {
+    if (!window.TABLES) {
+        console.warn('⚠️ TABLES не инициализирован.');
+        return null;
+    }
+    return window.TABLES;
+}
+
+function getTelegramConfig() {
+    if (!window.TELEGRAM_CONFIG) {
+        console.warn('⚠️ TELEGRAM_CONFIG не инициализирован.');
+        return null;
+    }
+    return window.TELEGRAM_CONFIG;
+}
+
+function getFallbackCards() {
+    if (!window.FALLBACK_CARDS) {
+        console.warn('⚠️ FALLBACK_CARDS не инициализирован.');
+        return [];
+    }
+    return window.FALLBACK_CARDS;
+}
+
+function getSpreadsConfig() {
+    if (!window.SPREADS_CONFIG) {
+        console.warn('⚠️ SPREADS_CONFIG не инициализирован.');
+        return null;
+    }
+    return window.SPREADS_CONFIG;
+}
+
 
 // ✅ ПРОВЕРКА ГОТОВНОСТИ
 function isConfigReady() {
@@ -408,24 +487,23 @@ function isConfigReady() {
         window.API_CONFIG &&
         window.APP_CONFIG &&
         window.FALLBACK_CARDS &&
-        window.TABLES
+        window.TABLES &&
+        window.TELEGRAM_CONFIG &&
+        window.SPREADS_CONFIG
     );
 }
 
 // 🔄 ПЕРЕЗАГРУЗКА КОНФИГУРАЦИИ
 async function reloadConfig() {
     console.log('🔄 Перезагрузка конфигурации...');
-    
-    // Очищаем
-    delete window.SUPABASE_CONFIG;
-    delete window.API_CONFIG;
-    delete window.APP_CONFIG;
-    delete window.TABLES;
-    delete window.TELEGRAM_CONFIG;
-    delete window.FALLBACK_CARDS;
-    delete window.SPREADS_CONFIG;
-    
-    // Инициализируем заново
+
+    // Очищаем глобальные переменные, чтобы они были переинициализированы
+    window.SUPABASE_CONFIG = null;
+    window.API_CONFIG = null;
+    window.APP_CONFIG = null;
+    // Остальные, как TABLES, TELEGRAM_CONFIG, FALLBACK_CARDS, SPREADS_CONFIG
+    // имеют дефолтные значения или будут переопределены, если их нет.
+
     return await initializeConfig();
 }
 
@@ -438,17 +516,28 @@ function debugConfig() {
         tables: !!window.TABLES,
         telegram: !!window.TELEGRAM_CONFIG,
         fallbackCards: window.FALLBACK_CARDS ? window.FALLBACK_CARDS.length : 0,
-        spreads: window.SPREADS_CONFIG ? Object.keys(window.SPREADS_CONFIG).length : 0
+        spreads: window.SPREADS_CONFIG ? Object.keys(window.SPREADS_CONFIG).length : 0,
+        SUPABASE_CONFIG: window.SUPABASE_CONFIG,
+        API_CONFIG: window.API_CONFIG,
+        APP_CONFIG: window.APP_CONFIG,
+        TABLES: window.TABLES,
+        TELEGRAM_CONFIG: window.TELEGRAM_CONFIG,
+        FALLBACK_CARDS: window.FALLBACK_CARDS,
+        SPREADS_CONFIG: window.SPREADS_CONFIG
     });
 }
 
-// 📤 ЭКСПОРТ
+// 📤 ЭКСПОРТ (для модульной системы, если используется)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         initializeConfig,
         getSupabaseConfig,
         getAPIConfig,
         getAppConfig,
+        getTablesConfig,
+        getTelegramConfig,
+        getFallbackCards,
+        getSpreadsConfig,
         debugConfig,
         reloadConfig,
         isConfigReady,
@@ -457,9 +546,16 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // 🏁 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
+// Эта функция будет вызвана при загрузке DOM
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('🏁 DOM готов, инициализирую конфигурацию...');
-        initializeConfig();
+        console.log('🏁 DOM готов, запускаю initializeConfig()...');
+        initializeConfig().then(success => {
+            if (success) {
+                console.log('Конфигурация успешно установлена.');
+            } else {
+                console.error('Не удалось полностью инициализировать конфигурацию.');
+            }
+        });
     });
 }
