@@ -1,13 +1,225 @@
-// Исправленная инициализация Supabase в script.js
+// script.js - Исправленная версия с рабочими табами
 // ========================================================================
 
-// 🌐 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ SUPABASE
+// 🌐 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 let supabase = null;
 let supabaseReady = false;
 let supabaseConnectionRetries = 0;
 const MAX_SUPABASE_RETRIES = 3;
+let currentUser = null;
+let appState = {
+    currentTab: 'daily',
+    questionsLeft: 3,
+    isPremium: false
+};
 
-// 🗄️ УЛУЧШЕННАЯ ИНИЦИАЛИЗАЦИЯ SUPABASE
+// 🚀 ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ
+async function initApp() {
+    try {
+        console.log('🔮 Инициализация Tarot Web App...');
+        
+        // 1. Настройка обработчиков событий для табов
+        setupTabEventListeners();
+        
+        // 2. Инициализация Telegram WebApp
+        initTelegramWebApp();
+        
+        // 3. Инициализация Supabase
+        await initSupabase();
+        
+        // 4. Загрузка пользовательских данных
+        await loadUserData();
+        
+        // 5. Настройка других обработчиков событий
+        setupOtherEventListeners();
+        
+        // 6. Показ приветственного экрана для новых пользователей
+        checkAndShowWelcome();
+        
+        console.log('✅ Приложение успешно инициализировано');
+        
+    } catch (error) {
+        console.error('❌ Ошибка инициализации приложения:', error);
+        showErrorMessage('Ошибка загрузки приложения. Перезагрузите страницу.');
+    }
+}
+
+// 🔗 НАСТРОЙКА ОБРАБОТЧИКОВ СОБЫТИЙ ДЛЯ ТАБОВ
+function setupTabEventListeners() {
+    console.log('🔗 Настройка обработчиков табов...');
+    
+    // Получаем все табы
+    const navTabs = document.querySelectorAll('.nav-tab');
+    
+    if (navTabs.length === 0) {
+        console.error('❌ Табы не найдены в DOM');
+        return;
+    }
+    
+    // Добавляем обработчики для каждого таба
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const tabName = this.getAttribute('data-tab');
+            if (tabName) {
+                console.log(`🔄 Переключение на таб: ${tabName}`);
+                switchTab(tabName);
+            }
+        });
+    });
+    
+    console.log(`✅ Обработчики добавлены для ${navTabs.length} табов`);
+}
+
+// 🔄 ПЕРЕКЛЮЧЕНИЕ МЕЖДУ ТАБАМИ
+function switchTab(tabName) {
+    try {
+        console.log(`🔄 Переключение на таб: ${tabName}`);
+        
+        // 1. Обновляем состояние приложения
+        appState.currentTab = tabName;
+        
+        // 2. Убираем активный класс со всех табов
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // 3. Добавляем активный класс текущему табу
+        const currentTabElement = document.querySelector(`[data-tab="${tabName}"]`);
+        if (currentTabElement) {
+            currentTabElement.classList.add('active');
+        }
+        
+        // 4. Скрываем все контенты табов
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+            content.style.display = 'none';
+        });
+        
+        // 5. Показываем контент нужного таба
+        const targetContent = document.getElementById(`${tabName}-tab`);
+        if (targetContent) {
+            targetContent.classList.add('active');
+            targetContent.style.display = 'block';
+        } else {
+            console.warn(`⚠️ Контент для таба ${tabName} не найден`);
+        }
+        
+        // 6. Выполняем специфичную логику для таба
+        handleTabSpecificLogic(tabName);
+        
+        // 7. Уведомляем Telegram WebApp о смене контента
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.expand();
+        }
+        
+        console.log(`✅ Таб ${tabName} активирован`);
+        
+    } catch (error) {
+        console.error(`❌ Ошибка переключения таба ${tabName}:`, error);
+    }
+}
+
+// 🎯 СПЕЦИФИЧНАЯ ЛОГИКА ДЛЯ КАЖДОГО ТАБА
+function handleTabSpecificLogic(tabName) {
+    switch (tabName) {
+        case 'daily':
+            handleDailyTab();
+            break;
+        case 'question':
+            handleQuestionTab();
+            break;
+        case 'spreads':
+            handleSpreadsTab();
+            break;
+        case 'history':
+            handleHistoryTab();
+            break;
+        case 'reviews':
+            handleReviewsTab();
+            break;
+        case 'premium':
+            handlePremiumTab();
+            break;
+        default:
+            console.warn(`⚠️ Неизвестный таб: ${tabName}`);
+    }
+}
+
+// 📅 ЛОГИКА ТАБА "КАРТА ДНЯ"
+function handleDailyTab() {
+    console.log('📅 Обработка таба "Карта дня"');
+    // Здесь можно добавить логику загрузки карты дня
+    checkTodayCard();
+}
+
+// ❓ ЛОГИКА ТАБА "ВОПРОС"
+function handleQuestionTab() {
+    console.log('❓ Обработка таба "Вопрос"');
+    updateQuestionsCounter();
+}
+
+// 🃏 ЛОГИКА ТАБА "РАСКЛАДЫ"
+function handleSpreadsTab() {
+    console.log('🃏 Обработка таба "Расклады"');
+    // Проверяем Premium статус для доступа к раскладам
+    if (!appState.isPremium) {
+        showPremiumRequired();
+    }
+}
+
+// 📖 ЛОГИКА ТАБА "ИСТОРИЯ"
+function handleHistoryTab() {
+    console.log('📖 Обработка таба "История"');
+    loadUserHistory();
+}
+
+// ⭐ ЛОГИКА ТАБА "ОТЗЫВЫ"
+function handleReviewsTab() {
+    console.log('⭐ Обработка таба "Отзывы"');
+    loadReviews();
+}
+
+// 👑 ЛОГИКА ТАБА "PREMIUM"
+function handlePremiumTab() {
+    console.log('👑 Обработка таба "Premium"');
+    // Логика отображения Premium возможностей
+}
+
+// 📱 ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP
+function initTelegramWebApp() {
+    console.log('📱 Инициализация Telegram WebApp...');
+    
+    try {
+        if (window.Telegram?.WebApp) {
+            const tg = window.Telegram.WebApp;
+            
+            // Настройка интерфейса
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            // Установка темы
+            document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor || '#1a1a2e');
+            document.documentElement.style.setProperty('--tg-theme-text-color', tg.textColor || '#ffffff');
+            
+            // Получение данных пользователя
+            if (tg.initDataUnsafe?.user) {
+                currentUser = tg.initDataUnsafe.user;
+                console.log('✅ Данные Telegram пользователя получены:', currentUser.first_name);
+            }
+            
+            console.log('✅ Telegram WebApp инициализирован');
+        } else {
+            console.warn('⚠️ Telegram WebApp недоступен (возможно, запуск вне Telegram)');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка инициализации Telegram WebApp:', error);
+    }
+}
+
+// 🗄️ ИНИЦИАЛИЗАЦИЯ SUPABASE
 async function initSupabase() {
     try {
         console.log('🗄️ Инициализация Supabase...');
@@ -62,11 +274,11 @@ async function initSupabase() {
         
     } catch (error) {
         console.error('❌ Ошибка инициализации Supabase:', error);
-        return handleSupabaseInitError(error);
+        return false;
     }
 }
 
-// 🔒 БЕЗОПАСНОЕ ПОЛУЧЕНИЕ КОНФИГУРАЦИИ SUPABASE
+// 🔧 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ SUPABASE
 function getSupabaseConfigSafely() {
     try {
         // Проверяем функцию получения конфигурации
@@ -82,16 +294,6 @@ function getSupabaseConfigSafely() {
             return window.SUPABASE_CONFIG;
         }
         
-        // Проверяем переменные окружения
-        const envConfig = {
-            url: getEnvVar('SUPABASE_URL'),
-            anonKey: getEnvVar('SUPABASE_ANON_KEY')
-        };
-        
-        if (envConfig.url && envConfig.anonKey) {
-            return envConfig;
-        }
-        
         return null;
         
     } catch (error) {
@@ -100,7 +302,6 @@ function getSupabaseConfigSafely() {
     }
 }
 
-// 📚 ПРОВЕРКА ЗАГРУЗКИ БИБЛИОТЕКИ SUPABASE
 async function ensureSupabaseLibrary() {
     try {
         // Проверяем, загружена ли библиотека
@@ -119,7 +320,6 @@ async function ensureSupabaseLibrary() {
             
             script.onload = () => {
                 console.log('✅ Библиотека Supabase загружена');
-                // Небольшая задержка для инициализации
                 setTimeout(() => resolve(true), 100);
             };
             
@@ -132,278 +332,287 @@ async function ensureSupabaseLibrary() {
             
             // Таймаут на случай зависания
             setTimeout(() => {
-                if (typeof window.supabase === 'undefined') {
-                    console.error('⏰ Таймаут загрузки библиотеки Supabase');
-                    resolve(false);
-                }
+                resolve(false);
             }, 10000);
         });
         
     } catch (error) {
-        console.error('❌ Ошибка проверки библиотеки Supabase:', error);
+        console.error('❌ Ошибка загрузки библиотеки Supabase:', error);
         return false;
     }
 }
 
-// ✅ ВАЛИДАЦИЯ КОНФИГУРАЦИИ SUPABASE
 function validateSupabaseConfig(config) {
+    if (!config || typeof config !== 'object') {
+        console.error('❌ Конфигурация Supabase пуста или некорректна');
+        return false;
+    }
+    
+    if (!config.url || !config.anonKey) {
+        console.error('❌ Отсутствуют обязательные поля конфигурации Supabase');
+        return false;
+    }
+    
+    if (!isValidUrl(config.url)) {
+        console.error('❌ Некорректный URL Supabase');
+        return false;
+    }
+    
+    return true;
+}
+
+function isValidUrl(string) {
     try {
-        // Проверяем наличие обязательных полей
-        if (!config || !config.url || !config.anonKey) {
-            console.error('❌ Отсутствуют обязательные поля конфигурации Supabase');
-            return false;
-        }
-        
-        // Проверяем корректность URL
-        try {
-            const url = new URL(config.url);
-            if (!url.hostname.includes('supabase')) {
-                console.warn('⚠️ URL не похож на Supabase URL');
-            }
-        } catch (urlError) {
-            console.error('❌ Некорректный URL Supabase:', urlError);
-            return false;
-        }
-        
-        // Проверяем формат ключа
-        if (config.anonKey.length < 50) {
-            console.error('❌ Anon key слишком короткий');
-            return false;
-        }
-        
-        // Проверяем, что это действительно anon key
-        if (!config.anonKey.startsWith('eyJ')) {
-            console.error('❌ Anon key имеет неверный формат');
-            return false;
-        }
-        
+        new URL(string);
         return true;
-        
-    } catch (error) {
-        console.error('❌ Ошибка валидации конфигурации Supabase:', error);
+    } catch {
         return false;
     }
 }
 
-// 🔍 ТЕСТИРОВАНИЕ СОЕДИНЕНИЯ SUPABASE
 async function testSupabaseConnection() {
     try {
-        console.log('🔍 Тестирование соединения с Supabase...');
+        console.log('🧪 Тестирование соединения Supabase...');
         
-        if (!supabase) {
-            throw new Error('Клиент Supabase не инициализирован');
-        }
-        
-        // Простой запрос для проверки соединения
+        // Простой тест подключения
         const { data, error } = await supabase
-            .from('tarot_user_profiles')
-            .select('count')
-            .limit(1);
-        
-        if (error) {
-            // Если таблица не существует, это тоже OK - соединение работает
-            if (error.message.includes('relation') && error.message.includes('does not exist')) {
-                console.log('✅ Соединение с Supabase работает (таблицы не настроены)');
-                return true;
-            }
-            
-            console.warn('⚠️ Ошибка при тестировании Supabase:', error.message);
-            return false;
-        }
-        
-        console.log('✅ Соединение с Supabase успешно протестировано');
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Ошибка тестирования соединения Supabase:', error);
-        
-        // Если это сетевая ошибка, попробуем повторить
-        if (error.message.includes('fetch') && supabaseConnectionRetries < MAX_SUPABASE_RETRIES) {
-            supabaseConnectionRetries++;
-            console.log(`🔄 Повторная попытка соединения (${supabaseConnectionRetries}/${MAX_SUPABASE_RETRIES})...`);
-            
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Ждем 2 секунды
-            return await testSupabaseConnection();
-        }
-        
-        return false;
-    }
-}
-
-// 📡 НАСТРОЙКА ОБРАБОТЧИКОВ СОБЫТИЙ SUPABASE
-function setupSupabaseEventHandlers() {
-    try {
-        if (!supabase) return;
-        
-        // Обработчик изменения аутентификации
-        supabase.auth.onAuthStateChange((event, session) => {
-            console.log('🔐 Изменение состояния аутентификации:', event);
-            
-            switch (event) {
-                case 'SIGNED_IN':
-                    console.log('✅ Пользователь вошел в систему');
-                    break;
-                case 'SIGNED_OUT':
-                    console.log('👋 Пользователь вышел из системы');
-                    break;
-                case 'TOKEN_REFRESHED':
-                    console.log('🔄 Токен обновлен');
-                    break;
-            }
-        });
-        
-        console.log('📡 Обработчики событий Supabase настроены');
-        
-    } catch (error) {
-        console.error('❌ Ошибка настройки обработчиков Supabase:', error);
-    }
-}
-
-// 🚨 ОБРАБОТКА ОШИБОК ИНИЦИАЛИЗАЦИИ SUPABASE
-function handleSupabaseInitError(error) {
-    try {
-        console.error('🚨 Обработка ошибки инициализации Supabase:', error);
-        
-        // Определяем тип ошибки
-        const errorType = getSupabaseErrorType(error);
-        
-        switch (errorType) {
-            case 'network':
-                console.warn('🌐 Сетевая ошибка - работаем в автономном режиме');
-                return false;
-                
-            case 'config':
-                console.error('⚙️ Ошибка конфигурации - проверьте настройки');
-                return false;
-                
-            case 'auth':
-                console.error('🔐 Ошибка аутентификации - проверьте ключи');
-                return false;
-                
-            default:
-                console.error('❓ Неизвестная ошибка Supabase');
-                return false;
-        }
-        
-    } catch (handlerError) {
-        console.error('❌ Ошибка в обработчике ошибок Supabase:', handlerError);
-        return false;
-    }
-}
-
-// 🔍 ОПРЕДЕЛЕНИЕ ТИПА ОШИБКИ SUPABASE
-function getSupabaseErrorType(error) {
-    const message = error.message.toLowerCase();
-    
-    if (message.includes('fetch') || message.includes('network') || message.includes('cors')) {
-        return 'network';
-    }
-    
-    if (message.includes('invalid') || message.includes('key') || message.includes('token')) {
-        return 'auth';
-    }
-    
-    if (message.includes('url') || message.includes('config')) {
-        return 'config';
-    }
-    
-    return 'unknown';
-}
-
-// 🔄 ПЕРЕПОДКЛЮЧЕНИЕ К SUPABASE
-async function reconnectSupabase() {
-    try {
-        console.log('🔄 Попытка переподключения к Supabase...');
-        
-        supabaseReady = false;
-        supabaseConnectionRetries = 0;
-        
-        const result = await initSupabase();
-        
-        if (result) {
-            console.log('✅ Переподключение к Supabase успешно');
-            
-            // Уведомляем приложение о восстановлении соединения
-            window.dispatchEvent(new CustomEvent('supabase-reconnected'));
-        } else {
-            console.warn('⚠️ Переподключение к Supabase не удалось');
-        }
-        
-        return result;
-        
-    } catch (error) {
-        console.error('❌ Ошибка переподключения к Supabase:', error);
-        return false;
-    }
-}
-
-// 📊 ПОЛУЧЕНИЕ СТАТУСА SUPABASE
-function getSupabaseStatus() {
-    return {
-        ready: supabaseReady,
-        connected: !!supabase,
-        retries: supabaseConnectionRetries,
-        lastError: null, // Можно добавить отслеживание последней ошибки
-        config: {
-            hasUrl: !!(window.SUPABASE_CONFIG?.url),
-            hasKey: !!(window.SUPABASE_CONFIG?.anonKey),
-            urlValid: window.SUPABASE_CONFIG?.url ? isValidUrl(window.SUPABASE_CONFIG.url) : false
-        }
-    };
-}
-
-// 🧪 ТЕСТОВЫЕ ФУНКЦИИ SUPABASE
-async function testSupabaseOperations() {
-    if (!supabase || !supabaseReady) {
-        console.warn('⚠️ Supabase не готов для тестирования');
-        return false;
-    }
-    
-    try {
-        console.log('🧪 Тестирование операций Supabase...');
-        
-        // Тест чтения
-        const { data: readData, error: readError } = await supabase
             .from('tarot_user_profiles')
             .select('user_id')
             .limit(1);
         
-        if (readError && !readError.message.includes('does not exist')) {
-            console.error('❌ Ошибка чтения:', readError);
+        // Если таблица не существует, это нормально для тестирования
+        if (error && !error.message.includes('does not exist')) {
+            console.warn('⚠️ Предупреждение соединения Supabase:', error.message);
             return false;
         }
         
-        console.log('✅ Операции чтения работают');
-        
-        // Здесь можно добавить другие тесты (запись, обновление и т.д.)
-        
+        console.log('✅ Соединение Supabase работает');
         return true;
         
     } catch (error) {
-        console.error('❌ Ошибка тестирования операций Supabase:', error);
+        console.error('❌ Ошибка тестирования соединения Supabase:', error);
         return false;
     }
 }
 
-// 🔧 УТИЛИТЫ ДЛЯ РАБОТЫ С SUPABASE
-function getSupabaseClient() {
-    if (!supabaseReady || !supabase) {
-        console.warn('⚠️ Supabase клиент недоступен');
+function setupSupabaseEventHandlers() {
+    // Настройка обработчиков событий Supabase
+    console.log('🔗 Настройка обработчиков событий Supabase...');
+}
+
+// 👤 ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+async function loadUserData() {
+    console.log('👤 Загрузка данных пользователя...');
+    
+    try {
+        // Если есть Telegram пользователь
+        if (currentUser?.id) {
+            // Загружаем данные из Supabase или localStorage
+            const userData = await getUserProfile(currentUser.id);
+            if (userData) {
+                appState.questionsLeft = userData.questionsLeft || 3;
+                appState.isPremium = userData.isPremium || false;
+                updateUI();
+            }
+        } else {
+            // Загружаем из localStorage для тестирования вне Telegram
+            const localData = localStorage.getItem('tarot_user_data');
+            if (localData) {
+                const parsedData = JSON.parse(localData);
+                appState.questionsLeft = parsedData.questionsLeft || 3;
+                appState.isPremium = parsedData.isPremium || false;
+                updateUI();
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки данных пользователя:', error);
+    }
+}
+
+async function getUserProfile(userId) {
+    if (!supabaseReady) {
+        console.warn('⚠️ Supabase не готов, данные пользователя недоступны');
         return null;
     }
-    return supabase;
+    
+    try {
+        const { data, error } = await supabase
+            .from('tarot_user_profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            throw error;
+        }
+        
+        return data;
+        
+    } catch (error) {
+        console.error('❌ Ошибка получения профиля пользователя:', error);
+        return null;
+    }
 }
 
-function isSupabaseReady() {
-    return supabaseReady && !!supabase;
+// 🎨 ОБНОВЛЕНИЕ ИНТЕРФЕЙСА
+function updateUI() {
+    // Обновление счетчика вопросов
+    const questionsCounter = document.getElementById('questions-count');
+    if (questionsCounter) {
+        questionsCounter.textContent = appState.questionsLeft;
+    }
+    
+    // Обновление статуса подписки
+    const subscriptionStatus = document.getElementById('subscription-status');
+    if (subscriptionStatus) {
+        if (appState.isPremium) {
+            subscriptionStatus.classList.add('premium');
+            subscriptionStatus.innerHTML = `
+                <span class="status-icon">✨</span>
+                <span class="status-text">Premium активен</span>
+            `;
+        } else {
+            subscriptionStatus.classList.remove('premium');
+            subscriptionStatus.innerHTML = `
+                <span class="status-icon">🌑</span>
+                <span class="status-text">Базовая версия</span>
+            `;
+        }
+    }
 }
 
-// 📋 ЭКСПОРТ ФУНКЦИЙ SUPABASE
-window.supabaseManager = {
-    init: initSupabase,
-    isReady: isSupabaseReady,
-    getClient: getSupabaseClient,
-    getStatus: getSupabaseStatus,
-    reconnect: reconnectSupabase,
-    test: testSupabaseOperations
+// 🔧 НАСТРОЙКА ДРУГИХ ОБРАБОТЧИКОВ СОБЫТИЙ
+function setupOtherEventListeners() {
+    console.log('🔧 Настройка дополнительных обработчиков событий...');
+    
+    // Обработчик кнопки задать вопрос
+    const askBtn = document.getElementById('ask-btn');
+    if (askBtn) {
+        askBtn.addEventListener('click', handleAskQuestion);
+    }
+    
+    // Обработчик карты дня
+    const dailyCard = document.getElementById('daily-card');
+    if (dailyCard) {
+        dailyCard.addEventListener('click', handleDailyCardClick);
+    }
+    
+    // Обработчик кнопки очистки истории
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', handleClearHistory);
+    }
+}
+
+// 🃏 ОБРАБОТЧИКИ ИГРОВОЙ ЛОГИКИ
+function handleAskQuestion() {
+    console.log('❓ Обработка вопроса...');
+    
+    const questionInput = document.getElementById('question-input');
+    if (!questionInput) return;
+    
+    const question = questionInput.value.trim();
+    if (!question) {
+        showErrorMessage('Пожалуйста, введите вопрос');
+        return;
+    }
+    
+    if (appState.questionsLeft <= 0 && !appState.isPremium) {
+        showPremiumRequired();
+        return;
+    }
+    
+    // Логика обработки вопроса
+    processQuestion(question);
+}
+
+function handleDailyCardClick() {
+    console.log('📅 Обработка клика по карте дня...');
+    // Логика открытия карты дня
+    drawDailyCard();
+}
+
+function handleClearHistory() {
+    console.log('🗑️ Очистка истории...');
+    if (confirm('Вы уверены, что хотите очистить всю историю?')) {
+        clearUserHistory();
+    }
+}
+
+// 🎮 ИГРОВАЯ ЛОГИКА (заглушки)
+async function checkTodayCard() {
+    console.log('📅 Проверка карты дня...');
+    // Здесь будет логика проверки карты дня
+}
+
+async function drawDailyCard() {
+    console.log('🃏 Вытягивание карты дня...');
+    // Здесь будет логика вытягивания карты дня
+}
+
+async function processQuestion(question) {
+    console.log('🔮 Обработка вопроса:', question);
+    // Здесь будет логика обработки вопроса
+}
+
+function updateQuestionsCounter() {
+    const counter = document.getElementById('questions-count');
+    if (counter) {
+        counter.textContent = appState.questionsLeft;
+    }
+}
+
+async function loadUserHistory() {
+    console.log('📖 Загрузка истории пользователя...');
+    // Здесь будет логика загрузки истории
+}
+
+async function loadReviews() {
+    console.log('⭐ Загрузка отзывов...');
+    // Здесь будет логика загрузки отзывов
+}
+
+async function clearUserHistory() {
+    console.log('🗑️ Очистка истории пользователя...');
+    // Здесь будет логика очистки истории
+}
+
+// 🚨 ОБРАБОТКА ОШИБОК
+function showErrorMessage(message) {
+    console.error('🚨 Ошибка:', message);
+    
+    // Простое уведомление (можно заменить на модальное окно)
+    if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.showAlert(message);
+    } else {
+        alert(message);
+    }
+}
+
+function showPremiumRequired() {
+    console.log('👑 Требуется Premium');
+    switchTab('premium');
+}
+
+// 🎉 ПРИВЕТСТВЕННЫЙ ЭКРАН
+function checkAndShowWelcome() {
+    // Проверяем, новый ли пользователь
+    const hasSeenWelcome = localStorage.getItem('tarot_seen_welcome');
+    if (!hasSeenWelcome && !currentUser) {
+        console.log('👋 Показ приветственного экрана...');
+        // Здесь можно показать приветственный экран
+        localStorage.setItem('tarot_seen_welcome', 'true');
+    }
+}
+
+// 🌟 ЭКСПОРТ ДЛЯ ОТЛАДКИ
+window.tarotApp = {
+    switchTab,
+    appState,
+    currentUser,
+    supabaseReady,
+    initApp
 };
+
+console.log('📜 Script.js загружен, ожидание DOM...');
