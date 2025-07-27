@@ -1299,10 +1299,28 @@ async function loadReviews() {
 
 
 // 🚨 ОБРАБОТКА ОШИБОК И СООБЩЕНИЙ
+// script.js
+// ...
 function showErrorMessage(message) {
     console.error('🚨 Ошибка:', message);
-    if (window.Telegram?.WebApp && window.Telegram.WebApp.showAlert) {
-        window.Telegram.WebApp.showAlert(message);
+
+    // Простое уведомление (можно заменить на модальное окно)
+    if (window.Telegram?.WebApp) {
+        // Использовать window.Telegram.WebApp.showAlert(message) может вызывать ошибку версии
+        // Лучше использовать более совместимый метод или fallback на alert
+        try {
+            if (window.Telegram.WebApp.showAlert) {
+                window.Telegram.WebApp.showAlert(message);
+            } else if (window.Telegram.WebApp.HapticFeedback) { // Пример другого метода
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+                // Дополнительно можно использовать MainButton или BackButton для индикации
+            } else {
+                alert(message);
+            }
+        } catch (e) {
+            console.error('Telegram WebApp showAlert/HapticFeedback failed, falling back to alert:', e);
+            alert(message);
+        }
     } else {
         alert(message);
     }
