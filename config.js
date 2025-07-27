@@ -439,3 +439,400 @@ if (typeof window !== 'undefined') {
     window.reloadTarotConfig = reloadConfig;
     window.getTarotConfigStats = getConfigStats;
 }
+// Финальное исправление навигации для структуры "Шёпот Карт"
+// ========================================================================
+
+// 🎯 ИСПРАВЛЕННАЯ СИСТЕМА НАВИГАЦИИ (под вашу HTML структуру)
+function initNavigation() {
+    try {
+        console.log('🧭 Инициализация навигации...');
+        
+        // Получаем все вкладки навигации (включая основные и вторичные)
+        const navTabs = document.querySelectorAll('.nav-tab[data-tab]');
+        
+        if (navTabs.length === 0) {
+            console.warn('⚠️ Элементы навигации не найдены');
+            return false;
+        }
+        
+        console.log(`🔍 Найдено ${navTabs.length} вкладок навигации`);
+        
+        // Добавляем обработчики событий для каждой вкладки
+        navTabs.forEach((tab, index) => {
+            const tabName = tab.getAttribute('data-tab');
+            
+            if (!tabName) {
+                console.warn(`⚠️ Вкладка ${index} не имеет атрибута data-tab`);
+                return;
+            }
+            
+            // Удаляем старые обработчики (если есть) и добавляем новые
+            const newTab = tab.cloneNode(true);
+            tab.parentNode.replaceChild(newTab, tab);
+            
+            // Добавляем обработчик клика
+            newTab.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log(`🔄 Клик по вкладке: ${tabName}`);
+                switchTab(tabName);
+            });
+            
+            // Добавляем визуальную обратную связь для мобильных устройств
+            newTab.addEventListener('touchstart', (e) => {
+                newTab.style.transform = 'scale(0.95)';
+                newTab.style.opacity = '0.8';
+            });
+            
+            newTab.addEventListener('touchend', (e) => {
+                newTab.style.transform = 'scale(1)';
+                newTab.style.opacity = '1';
+            });
+            
+            // Предотвращаем выделение текста при двойном тапе
+            newTab.addEventListener('selectstart', (e) => {
+                e.preventDefault();
+            });
+            
+            console.log(`✅ Обработчики добавлены для вкладки: ${tabName}`);
+        });
+        
+        console.log(`✅ Навигация инициализирована для ${navTabs.length} вкладок`);
+        
+        // Проверяем наличие всех контент-областей
+        const expectedTabs = ['daily', 'question', 'spreads', 'history', 'reviews', 'premium'];
+        const missingTabs = [];
+        
+        expectedTabs.forEach(tabName => {
+            const tabContent = document.getElementById(`${tabName}-tab`);
+            if (!tabContent) {
+                missingTabs.push(tabName);
+            }
+        });
+        
+        if (missingTabs.length > 0) {
+            console.warn(`⚠️ Отсутствуют контент-области для вкладок: ${missingTabs.join(', ')}`);
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Ошибка инициализации навигации:', error);
+        return false;
+    }
+}
+
+// 🔄 УЛУЧШЕННАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
+function switchTab(tabName) {
+    try {
+        console.log(`🔄 Переключение на вкладку: ${tabName}`);
+        
+        // Проверяем существование контент-области
+        const tabContent = document.getElementById(`${tabName}-tab`);
+        if (!tabContent) {
+            console.error(`❌ Контент вкладки ${tabName} не найден`);
+            
+            // Пытаемся переключиться на дефолтную вкладку
+            if (tabName !== 'daily') {
+                console.log('🔄 Попытка переключения на главную вкладку');
+                return switchTab('daily');
+            }
+            return false;
+        }
+        
+        // Скрываем все контент-области
+        const allTabs = document.querySelectorAll('.tab-content');
+        allTabs.forEach(tab => {
+            tab.classList.remove('active');
+            tab.style.display = 'none';
+        });
+        
+        // Убираем активный класс со всех кнопок навигации
+        const allNavTabs = document.querySelectorAll('.nav-tab');
+        allNavTabs.forEach(navTab => {
+            navTab.classList.remove('active');
+        });
+        
+        // Показываем выбранную контент-область
+        tabContent.classList.add('active');
+        tabContent.style.display = 'block';
+        
+        // Активируем соответствующую кнопку навигации
+        const activeNavTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeNavTab) {
+            activeNavTab.classList.add('active');
+            console.log(`✅ Активирована кнопка навигации для ${tabName}`);
+        } else {
+            console.warn(`⚠️ Кнопка навигации для ${tabName} не найдена`);
+        }
+        
+        // Сохраняем текущую вкладку
+        currentTab = tabName;
+        try {
+            sessionStorage.setItem('currentTab', tabName);
+        } catch (storageError) {
+            console.warn('⚠️ Не удалось сохранить вкладку в sessionStorage:', storageError);
+        }
+        
+        // Обновляем кнопку "Назад" в Telegram
+        if (tg && tg.BackButton) {
+            if (tabName === 'daily') {
+                tg.BackButton.hide();
+            } else {
+                tg.BackButton.show();
+            }
+        }
+        
+        // Выполняем действия специфичные для вкладки
+        handleTabSpecificActions(tabName);
+        
+        // Логируем успешное переключение
+        console.log(`✅ Успешно переключено на вкладку: ${tabName}`);
+        
+        // Отправляем событие для других частей приложения
+        window.dispatchEvent(new CustomEvent('tabChanged', { 
+            detail: { tabName, timestamp: Date.now() } 
+        }));
+        
+        return true;
+        
+    } catch (error) {
+        console.error(`❌ Ошибка переключения вкладки ${tabName}:`, error);
+        
+        // Попытка аварийного восстановления
+        return performEmergencyTabRecovery(tabName);
+    }
+}
+
+// 🚑 АВАРИЙНОЕ ВОССТАНОВЛЕНИЕ НАВИГАЦИИ
+function performEmergencyTabRecovery(failedTabName) {
+    try {
+        console.log(`🚑 Аварийное восстановление навигации после ошибки с ${failedTabName}`);
+        
+        // Пытаемся найти любую доступную вкладку
+        const availableTabs = ['daily', 'question', 'spreads', 'history'];
+        
+        for (const tabName of availableTabs) {
+            const tabContent = document.getElementById(`${tabName}-tab`);
+            if (tabContent) {
+                // Принудительно показываем найденную вкладку
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.style.display = 'none';
+                });
+                
+                tabContent.classList.add('active');
+                tabContent.style.display = 'block';
+                
+                // Обновляем навигацию
+                document.querySelectorAll('.nav-tab').forEach(nav => nav.classList.remove('active'));
+                const navTab = document.querySelector(`[data-tab="${tabName}"]`);
+                if (navTab) {
+                    navTab.classList.add('active');
+                }
+                
+                currentTab = tabName;
+                sessionStorage.setItem('currentTab', tabName);
+                
+                console.log(`🚑 Аварийное восстановление: переключено на ${tabName}`);
+                
+                // Показываем уведомление пользователю
+                showNotification('Восстановлена работа навигации', 'warning');
+                
+                return true;
+            }
+        }
+        
+        // Если ничего не нашли, создаем минимальный интерфейс
+        console.error('💥 Критическая ошибка: не найдено ни одной рабочей вкладки');
+        createEmergencyInterface();
+        return false;
+        
+    } catch (recoveryError) {
+        console.error('💥 Критическая ошибка аварийного восстановления:', recoveryError);
+        createEmergencyInterface();
+        return false;
+    }
+}
+
+// 🆘 СОЗДАНИЕ АВАРИЙНОГО ИНТЕРФЕЙСА
+function createEmergencyInterface() {
+    try {
+        const container = document.querySelector('.container') || document.body;
+        
+        container.innerHTML = `
+            <div style="padding: 20px; text-align: center; font-family: sans-serif; color: #333;">
+                <h2 style="color: #e74c3c;">🔮 Шёпот Карт</h2>
+                <p style="margin: 20px 0;">Произошла ошибка навигации</p>
+                <button onclick="location.reload()" 
+                        style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                    Перезагрузить приложение
+                </button>
+                <div style="margin-top: 30px; font-size: 14px; color: #666;">
+                    <p>Если проблема повторяется:</p>
+                    <ol style="text-align: left; max-width: 300px; margin: 10px auto;">
+                        <li>Очистите кэш браузера</li>
+                        <li>Перезапустите Telegram</li>
+                        <li>Сообщите о проблеме разработчику</li>
+                    </ol>
+                </div>
+            </div>
+        `;
+        
+        console.log('🆘 Создан аварийный интерфейс');
+        
+    } catch (error) {
+        console.error('💥 Не удалось создать аварийный интерфейс:', error);
+    }
+}
+
+// 🎬 ДЕЙСТВИЯ СПЕЦИФИЧНЫЕ ДЛЯ ВКЛАДОК (расширенная версия)
+function handleTabSpecificActions(tabName) {
+    try {
+        console.log(`🎬 Выполнение действий для вкладки: ${tabName}`);
+        
+        switch (tabName) {
+            case 'daily':
+                // Проверяем статус карты дня
+                if (typeof checkDailyCardStatus === 'function') {
+                    checkDailyCardStatus();
+                }
+                // Скрываем кнопку "Назад"
+                if (tg && tg.BackButton) {
+                    tg.BackButton.hide();
+                }
+                break;
+                
+            case 'question':
+                // Фокус на поле ввода вопроса
+                setTimeout(() => {
+                    const questionInput = document.getElementById('question-input') || 
+                                       document.querySelector('textarea[placeholder*="вопрос"]') ||
+                                       document.querySelector('.question-textarea');
+                    if (questionInput) {
+                        questionInput.focus();
+                        console.log('🎯 Фокус установлен на поле ввода вопроса');
+                    }
+                }, 300);
+                break;
+                
+            case 'spreads':
+                // Проверяем доступность раскладов
+                if (typeof loadSpreadsContent === 'function') {
+                    loadSpreadsContent();
+                }
+                break;
+                
+            case 'history':
+                // Обновляем историю
+                if (typeof refreshHistory === 'function') {
+                    refreshHistory();
+                } else if (typeof renderHistory === 'function') {
+                    renderHistory();
+                }
+                break;
+                
+            case 'reviews':
+                // Загружаем отзывы (если есть функция)
+                if (typeof loadReviews === 'function') {
+                    loadReviews();
+                }
+                break;
+                
+            case 'premium':
+                // Обновляем информацию о подписке
+                if (typeof updatePremiumInfo === 'function') {
+                    updatePremiumInfo();
+                }
+                // Проверяем статус подписки
+                if (currentUser && currentUser.is_subscribed) {
+                    console.log('💎 Пользователь уже имеет Premium подписку');
+                }
+                break;
+                
+            default:
+                console.log(`ℹ️ Нет специфичных действий для вкладки: ${tabName}`);
+                break;
+        }
+        
+    } catch (error) {
+        console.warn(`⚠️ Ошибка выполнения действий для вкладки ${tabName}:`, error);
+    }
+}
+
+// 🔍 ДИАГНОСТИКА НАВИГАЦИИ
+function diagnoseNavigation() {
+    console.log('🔍 Диагностика навигации:');
+    
+    // Проверяем кнопки навигации
+    const navTabs = document.querySelectorAll('.nav-tab[data-tab]');
+    console.log(`- Найдено кнопок навигации: ${navTabs.length}`);
+    
+    navTabs.forEach((tab, index) => {
+        const tabName = tab.getAttribute('data-tab');
+        const hasContent = !!document.getElementById(`${tabName}-tab`);
+        const isActive = tab.classList.contains('active');
+        console.log(`  ${index + 1}. ${tabName}: контент=${hasContent}, активна=${isActive}`);
+    });
+    
+    // Проверяем контент-области
+    const contentTabs = document.querySelectorAll('.tab-content');
+    console.log(`- Найдено контент-областей: ${contentTabs.length}`);
+    
+    contentTabs.forEach((tab, index) => {
+        const isActive = tab.classList.contains('active');
+        const isVisible = tab.style.display !== 'none';
+        console.log(`  ${index + 1}. ${tab.id}: активна=${isActive}, видима=${isVisible}`);
+    });
+    
+    // Текущее состояние
+    console.log(`- Текущая вкладка: ${currentTab}`);
+    console.log(`- Сохранена в storage: ${sessionStorage.getItem('currentTab')}`);
+    
+    return {
+        navButtons: navTabs.length,
+        contentAreas: contentTabs.length,
+        currentTab: currentTab,
+        savedTab: sessionStorage.getItem('currentTab')
+    };
+}
+
+// 🧪 ТЕСТИРОВАНИЕ НАВИГАЦИИ
+function testNavigation() {
+    console.log('🧪 Тестирование навигации...');
+    
+    const tabs = ['daily', 'question', 'spreads', 'history', 'reviews', 'premium'];
+    const results = {};
+    
+    tabs.forEach(tabName => {
+        try {
+            const success = switchTab(tabName);
+            results[tabName] = success;
+            console.log(`${success ? '✅' : '❌'} ${tabName}: ${success ? 'OK' : 'FAILED'}`);
+        } catch (error) {
+            results[tabName] = false;
+            console.log(`❌ ${tabName}: ERROR - ${error.message}`);
+        }
+    });
+    
+    // Возвращаемся на главную
+    switchTab('daily');
+    
+    return results;
+}
+
+// 📤 ЭКСПОРТ ФУНКЦИЙ
+window.switchTab = switchTab;
+window.initNavigation = initNavigation;
+window.diagnoseNavigation = diagnoseNavigation;
+window.testNavigation = testNavigation;
+window.handleTabSpecificActions = handleTabSpecificActions;
+
+// 🎯 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ (если DOM готов)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNavigation);
+} else {
+    // DOM уже готов
+    setTimeout(initNavigation, 100);
+}
