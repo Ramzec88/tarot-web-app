@@ -14,22 +14,29 @@ let appState = {
     currentRating: 0
 };
 
+// 🚫 ФЛАГИ ДЛЯ ПРЕДОТВРАЩЕНИЯ ПОВТОРНЫХ ИНИЦИАЛИЗАЦИЙ
+let isInitializing = false;
+let supabaseInitialized = false;
+
 // 🚀 ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ
 async function initApp() {
     console.log('🔮 Инициализация приложения...');
     
-    // Проверяем, что приложение не было уже инициализировано
-    if (appState.isInitialized) {
-        console.log('⚠️ Приложение уже инициализировано');
+    // Проверяем, что приложение не было уже инициализировано или находится в процессе инициализации
+    if (appState.isInitialized || isInitializing) {
+        console.log('⚠️ Приложение уже инициализировано или инициализируется');
         return;
     }
+    
+    // Устанавливаем флаг инициализации
+    isInitializing = true;
 
     try {
         // 1. Ждем готовности конфигурации
         await waitForConfig();
         
-        // 2. Инициализируем Supabase
-        await initSupabase();
+        // 2. Инициализируем Supabase (только один раз)
+        await initSupabaseOnce();
         
         // 3. Инициализируем Telegram WebApp
         initTelegramWebApp();
@@ -48,11 +55,13 @@ async function initApp() {
         
         // Отмечаем как инициализированное
         appState.isInitialized = true;
+        isInitializing = false;
         
         console.log('✅ Приложение успешно инициализировано');
         
     } catch (error) {
         console.error('❌ Ошибка инициализации приложения:', error);
+        isInitializing = false;
         showErrorMessage('Ошибка загрузки приложения. Попробуйте перезагрузить страницу.');
     }
 }
@@ -77,8 +86,14 @@ async function waitForConfig() {
     console.warn('⚠️ Конфигурация не загружена за 5 секунд, продолжаем...');
 }
 
-// 🔧 ИНИЦИАЛИЗАЦИЯ SUPABASE
-async function initSupabase() {
+// 🔧 ИНИЦИАЛИЗАЦИЯ SUPABASE (ТОЛЬКО ОДИН РАЗ)
+async function initSupabaseOnce() {
+    // Проверяем, не был ли уже инициализирован
+    if (supabaseInitialized) {
+        console.log('✅ Supabase уже инициализирован');
+        return true;
+    }
+    
     console.log('🔧 Инициализация Supabase...');
     
     try {
@@ -94,7 +109,8 @@ async function initSupabase() {
             if (success) {
                 // Получаем инициализированный клиент
                 supabase = window.supabaseClient || null;
-                console.log('✅ Supabase инициализирован');
+                supabaseInitialized = true;
+                console.log('✅ Supabase инициализирован успешно');
                 return true;
             }
         }
@@ -116,9 +132,13 @@ function initTelegramWebApp() {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             
-            // Настройка темы
-            tg.setHeaderColor('#1a1a2e');
-            tg.setBackgroundColor('#16213e');
+            // Настройка темы (только если поддерживается)
+            try {
+                tg.setHeaderColor('#1a1a2e');
+                tg.setBackgroundColor('#16213e');
+            } catch (e) {
+                console.log('📱 Цвета темы не поддерживаются в этой версии Telegram');
+            }
             
             // Расширяем приложение
             tg.expand();
@@ -134,7 +154,7 @@ function initTelegramWebApp() {
                 return tg.initDataUnsafe.user;
             }
         } else {
-            console.warn('⚠️ Telegram WebApp недоступен');
+            console.warn('⚠️ Telegram WebApp недоступен (возможно, запуск вне Telegram)');
         }
         
         return null;
@@ -157,11 +177,15 @@ async function initUser() {
             
             // Загружаем или создаем профиль пользователя
             if (supabase && window.createOrGetUserProfile) {
-                const userProfile = await window.createOrGetUserProfile(telegramUser);
-                if (userProfile) {
-                    // Обновляем состояние приложения данными из профиля
-                    appState.questionsLeft = userProfile.questions_left || 3;
-                    appState.isPremium = userProfile.is_premium || false;
+                try {
+                    const userProfile = await window.createOrGetUserProfile(telegramUser);
+                    if (userProfile) {
+                        // Обновляем состояние приложения данными из профиля
+                        appState.questionsLeft = userProfile.questions_left || 3;
+                        appState.isPremium = userProfile.is_premium || false;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Не удалось загрузить профиль из Supabase:', error);
                 }
             }
         }
@@ -301,6 +325,8 @@ function switchTab(tabName) {
         loadUserHistory();
     } else if (tabName === 'reviews') {
         loadReviews();
+    } else if (tabName === 'spreads') {
+        loadSpreadsMenu();
     }
     
     updateUI();
@@ -432,6 +458,15 @@ async function getDailyCard() {
         
     } catch (error) {
         console.error('❌ Ошибка получения карты дня:', error);
+        
+        // Fallback - возвращаем случайную карту из конфигурации
+        const fallbackCards = window.getFallbackCards && window.getFallbackCards();
+        if (fallbackCards && fallbackCards.length > 0) {
+            const randomCard = fallbackCards[Math.floor(Math.random() * fallbackCards.length)];
+            console.log('🎯 Используем fallback карту:', randomCard);
+            return randomCard;
+        }
+        
         throw error;
     }
 }
@@ -545,6 +580,16 @@ async function getAnswerCard(question) {
         
     } catch (error) {
         console.error('❌ Ошибка получения карты для ответа:', error);
+        
+        // Fallback - возвращаем случайную карту из конфигурации
+        const fallbackCards = window.getFallbackCards && window.getFallbackCards();
+        if (fallbackCards && fallbackCards.length > 0) {
+            const randomCard = fallbackCards[Math.floor(Math.random() * fallbackCards.length)];
+            randomCard.aiInterpretation = `Ответ на ваш вопрос "${question}": ${randomCard.description}`;
+            console.log('🎯 Используем fallback карту для ответа:', randomCard);
+            return randomCard;
+        }
+        
         throw error;
     }
 }
@@ -681,7 +726,11 @@ async function getFollowUpAnswer(question) {
         
     } catch (error) {
         console.error('❌ Ошибка получения дополнительного ответа:', error);
-        throw error;
+        
+        // Fallback ответ
+        return {
+            answer: `Интуитивный ответ на ваш вопрос "${question}": Доверьтесь своему внутреннему голосу и следуйте тому пути, который кажется вам наиболее правильным в данный момент.`
+        };
     }
 }
 
@@ -877,7 +926,7 @@ function showSpreadPerform(spreadType) {
     spreadsSection.innerHTML = `
         <div class="spread-perform">
             <div class="spread-header">
-                <button class="back-btn" onclick="loadSpreadsMenu()">← Назад</button>
+                <button class="back-btn" onclick="window.tarotApp.loadSpreadsMenu()">← Назад</button>
                 <h2>${config.name}</h2>
                 <p>${config.description}</p>
             </div>
@@ -885,7 +934,7 @@ function showSpreadPerform(spreadType) {
             <div class="spread-question">
                 <label for="spread-question-input">Ваш вопрос для расклада:</label>
                 <textarea id="spread-question-input" placeholder="Введите ваш вопрос..." rows="3"></textarea>
-                <button class="perform-spread-btn" onclick="performSpread('${spreadType}')">
+                <button class="perform-spread-btn" onclick="window.tarotApp.performSpread('${spreadType}')">
                     Выполнить расклад
                 </button>
             </div>
@@ -983,6 +1032,29 @@ async function getSpreadResult(spreadType, question) {
         
     } catch (error) {
         console.error('❌ Ошибка получения результата расклада:', error);
+        
+        // Fallback - создаем простой расклад из fallback карт
+        const fallbackCards = window.getFallbackCards && window.getFallbackCards();
+        if (fallbackCards && fallbackCards.length > 0) {
+            const spreadConfigs = window.getSpreadsConfig && window.getSpreadsConfig();
+            const config = spreadConfigs && spreadConfigs[spreadType];
+            const cardsCount = config ? config.cardsCount || 3 : 3;
+            
+            const cards = [];
+            for (let i = 0; i < cardsCount; i++) {
+                const randomCard = fallbackCards[Math.floor(Math.random() * fallbackCards.length)];
+                cards.push({
+                    ...randomCard,
+                    position: `Позиция ${i + 1}`
+                });
+            }
+            
+            return {
+                cards: cards,
+                interpretation: `Расклад на вопрос "${question}": Карты указывают на важность баланса и внимательного отношения к деталям в данной ситуации.`
+            };
+        }
+        
         throw error;
     }
 }
@@ -1042,7 +1114,7 @@ function loadSpreadsMenu() {
             <div class="spreads-grid">
     `;
     
-    if (spreadConfigs) {
+    if (spreadConfigs && Object.keys(spreadConfigs).length > 0) {
         Object.entries(spreadConfigs).forEach(([key, config]) => {
             html += `
                 <div class="spread-card" data-spread="${key}">
@@ -1057,7 +1129,37 @@ function loadSpreadsMenu() {
             `;
         });
     } else {
-        html += '<p>Расклады загружаются...</p>';
+        // Fallback расклады, если конфигурация не загружена
+        const defaultSpreads = [
+            {
+                key: 'three_cards',
+                name: 'Три карты',
+                description: 'Прошлое, настоящее, будущее',
+                icon: '🎴',
+                cardsCount: 3
+            },
+            {
+                key: 'celtic_cross',
+                name: 'Кельтский крест',
+                description: 'Полный анализ ситуации',
+                icon: '✝️',
+                cardsCount: 10
+            }
+        ];
+        
+        defaultSpreads.forEach(spread => {
+            html += `
+                <div class="spread-card" data-spread="${spread.key}">
+                    <div class="spread-icon">${spread.icon}</div>
+                    <h3>${spread.name}</h3>
+                    <p>${spread.description}</p>
+                    <div class="spread-info">
+                        <span class="cards-count">${spread.cardsCount} карт</span>
+                        ${!appState.isPremium ? '<span class="premium-badge">Premium</span>' : ''}
+                    </div>
+                </div>
+            `;
+        });
     }
     
     html += `
@@ -1542,7 +1644,14 @@ function debugApp() {
         appState: appState,
         currentUser: currentUser,
         supabase: !!supabase,
-        configReady: window.isConfigReady ? window.isConfigReady() : false
+        supabaseInitialized: supabaseInitialized,
+        isInitializing: isInitializing,
+        configReady: window.isConfigReady ? window.isConfigReady() : false,
+        functions: {
+            initApp: typeof initApp,
+            switchTab: typeof switchTab,
+            updateUI: typeof updateUI
+        }
     });
 }
 
@@ -1567,12 +1676,28 @@ window.tarotApp = {
     handleClearHistory,
     handleSubmitReview,
     handleRatingClick,
-    loadSpreadsMenu
+    loadSpreadsMenu,
+    showSpreadPerform,
+    checkTodayCard,
+    getDailyCard,
+    getAnswerCard,
+    showProfileModal,
+    handleSaveProfile,
+    skipProfile,
+    closeProfileModal
 };
 
-// 🏁 АВТОМАТИЧЕСКИЙ ЗАПУСК ПРИЛОЖЕНИЯ
+// 🏁 АВТОМАТИЧЕСКИЙ ЗАПУСК ПРИЛОЖЕНИЯ (ТОЛЬКО ОДИН РАЗ)
+let appStarted = false;
+
 document.addEventListener('DOMContentLoaded', function() {
+    if (appStarted) {
+        console.log('⚠️ Приложение уже запущено, пропускаем повторный запуск');
+        return;
+    }
+    
     console.log('🏁 DOM готов, запускаю приложение...');
+    appStarted = true;
     
     // Небольшая задержка для загрузки всех скриптов
     setTimeout(() => {
