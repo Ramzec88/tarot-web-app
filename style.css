@@ -1,1109 +1,756 @@
-/* style.css - Основные стили для Шёпот карт */
-/* ========================================================================= */
-
-/* 🎨 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ */
-:root {
-    --primary-bg: #1a1a2e;
-    --secondary-bg: #16213e;
-    --accent-color: #ffd700;
-    --text-primary: #ffffff;
-    --text-secondary: #b0b0b0;
-    --text-muted: #888888;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    --shadow-heavy: 0 8px 40px rgba(0, 0, 0, 0.5);
-    --border-radius: 12px;
-    --transition: all 0.3s ease;
-}
-
-/* 🔄 СБРОС СТИЛЕЙ */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-/* 📱 ОСНОВНЫЕ СТИЛИ */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-    background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg));
-    color: var(--text-primary);
-    line-height: 1.6;
-    min-height: 100vh;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-/* 📦 КОНТЕЙНЕР */
-.container {
-    max-width: 480px;
-    margin: 0 auto;
-    min-height: 100vh;
-    background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg));
-    position: relative;
-}
-
-/* 🎯 ЗАГОЛОВОК */
-.header {
-    padding: 20px;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.logo {
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--accent-color);
-    margin-bottom: 5px;
-}
-
-.subtitle {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin-bottom: 15px;
-}
-
-.subscription-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    border: 1px solid var(--border-color);
-}
-
-.subscription-status.premium {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    color: #1a1a2e;
-    border-color: #ffd700;
-}
-
-/* 📑 НАВИГАЦИОННЫЕ ТАБЫ */
-.nav-tabs {
-    display: flex;
-    background: rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid var(--border-color);
-    overflow-x: auto;
-}
-
-.nav-tabs-secondary {
-    display: flex;
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.nav-tab {
-    flex: 1;
-    padding: 15px 10px;
-    text-align: center;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: var(--transition);
-    border-bottom: 3px solid transparent;
-    white-space: nowrap;
-}
-
-.nav-tab:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.nav-tab.active {
-    color: var(--accent-color);
-    border-bottom-color: var(--accent-color);
-    background: rgba(255, 215, 0, 0.1);
-}
-
-.nav-tab.secondary {
-    font-size: 13px;
-    padding: 12px 10px;
-}
-
-.nav-tab.premium-tab {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 237, 78, 0.1));
-    color: var(--accent-color);
-    font-weight: bold;
-}
-
-/* 📄 КОНТЕНТ ТАБОВ */
-.tab-content {
-    display: none;
-    padding: 20px;
-    animation: fadeIn 0.3s ease;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* 🃏 КАРТЫ ТАРО */
-.card-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.tarot-card {
-    width: 200px;
-    height: 300px;
-    background: linear-gradient(135deg, #2c2c54, #40407a);
-    border-radius: var(--border-radius);
-    border: 2px solid var(--accent-color);
-    box-shadow: var(--shadow-heavy);
-    cursor: pointer;
-    transition: var(--transition);
-    position: relative;
-    perspective: 1000px;
-    margin-bottom: 15px;
-}
-
-.tarot-card:hover {
-    transform: translateY(-5px) scale(1.02);
-    box-shadow: 0 12px 50px rgba(255, 215, 0, 0.3);
-}
-
-.card-back, .card-front {
-    width: 100%;
-    height: 100%;
-    border-radius: var(--border-radius);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    backface-visibility: hidden;
-    transition: transform 0.6s ease;
-}
-
-.card-front {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    transform: rotateY(180deg);
-    padding: 20px;
-}
-
-.tarot-card.flipped .card-back {
-    transform: rotateY(180deg);
-}
-
-.tarot-card.flipped .card-front {
-    transform: rotateY(0deg);
-}
-
-.card-symbol {
-    font-size: 48px;
-    margin-bottom: 10px;
-}
-
-.card-text {
-    text-align: center;
-    font-size: 16px;
-    font-weight: 500;
-    line-height: 1.4;
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    margin-bottom: 20px;
-}
-
-.card-number {
-    font-size: 18px;
-    font-weight: bold;
-    color: var(--accent-color);
-}
-
-.card-name {
-    font-size: 20px;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 15px;
-}
-
-.card-keywords {
-    font-size: 14px;
-    color: var(--text-secondary);
-    text-align: center;
-}
-
-/* ⏳ ЗАГРУЗКА */
-.loading {
-    text-align: center;
-    color: var(--accent-color);
-    font-style: italic;
-    margin: 20px 0;
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* 🔮 ОТВЕТ ИИ */
-.ai-response {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    margin: 20px 0;
-    backdrop-filter: blur(10px);
-}
-
-.ai-response-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.ai-icon {
-    font-size: 20px;
-}
-
-.ai-response-header h4 {
-    color: var(--accent-color);
-    font-size: 16px;
-    margin: 0;
-}
-
-.ai-response-content p {
-    margin: 0;
-    line-height: 1.6;
-    color: var(--text-primary);
-}
-
-/* 📝 ФОРМЫ */
-.question-form {
-    margin: 20px 0;
-}
-
-.question-input {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    color: var(--text-primary);
-    font-size: 16px;
-    margin-bottom: 15px;
-    transition: var(--transition);
-}
-
-.question-input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-    background: rgba(255, 255, 255, 0.15);
-}
-
-.question-input::placeholder {
-    color: var(--text-muted);
-}
-
-.questions-left {
-    text-align: center;
-    margin-bottom: 20px;
-    padding: 12px;
-    background: rgba(255, 215, 0, 0.1);
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: var(--border-radius);
-    color: var(--accent-color);
-    font-weight: 500;
-}
-
-/* 🔘 КНОПКИ */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px 20px;
-    border: none;
-    border-radius: var(--border-radius);
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition);
-    text-decoration: none;
-    min-height: 48px;
-    background: linear-gradient(135deg, var(--accent-color), #ffed4e);
-    color: #1a1a2e;
-    box-shadow: var(--shadow);
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-heavy);
-}
-
-.btn:active {
-    transform: translateY(0);
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-
-.btn-outline {
-    background: transparent;
-    color: var(--accent-color);
-    border: 2px solid var(--accent-color);
-}
-
-.btn-premium {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    color: #1a1a2e;
-    font-weight: bold;
-    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
-}
-
-.btn-large {
-    padding: 16px 32px;
-    font-size: 18px;
-    min-height: 56px;
-}
-
-.btn-back {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-    padding: 8px 16px;
-    font-size: 14px;
-    min-height: auto;
-}
-
-/* 📊 СЕКЦИИ ОТВЕТОВ */
-.answer-section {
-    margin: 30px 0;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-}
-
-.follow-up-section {
-    margin: 30px 0;
-    padding: 20px;
-    background: rgba(255, 215, 0, 0.05);
-    border-radius: var(--border-radius);
-    border: 1px solid rgba(255, 215, 0, 0.2);
-}
-
-.follow-up-header h4 {
-    color: var(--accent-color);
-    margin-bottom: 10px;
-}
-
-.follow-up-notice {
-    color: var(--text-secondary);
-    font-size: 14px;
-    margin-bottom: 15px;
-}
-
-/* 🔔 БАННЕРЫ */
-.subscription-banner, .premium-banner, .daily-info-banner {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05));
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    margin: 20px 0;
-    text-align: center;
-}
-
-.banner-icon {
-    font-size: 32px;
-    margin-bottom: 15px;
-}
-
-.banner-content h4 {
-    color: var(--accent-color);
-    margin-bottom: 10px;
-    font-size: 18px;
-}
-
-.banner-content p {
-    color: var(--text-secondary);
-    margin-bottom: 15px;
-    line-height: 1.5;
-}
-
-.banner-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-/* 🃏 РАСКЛАДЫ */
-.spreads-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.spread-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-.spread-card:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-3px);
-    box-shadow: var(--shadow);
-}
-
-.spread-icon {
-    font-size: 32px;
-    margin-bottom: 10px;
-}
-
-.spread-card h3 {
-    color: var(--accent-color);
-    font-size: 16px;
-    margin-bottom: 8px;
-}
-
-.spread-card p {
-    color: var(--text-secondary);
-    font-size: 13px;
-    margin-bottom: 10px;
-}
-
-.spread-cards {
-    color: var(--text-muted);
-    font-size: 12px;
-}
-
-/* 📖 ИСТОРИЯ */
-.history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.history-header h3 {
-    color: var(--accent-color);
-    margin: 0;
-}
-
-.history-empty {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-secondary);
-}
-
-.empty-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-}
-
-.history-empty h4 {
-    color: var(--text-primary);
-    margin-bottom: 10px;
-}
-
-.history-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.history-type {
-    color: var(--accent-color);
-    font-weight: 500;
-    font-size: 14px;
-}
-
-.history-date {
-    color: var(--text-muted);
-    font-size: 12px;
-}
-
-.history-question {
-    color: var(--text-secondary);
-    font-style: italic;
-    margin-bottom: 10px;
-    padding: 8px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 6px;
-}
-
-.history-card {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    color: var(--accent-color);
-    font-weight: 500;
-}
-
-.history-interpretation {
-    color: var(--text-primary);
-    line-height: 1.5;
-    font-size: 14px;
-}
-
-/* ⭐ ОТЗЫВЫ */
-.reviews-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.reviews-header h3 {
-    color: var(--accent-color);
-    margin-bottom: 15px;
-}
-
-.reviews-stats {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    display: inline-block;
-}
-
-.rating-display {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.rating-stars {
-    color: var(--accent-color);
-}
-
-.rating-text {
-    color: var(--text-secondary);
-}
-
-.review-form {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-.review-form h4 {
-    color: var(--accent-color);
-    margin-bottom: 15px;
-}
-
-.rating-input {
-    display: flex;
-    gap: 5px;
-    margin-bottom: 15px;
-    justify-content: center;
-}
-
-.star {
-    font-size: 24px;
-    cursor: pointer;
-    transition: var(--transition);
-    opacity: 0.3;
-}
-
-.star:hover,
-.star.active {
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.review-text {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    color: var(--text-primary);
-    font-size: 14px;
-    resize: vertical;
-    min-height: 80px;
-    margin-bottom: 15px;
-}
-
-.review-text:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-}
-
-.review-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.review-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.review-author {
-    color: var(--accent-color);
-    font-weight: 500;
-}
-
-.review-rating {
-    color: var(--accent-color);
-}
-
-.review-text {
-    color: var(--text-primary);
-    line-height: 1.5;
-    margin-bottom: 8px;
-}
-
-.review-date {
-    color: var(--text-muted);
-    font-size: 12px;
-}
-
-/* 👑 PREMIUM */
-.premium-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.premium-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-}
-
-.premium-header h2 {
-    color: var(--accent-color);
-    margin-bottom: 10px;
-    font-size: 24px;
-}
-
-.premium-subtitle {
-    color: var(--text-secondary);
-    font-size: 16px;
-}
-
-.premium-features {
-    margin: 30px 0;
-}
-
-.feature {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-}
-
-.feature-icon {
-    font-size: 24px;
-    color: var(--accent-color);
-    flex-shrink: 0;
-}
-
-.feature-content h4 {
-    color: var(--text-primary);
-    margin-bottom: 5px;
-    font-size: 16px;
-}
-
-.feature-content p {
-    color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.premium-pricing {
-    text-align: center;
-    margin: 30px 0;
-    padding: 30px;
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.05));
-    border: 2px solid rgba(255, 215, 0, 0.3);
-    border-radius: var(--border-radius);
-}
-
-.price-tag {
-    margin-bottom: 20px;
-}
-
-.price {
-    font-size: 36px;
-    font-weight: bold;
-    color: var(--accent-color);
-}
-
-.period {
-    color: var(--text-secondary);
-    font-size: 16px;
-    margin-left: 8px;
-}
-
-.premium-steps {
-    margin: 30px 0;
-}
-
-.premium-steps h4 {
-    color: var(--accent-color);
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.steps {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.step {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-}
-
-.step-number {
-    width: 32px;
-    height: 32px;
-    background: var(--accent-color);
-    color: #1a1a2e;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    flex-shrink: 0;
-}
-
-.step-text {
-    color: var(--text-primary);
-    line-height: 1.4;
-}
-
-.premium-guarantee {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 20px;
-    background: rgba(34, 139, 34, 0.1);
-    border: 1px solid rgba(34, 139, 34, 0.3);
-    border-radius: var(--border-radius);
-    margin-top: 30px;
-}
-
-.guarantee-icon {
-    font-size: 24px;
-    color: #22c55e;
-    flex-shrink: 0;
-}
-
-.guarantee-text {
-    color: var(--text-primary);
-    line-height: 1.4;
-}
-
-.guarantee-text strong {
-    color: #22c55e;
-}
-
-/* 📱 МОДАЛЬНЫЕ ОКНА */
-.profile-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.profile-modal.show {
-    opacity: 1;
-}
-
-.profile-modal-overlay {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-.profile-modal-content {
-    background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg));
-    border: 2px solid var(--accent-color);
-    border-radius: 20px;
-    box-shadow: var(--shadow-heavy);
-    max-width: 400px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    transform: scale(0.8);
-    transition: transform 0.3s ease;
-}
-
-.profile-modal.show .profile-modal-content {
-    transform: scale(1);
-}
-
-.profile-header {
-    padding: 30px 25px 20px;
-    text-align: center;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.profile-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-}
-
-.profile-header h2 {
-    color: var(--accent-color);
-    font-size: 22px;
-    margin-bottom: 10px;
-}
-
-.profile-header p {
-    color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-.profile-form {
-    padding: 25px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    color: var(--accent-color);
-    font-weight: 500;
-    margin-bottom: 8px;
-    font-size: 14px;
-}
-
-.form-input {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 12px 15px;
-    color: var(--text-primary);
-    font-size: 15px;
-    transition: var(--transition);
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-    background: rgba(255, 255, 255, 0.15);
-}
-
-.form-input::placeholder {
-    color: var(--text-muted);
-}
-
-.input-hint {
-    color: var(--text-muted);
-    font-size: 12px;
-    margin-top: 5px;
-    line-height: 1.3;
-}
-
-.form-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 25px;
-}
-
-.profile-footer {
-    padding: 20px 25px;
-    border-top: 1px solid var(--border-color);
-}
-
-.privacy-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    color: var(--text-muted);
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-.privacy-icon {
-    color: var(--accent-color);
-    flex-shrink: 0;
-}
-
-/* 📱 АДАПТИВНОСТЬ */
-@media (max-width: 480px) {
-    .container {
-        max-width: 100%;
-    }
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Шепот карт - Tarot Web App</title>
     
-    .header {
-        padding: 15px;
-    }
+    <!-- Telegram Web App Script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    .logo {
-        font-size: 20px;
-    }
+    <!-- Supabase Client -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
-    .tab-content {
-        padding: 15px;
-    }
-    
-    .tarot-card {
-        width: 180px;
-        height: 270px;
-    }
-    
-    .card-symbol {
-        font-size: 40px;
-    }
-    
-    .spreads-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-    
-    .feature {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .step {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .premium-guarantee {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .banner-buttons {
-        flex-direction: column;
-    }
-    
-    .form-actions {
-        gap: 8px;
-    }
-}
+    <style>
+        /* 🎨 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ */
+        :root {
+            --primary-bg: #1a1a2e;
+            --secondary-bg: #16213e;
+            --accent-color: #ffd700;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #888888;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            --shadow-heavy: 0 8px 40px rgba(0, 0, 0, 0.5);
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
 
-/* 🎭 АНИМАЦИИ */
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
+        /* 🔄 СБРОС СТИЛЕЙ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-.loading-shimmer {
-    position: relative;
-    overflow: hidden;
-}
+        /* 📱 ОСНОВНЫЕ СТИЛИ */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg));
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
 
-.loading-shimmer::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    animation: shimmer 1.5s infinite;
-}
+        /* 📦 КОНТЕЙНЕР */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg));
+            position: relative;
+        }
 
-/* 📱 СООБЩЕНИЯ */
-.message {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 12px 20px;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    z-index: 9999;
-    box-shadow: var(--shadow);
-    max-width: 90%;
-    text-align: center;
-}
+        /* 🎯 ЗАГОЛОВОК */
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+        }
 
-.message-error {
-    background: #e74c3c;
-}
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
 
-.message-premium {
-    background: #f39c12;
-}
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
 
-.message-info {
-    background: #27ae60;
-}
+        .subscription-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            border: 1px solid var(--border-color);
+        }
 
-/* 🎨 ДОПОЛНИТЕЛЬНЫЕ УТИЛИТЫ */
-.text-center { text-align: center; }
-.text-left { text-align: left; }
-.text-right { text-align: right; }
+        .subscription-status.premium {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #1a1a2e;
+            border-color: #ffd700;
+        }
 
-.mt-10 { margin-top: 10px; }
-.mt-20 { margin-top: 20px; }
-.mb-10 { margin-bottom: 10px; }
-.mb-20 { margin-bottom: 20px; }
+        /* 📑 НАВИГАЦИОННЫЕ ТАБЫ */
+        .nav-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
 
-.hidden { display: none !important; }
-.visible { display: block !important; }
+        .nav-tabs-secondary {
+            display: flex;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 12px 8px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            min-width: 80px;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            color: var(--accent-color);
+            background: rgba(255, 215, 0, 0.1);
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .nav-tab.premium-tab {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+
+        .nav-tab.premium-tab:hover {
+            background: linear-gradient(135deg, #ffed4e, #ffd700);
+        }
+
+        /* 📋 КОНТЕНТ ТАБОВ */
+        .tab-content {
+            padding: 20px;
+            min-height: 400px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 🃏 КАРТА ТАРО */
+        .card-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0;
+        }
+
+        .tarot-card {
+            width: 200px;
+            height: 300px;
+            perspective: 1000px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .card-back {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border: 3px solid var(--accent-color);
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .card-back:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .card-symbol {
+            font-size: 48px;
+            margin-bottom: 15px;
+            animation: pulse 2s infinite;
+        }
+
+        .card-text {
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* 🔮 РЕЗУЛЬТАТ КАРТЫ */
+        .card-result {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .card-name {
+            color: var(--accent-color);
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .card-description {
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .card-keywords {
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 14px;
+        }
+
+        /* 💭 ФОРМА ВОПРОСА */
+        .question-form {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--accent-color);
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 12px 15px;
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-input::placeholder, .form-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* 🔘 КНОПКИ */
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--accent-color), #ffed4e);
+            color: #1a1a2e;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #ffed4e, var(--accent-color));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--accent-color);
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* 🎴 РАСКЛАДЫ */
+        .spreads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .spread-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .spread-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .spread-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .spread-card h3 {
+            color: var(--accent-color);
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .spread-card p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .spread-cards {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* 📖 ИСТОРИЯ */
+        .history-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .history-type {
+            color: var(--accent-color);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .history-date {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .history-content {
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* 💫 АНИМАЦИЯ ЗАГРУЗКИ */
+        .loading {
+            text-align: center;
+            color: var(--accent-color);
+            font-style: italic;
+            margin: 20px 0;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 🚨 СООБЩЕНИЯ */
+        .message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            z-index: 9999;
+            box-shadow: var(--shadow);
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .message-error {
+            background: #e74c3c;
+        }
+
+        .message-premium {
+            background: #f39c12;
+        }
+
+        .message-info {
+            background: #27ae60;
+        }
+
+        /* 📱 АДАПТИВНОСТЬ */
+        @media (max-width: 480px) {
+            .container {
+                max-width: 100%;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .logo {
+                font-size: 20px;
+            }
+            
+            .tab-content {
+                padding: 15px;
+            }
+            
+            .tarot-card {
+                width: 180px;
+                height: 270px;
+            }
+            
+            .card-symbol {
+                font-size: 40px;
+            }
+            
+            .spreads-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+
+        /* 🎭 ДОПОЛНИТЕЛЬНЫЕ УТИЛИТЫ */
+        .text-center { text-align: center; }
+        .hidden { display: none !important; }
+        .visible { display: block !important; }
+        .mt-20 { margin-top: 20px; }
+        .mb-20 { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">✨ Шепот карт ✨</div>
+            <div class="subtitle">Мистические предсказания Таро</div>
+            <div class="subscription-status" id="subscription-status">
+                <span class="status-icon">🌑</span>
+                <span class="status-text">Базовая версия</span>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="daily" onclick="switchTab('daily')">Карта дня</button>
+            <button class="nav-tab" data-tab="question" onclick="switchTab('question')">Вопрос</button>
+            <button class="nav-tab" data-tab="spreads" onclick="switchTab('spreads')">Расклады</button>
+            <button class="nav-tab" data-tab="history" onclick="switchTab('history')">История</button>
+        </div>
+
+        <div class="nav-tabs-secondary">
+            <button class="nav-tab secondary" data-tab="reviews" onclick="switchTab('reviews')">Отзывы</button>
+            <button class="nav-tab premium-tab" data-tab="premium" onclick="switchTab('premium')">Premium</button>
+        </div>
+
+        <!-- Карта дня -->
+        <div id="daily" class="tab-content active">
+            <div class="card-container">
+                <div class="tarot-card" id="daily-card" onclick="handleDailyCardClick()">
+                    <div class="card-back">
+                        <div class="card-symbol">🔮</div>
+                        <div class="card-text">Нажмите, чтобы<br>узнать карту дня</div>
+                    </div>
+                </div>
+                <div class="loading" id="daily-loading" style="display: none;">Карты шепчут...</div>
+                <div id="daily-result" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Вопрос -->
+        <div id="question" class="tab-content">
+            <div class="question-form">
+                <div class="form-group">
+                    <label class="form-label">Ваш вопрос к картам:</label>
+                    <textarea 
+                        id="question-input" 
+                        class="form-textarea" 
+                        placeholder="Задайте ваш вопрос..."
+                        maxlength="500"
+                    ></textarea>
+                </div>
+                <button class="btn btn-full" onclick="handleAskQuestion()">
+                    🔮 Получить ответ
+                </button>
+            </div>
+            <div class="loading" id="question-loading" style="display: none;">Карты раскрывают тайны...</div>
+            <div id="question-result" style="display: none;"></div>
+        </div>
+
+        <!-- Расклады -->
+        <div id="spreads" class="tab-content">
+            <div class="spreads-grid">
+                <div class="spread-card" onclick="selectSpread('love')">
+                    <div class="spread-icon">💕</div>
+                    <h3>Любовь</h3>
+                    <p>Расклад на отношения</p>
+                    <div class="spread-cards">3 карты</div>
+                </div>
+                <div class="spread-card" onclick="selectSpread('career')">
+                    <div class="spread-icon">💼</div>
+                    <h3>Карьера</h3>
+                    <p>Профессиональное развитие</p>
+                    <div class="spread-cards">3 карты</div>
+                </div>
+                <div class="spread-card" onclick="selectSpread('decision')">
+                    <div class="spread-icon">⚖️</div>
+                    <h3>Решение</h3>
+                    <p>Поможет с выбором</p>
+                    <div class="spread-cards">2 карты</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- История -->
+        <div id="history" class="tab-content">
+            <div class="history-header">
+                <h3>История раскладов</h3>
+                <button class="btn btn-secondary" onclick="clearHistory()">Очистить</button>
+            </div>
+            <div id="history-container">
+                <div class="text-center">
+                    <p>📝 Ваша история пуста</p>
+                    <p>Задайте вопрос или получите карту дня, чтобы начать!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Отзывы -->
+        <div id="reviews" class="tab-content">
+            <div class="text-center">
+                <h3 style="color: var(--accent-color); margin-bottom: 20px;">Отзывы пользователей</h3>
+                <p style="color: var(--text-secondary);">Здесь будут отзывы о приложении</p>
+            </div>
+        </div>
+
+        <!-- Premium -->
+        <div id="premium" class="tab-content">
+            <div class="text-center">
+                <h3 style="color: var(--accent-color); margin-bottom: 20px;">Premium подписка</h3>
+                <div style="background: rgba(255, 255, 255, 0.05); border-radius: var(--border-radius); padding: 20px; margin: 20px 0;">
+                    <p style="margin-bottom: 15px;">✨ Безлимитные вопросы</p>
+                    <p style="margin-bottom: 15px;">🎴 Эксклюзивные расклады</p>
+                    <p style="margin-bottom: 15px;">🔮 Подробные толкования</p>
+                </div>
+                <button class="btn btn-full" onclick="handleBuyPremium()">
+                    👑 Активировать Premium
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Простая логика для демонстрации
+        let appState = {
+            currentTab: 'daily',
+            questionsLeft: 3,
+            isPremium: false
+        };
+
+        function switchTab(tabName) {
+            // Скрываем все табы
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Показываем выбранный таб
+            document.getElementById(tabName).classList.add('active');
+            
+            // Обновляем активные кнопки
+            const tabButtons = document.querySelectorAll('.nav-tab');
+            tabButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            
+            appState.currentTab = tabName;
+        }
+
+        function handleDailyCardClick() {
+            const loading = document.getElementById('daily-loading');
+            const result = document.getElementById('daily-result');
+            const card = document.getElementById('daily-card');
+            
+            loading.style.display = 'block';
+            card.style.display = 'none';
+            
+            setTimeout(() => {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <div class="card-result">
+                        <div class="card-name">Солнце</div>
+                        <div class="card-description">
+                            Карта радости, успеха и позитивной энергии. 
+                            Сегодня вас ждет удачный день, полный возможностей и положительных событий.
+                        </div>
+                        <div class="card-keywords">Ключевые слова: радость, успех, энергия, оптимизм</div>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        function handleAskQuestion() {
+            const question = document.getElementById('question-input').value.trim();
+            if (!question) {
+                showMessage('Пожалуйста, введите ваш вопрос', 'error');
+                return;
+            }
+            
+            const loading = document.getElementById('question-loading');
+            const result = document.getElementById('question-result');
+            
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            setTimeout(() => {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <div class="card-result">
+                        <div class="card-name">Колесо Фортуны</div>
+                        <div class="card-description">
+                            Ваш вопрос: "${question}"<br><br>
+                            Карты говорят о грядущих переменах в вашей жизни. 
+                            Будьте готовы к новым возможностям и не бойтесь рисковать.
+                        </div>
+                        <div class="card-keywords">Ключевые слова: перемены, судьба, удача, циклы</div>
+                    </div>
+                `;
+                document.getElementById('question-input').value = '';
+            }, 3000);
+        }
+
+        function selectSpread(type) {
+            showMessage(`Расклад "${type}" будет доступен в следующем обновлении`, 'info');
+        }
+
+        function clearHistory() {
+            document.getElementById('history-container').innerHTML = `
+                <div class="text-center">
+                    <p>📝 Ваша история пуста</p>
+                    <p>Задайте вопрос или получите карту дня, чтобы начать!</p>
+                </div>
+            `;
+            showMessage('История очищена', 'info');
+        }
+
+        function handleBuyPremium() {
+            showMessage('Оформление Premium подписки будет доступно в следующем обновлении', 'premium');
+        }
+
+        function showMessage(text, type = 'info') {
+            const message = document.createElement('div');
+            message.className = `message message-${type}`;
+            message.textContent = text;
+            message.style.opacity = '0';
+            message.style.transition = 'opacity 0.3s ease';
+            
+            document.body.appendChild(message);
+            
+            setTimeout(() => message.style.opacity = '1', 50);
+            
+            setTimeout(() => {
+                message.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(message)) {
+                        document.body.removeChild(message);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Инициализация Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+        }
+
+        console.log('✨ Шепот карт загружен успешно');
+    </script>
+</body>
+</html>
