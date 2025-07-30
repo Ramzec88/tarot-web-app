@@ -1,421 +1,1167 @@
 <!DOCTYPE html>
-
 <html lang="ru">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0, user-scalable=no" name="viewport"/>
-<title>Шепот карт - Tarot Web App</title>
-<!-- Telegram Web App Script -->
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<!-- Supabase Client -->
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<!-- Конфигурация -->
-<script src="./config.js"></script>
-<!-- Стили -->
-<link href="./style.css" rel="stylesheet"/>
-<!-- Meta tags для Telegram -->
-<meta content="true" name="telegram-web-app"/>
-<meta content="#1a1a2e" name="theme-color"/>
-<!-- Favicons -->
-<link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg'&gt;&lt;text y='32' font-size='32'&gt;🔮&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>Шепот карт - Tarot Web App</title>
+    <!-- Telegram Web App Script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Meta tags для Telegram -->
+    <meta content="true" name="telegram-web-app"/>
+    <meta content="#1a1a2e" name="theme-color"/>
+    <!-- Favicons -->
+    <link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg'&gt;&lt;text y='32' font-size='32'&gt;🔮&lt;/text&gt;&lt;/svg&gt;" rel="icon" type="image/svg+xml"/>
+    
+    <style>
+        /* ===== ОСНОВНЫЕ СТИЛИ ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f1419 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            line-height: 1.5;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 390px;
+            margin: 0 auto;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: transparent;
+            position: relative;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            text-align: center;
+            padding: 15px 16px 20px 16px;
+            background: transparent;
+            border: none;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #ffd700, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-bottom: 12px;
+        }
+
+        .subscription-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            font-size: 12px;
+        }
+
+        .subscription-status.premium {
+            background: linear-gradient(45deg, #ffd700, #ffed4a);
+            color: #1a1a2e;
+        }
+
+        /* ===== НАВИГАЦИЯ ===== */
+        .nav-tabs {
+            display: flex;
+            margin: 0 16px 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 4px;
+            gap: 2px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .nav-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-tabs-secondary {
+            display: flex;
+            margin: 0 16px 20px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 4px;
+            gap: 2px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .nav-tabs-secondary::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 10px 8px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            min-width: fit-content;
+            background: transparent;
+            color: #b0b0b0;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            color: #fff;
+        }
+
+        .nav-tab.secondary {
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 12px;
+            padding: 8px 12px;
+        }
+
+        .nav-tab.secondary.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: #fff;
+        }
+
+        .nav-tab.premium-tab {
+            background: linear-gradient(45deg, #ffd700, #ffed4a);
+            color: #1a1a2e;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+        }
+
+        .nav-tab.premium-tab:hover {
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .nav-tab.premium-tab.active {
+            background: linear-gradient(45deg, #ffd700, #ffed4a);
+            color: #1a1a2e;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.6);
+        }
+
+        /* ===== ОСНОВНОЙ КОНТЕНТ ===== */
+        .tab-content {
+            display: none;
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ===== КАРТА ДНЯ ===== */
+        .card-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .tarot-card {
+            width: 200px;
+            height: 320px;
+            border-radius: 16px;
+            background: linear-gradient(145deg, #2a2a5a, #1a1a2e);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .tarot-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(255, 215, 0, 0.2);
+            border-color: rgba(255, 215, 0, 0.6);
+        }
+
+        .card-back, .card-front {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            transition: all 0.6s ease;
+        }
+
+        .card-symbol {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.9;
+        }
+
+        .card-text {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #e0e0e0;
+        }
+
+        .card-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #ffd700;
+        }
+
+        .card-meaning {
+            font-size: 12px;
+            color: #b0b0b0;
+        }
+
+        /* ===== ЗАГРУЗКА ===== */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .magic-sparkles {
+            font-size: 24px;
+            margin-bottom: 8px;
+            animation: sparkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+
+        .magic-messages {
+            margin: 10px 0;
+        }
+
+        .magic-message {
+            opacity: 0;
+            animation: fadeInOut 3s ease-in-out infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* ===== AI ОТВЕТЫ ===== */
+        .ai-answer-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .ai-answer-container.show {
+            display: block;
+        }
+
+        .ai-answer-header {
+            margin-bottom: 12px;
+        }
+
+        .ai-answer-header h4 {
+            color: #ffd700;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .ai-answer-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        /* ===== БАННЕРЫ ===== */
+        .daily-info-banner, .subscription-banner {
+            margin-top: 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            display: none;
+        }
+
+        .daily-info-banner.show, .subscription-banner.show {
+            display: block;
+        }
+
+        .banner-content h4 {
+            color: #ffd700;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .banner-content p {
+            color: #e0e0e0;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .banner-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .banner-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .banner-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .banner-btn.premium {
+            background: linear-gradient(45deg, #ffd700, #ffed4a);
+            color: #1a1a2e;
+        }
+
+        /* ===== ФОРМА ВОПРОСОВ ===== */
+        .question-container {
+            max-width: 100%;
+        }
+
+        .question-form {
+            margin-bottom: 20px;
+        }
+
+        .question-form h3 {
+            color: #ffd700;
+            margin-bottom: 16px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .question-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .question-textarea::placeholder {
+            color: #a0a0a0;
+        }
+
+        .char-counter {
+            text-align: right;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        .question-btn {
+            width: 100%;
+            padding: 16px;
+            margin-top: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .question-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .question-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ===== КАРТЫ В РАСКЛАДАХ ===== */
+        .question-card-container, .followup-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .question-card-container.show, .followup-container.show {
+            display: block;
+        }
+
+        .tarot-cards-grid {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
+
+        .tarot-cards-grid .tarot-card {
+            width: 120px;
+            height: 180px;
+            flex-shrink: 0;
+        }
+
+        /* ===== РАСКЛАДЫ ===== */
+        .spreads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .spread-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .spread-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-4px);
+        }
+
+        .spread-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .spread-name {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #ffd700;
+        }
+
+        .spread-description {
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        .premium-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(45deg, #ffd700, #ffed4a);
+            color: #1a1a2e;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+
+        /* ===== ИСТОРИЯ ===== */
+        .history-container {
+            max-width: 100%;
+        }
+
+        .history-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .history-header h3 {
+            color: #ffd700;
+            margin-bottom: 8px;
+        }
+
+        .history-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid #ffd700;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
+        }
+
+        .history-header-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .history-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffd700;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .history-icon {
+            font-size: 16px;
+        }
+
+        .history-date {
+            color: #a0a0a0;
+            font-size: 12px;
+        }
+
+        .history-preview {
+            color: #e0e0e0;
+            font-size: 13px;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .history-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #b0b0b0;
+            font-size: 12px;
+        }
+
+        .history-mini-card {
+            font-size: 16px;
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a0a0a0;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* ===== ОТЗЫВЫ ===== */
+        .reviews-container {
+            max-width: 100%;
+        }
+
+        .reviews-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .review-form {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .rating-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .stars {
+            display: flex;
+            gap: 4px;
+        }
+
+        .star {
+            font-size: 20px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .star:hover, .star.active {
+            opacity: 1;
+        }
+
+        .star:not(.active) {
+            opacity: 0.3;
+        }
+
+        .review-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+            margin-bottom: 16px;
+        }
+
+        .submit-review-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .review-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .review-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .review-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .review-info {
+            flex: 1;
+        }
+
+        .review-name {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .review-rating {
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .review-date {
+            font-size: 11px;
+            color: #a0a0a0;
+        }
+
+        .review-text {
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        /* ===== ПРЕМИУМ ===== */
+        .premium-container {
+            max-width: 100%;
+            text-align: center;
+        }
+
+        .premium-header {
+            margin-bottom: 32px;
+        }
+
+        .premium-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .premium-header h2 {
+            color: #ffd700;
+            margin-bottom: 8px;
+        }
+
+        .premium-features {
+            margin-bottom: 32px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .feature-text strong {
+            color: #ffd700;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .feature-text p {
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .premium-pricing {
+            margin-bottom: 32px;
+        }
+
+        .price-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 20px;
+            padding: 24px;
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .price-label {
+            background: linear-gradient(45deg, #ffd700, #ffed4a);
+            color: #1a1a2e;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+
+        .price-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 4px;
+        }
+
+        .price-period {
+            color: #a0a0a0;
+            margin-bottom: 16px;
+        }
+
+        .price-benefits {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .price-benefit {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .premium-buy-btn {
+            display: inline-block;
+            padding: 16px 32px;
+            background: linear-gradient(45deg, #ffd700, #ffed4a);
+            color: #1a1a2e;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .premium-buy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+        }
+
+        /* ===== МОДАЛЬНОЕ ОКНО ПРОФИЛЯ ===== */
+        .profile-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+        }
+
+        .profile-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .profile-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 20px;
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .profile-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .profile-header h2 {
+            color: #ffd700;
+            margin-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        .input-hint {
+            font-size: 12px;
+            color: #a0a0a0;
+            margin-top: 4px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .privacy-note {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+
+        /* ===== АДАПТИВНОСТЬ ===== */
+        @media (max-width: 480px) {
+            .container {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+
+            .header {
+                padding: 12px 16px 20px 16px;
+            }
+
+            .logo {
+                font-size: 20px;
+            }
+
+            .tab-content {
+                padding: 12px 16px;
+            }
+
+            .nav-tabs, .nav-tabs-secondary {
+                margin-left: 16px;
+                margin-right: 16px;
+                padding: 3px;
+            }
+
+            .nav-tab {
+                font-size: 11px;
+                padding: 8px 6px;
+            }
+
+            .nav-tab.secondary {
+                font-size: 10px;
+                padding: 6px 8px;
+            }
+
+            .tarot-card {
+                width: 160px;
+                height: 256px;
+            }
+
+            .tarot-cards-grid .tarot-card {
+                width: 100px;
+                height: 150px;
+            }
+
+            .spreads-grid {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 12px;
+            }
+
+            .feature-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 8px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .banner-buttons {
+                flex-direction: column;
+            }
+
+            .profile-modal-content {
+                padding: 24px 16px;
+                margin: 16px;
+            }
+        }
+
+        /* ===== ДОПОЛНИТЕЛЬНАЯ АДАПТИВНОСТЬ ПОД TELEGRAM ===== */
+        @media (max-width: 390px) {
+            .container {
+                max-width: 100%;
+            }
+            
+            .header {
+                padding: 10px 12px 20px 12px;
+            }
+            
+            .nav-tabs, .nav-tabs-secondary {
+                margin-left: 12px;
+                margin-right: 12px;
+            }
+            
+            .tab-content {
+                padding: 12px;
+            }
+            
+            .nav-tab {
+                font-size: 10px;
+                padding: 6px 4px;
+            }
+        }
+
+        /* ===== ДЕСКТОПНАЯ ВЕРСИЯ ===== */
+        @media (min-width: 481px) {
+            body {
+                padding: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+            }
+            
+            .container {
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                min-height: auto;
+                max-height: 90vh;
+                overflow: hidden;
+            }
+            
+            .tab-content {
+                overflow-y: auto;
+                max-height: calc(90vh - 200px);
+            }
+        }
+
+        /* ===== АНИМАЦИИ ===== */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tab-content.active {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* ===== СКРЫТЫЕ ЭЛЕМЕНТЫ ===== */
+        .hidden {
+            display: none !important;
+        }
+
+        .show {
+            display: block !important;
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-<div class="header">
-<div class="logo">✨ Шепот карт ✨</div>
-<div class="subtitle">Мистические предсказания Таро</div>
-<div class="subscription-status" id="subscription-status">
-<span class="status-icon">🆓</span>
-<span class="status-text">Бесплатная версия</span>
-</div>
-</div>
-<div class="nav-tabs">
-<div class="nav-tab active" data-tab="daily">Карта дня</div>
-<div class="nav-tab" data-tab="question">Вопрос</div>
-<div class="nav-tab" data-tab="spreads">Расклады</div>
-<div class="nav-tab" data-tab="history">История</div>
-</div>
-<div class="nav-tabs-secondary">
-<div class="nav-tab secondary" data-tab="reviews">Отзывы</div>
-<div class="nav-tab premium-tab" data-tab="premium">Premium</div>
-</div>
-
-<!-- Карта дня -->
-<div class="tab-content active" id="daily-tab">
-<div class="card-container">
-<div class="tarot-card" id="daily-card">
-<div class="card-back">
-<div class="card-symbol">🔮</div>
-<div class="card-text">Нажмите, чтобы<br/>узнать карту дня</div>
-</div>
-</div>
-<div class="loading" id="daily-loading" style="display: none;">
-    <div class="magic-sparkles">✨ ⭐ ✨</div>
-    <div>Карты шепчут...</div>
-</div>
-</div>
-<!-- Место для ИИ-толкования карты дня -->
-<div id="daily-ai-container"></div>
-
-<!-- Информационный баннер для карты дня (ИСПРАВЛЕН: добавлены рабочие кнопки) -->
-<div class="daily-info-banner" id="daily-info-banner" style="display: none;">
-<div class="banner-icon">🌟</div>
-<div class="banner-content">
-<h4>Узнайте больше о своём будущем</h4>
-<p>Задайте персональный вопрос или изучите премиум расклады</p>
-<div class="banner-buttons">
-<button class="banner-btn" onclick="switchToTab('question')">
-    <span class="btn-icon">❓</span>
-    Задать вопрос
-</button>
-<button class="banner-btn premium" onclick="switchToTab('premium')">
-    <span class="btn-icon">👑</span>
-    Премиум
-</button>
-</div>
-</div>
-</div>
-</div>
-
-<!-- Вопрос -->
-<div class="tab-content" id="question-tab">
-<div class="question-container">
-<div class="question-form">
-<h3>🔮 Задайте ваш вопрос картам</h3>
-<textarea 
-    id="question-input" 
-    class="question-textarea" 
-    placeholder="Опишите вашу ситуацию или задайте конкретный вопрос..." 
-    maxlength="500">
-</textarea>
-<div class="char-counter">
-    <span id="char-count">0</span>/500
-</div>
-<button class="question-btn" id="ask-question-btn">
-    <span class="btn-icon">🔮</span>
-    Спросить у карт
-</button>
-</div>
-
-<!-- ИСПРАВЛЕНО: Блоки скрыты по умолчанию -->
-<div class="question-card-container" id="question-cards" style="display: none;">
-    <div class="loading" id="question-loading" style="display: none;">
-        <div class="magic-sparkles">✨ ⭐ ✨</div>
-        <div>Карты размышляют...</div>
-    </div>
-    <div class="tarot-cards-grid" id="question-cards-grid"></div>
-</div>
-
-<!-- ИСПРАВЛЕНО: Блок ответа скрыт по умолчанию и переименован в "ИИ-предсказание" -->
-<div class="ai-answer-container" id="ai-answer-container" style="display: none;">
-    <div class="ai-answer-header">
-        <h4>🔮 ИИ-предсказание</h4>
-    </div>
-    <div class="loading" id="ai-loading" style="display: none;">
-        <div class="magic-messages" id="magic-messages">
-            <div class="magic-message">✨ Карты открывают тайны...</div>
-        </div>
-    </div>
-    <div class="ai-answer-box" id="ai-answer-text"></div>
-</div>
-
-<!-- ИСПРАВЛЕНО: Блок уточнения скрыт по умолчанию и появляется только после предсказания -->
-<div class="followup-container" id="followup-container" style="display: none;">
-    <div class="followup-form">
-        <h4>🎯 Хотите уточнить?</h4>
-        <p>Если предсказание вызвало дополнительные вопросы, задайте уточняющий вопрос</p>
-        <textarea 
-            id="followup-input" 
-            class="question-textarea" 
-            placeholder="Уточните ваш вопрос..."
-            maxlength="300">
-        </textarea>
-        <button class="question-btn" id="ask-followup-btn">
-            <span class="btn-icon">🎯</span>
-            Уточнить
-        </button>
-    </div>
-    
-    <!-- Контейнер для карты уточнения -->
-    <div class="followup-card-container" id="followup-cards" style="display: none;">
-        <div class="loading" id="followup-loading" style="display: none;">
-            <div class="magic-sparkles">✨ ⭐ ✨</div>
-            <div>Карты размышляют...</div>
-        </div>
-        <div class="tarot-cards-grid" id="followup-cards-grid"></div>
-    </div>
-    
-    <!-- Блок для ИИ-уточнения -->
-    <div class="ai-answer-container" id="followup-ai-container" style="display: none;">
-        <div class="ai-answer-header">
-            <h4>🎯 ИИ-уточнение</h4>
-        </div>
-        <div class="loading" id="followup-ai-loading" style="display: none;">
-            <div class="magic-messages" id="followup-magic-messages">
-                <div class="magic-message">✨ Карты раскрывают детали...</div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">✨ Шепот карт ✨</div>
+            <div class="subtitle">Мистические предсказания Таро</div>
+            <div class="subscription-status" id="subscription-status">
+                <span class="status-icon">🆓</span>
+                <span class="status-text">Бесплатная версия</span>
             </div>
         </div>
-        <div class="ai-answer-box" id="followup-ai-text"></div>
-    </div>
-</div>
 
-<!-- ИСПРАВЛЕНО: Баннер подписки появляется только после исчерпания бесплатных вопросов -->
-<div class="subscription-banner" id="subscription-banner-question" style="display: none;">
-    <div class="banner-icon">⭐</div>
-    <div class="banner-content">
-        <h4>Бесплатные вопросы закончились</h4>
-        <p>Получите премиум подписку для неограниченных вопросов</p>
-        <div class="premium-features">
-            <div class="feature">• Неограниченные вопросы</div>
-            <div class="feature">• Эксклюзивные расклады</div>
-            <div class="feature">• Подробные толкования</div>
+        <!-- Navigation -->
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-tab="daily">Карта дня</div>
+            <div class="nav-tab" data-tab="question">Вопрос</div>
+            <div class="nav-tab" data-tab="spreads">Расклады</div>
+            <div class="nav-tab" data-tab="history">История</div>
         </div>
-        <button class="premium-btn" onclick="switchToTab('premium')">
-            Купить Premium за 299₽ 💳
-        </button>
-    </div>
-</div>
-</div>
-</div>
+        <div class="nav-tabs-secondary">
+            <div class="nav-tab secondary" data-tab="reviews">Отзывы</div>
+            <div class="nav-tab premium-tab" data-tab="premium">Premium</div>
+        </div>
 
-<!-- Расклады -->
-<div class="tab-content" id="spreads-tab">
-<div class="spreads-grid">
-<div class="spread-card" data-spread="love">
-<div class="spread-icon">💕</div>
-<div class="spread-name">Любовь и отношения</div>
-<div class="spread-description">3 карты</div>
-<div class="premium-badge">PREMIUM</div>
-</div>
-<div class="spread-card" data-spread="career">
-<div class="spread-icon">💼</div>
-<div class="spread-name">Карьера и финансы</div>
-<div class="spread-description">4 карты</div>
-<div class="premium-badge">PREMIUM</div>
-</div>
-<div class="spread-card" data-spread="week">
-<div class="spread-icon">📅</div>
-<div class="spread-name">Неделя впереди</div>
-<div class="spread-description">7 карт</div>
-<div class="premium-badge">PREMIUM</div>
-</div>
-<div class="spread-card" data-spread="celtic">
-<div class="spread-icon">🍀</div>
-<div class="spread-name">Кельтский крест</div>
-<div class="spread-description">10 карт</div>
-<div class="premium-badge">PREMIUM</div>
-</div>
-</div>
-<div class="spread-detail" id="spread-detail" style="display: none;">
-<button class="back-btn" onclick="closeSpread()">← Назад</button>
-<div class="spread-detail-content"></div>
-</div>
-</div>
-
-<!-- История -->
-<div class="tab-content" id="history-tab">
-<div class="history-container">
-<div class="history-header">
-<h3>📚 История предсказаний</h3>
-<p>Ваши прошлые вопросы и ответы карт</p>
-</div>
-<div class="history-list" id="history-list">
-<div class="history-empty">
-<div class="empty-icon">🔮</div>
-<p>Здесь появится история ваших вопросов к картам</p>
-</div>
-</div>
-</div>
-</div>
-
-<!-- Отзывы -->
-<div class="tab-content" id="reviews-tab">
-<div class="reviews-container">
-<div class="reviews-header">
-<h3>⭐ Отзывы пользователей</h3>
-<p>Что говорят о приложении другие пользователи</p>
-</div>
-
-<div class="review-form" id="review-form">
-<h4>Оставьте свой отзыв</h4>
-<div class="rating-input">
-<span>Ваша оценка: </span>
-<div class="stars" id="stars-input">
-<span class="star" data-rating="1">⭐</span>
-<span class="star" data-rating="2">⭐</span>
-<span class="star" data-rating="3">⭐</span>
-<span class="star" data-rating="4">⭐</span>
-<span class="star" data-rating="5">⭐</span>
-</div>
-</div>
-<textarea 
-    id="review-text" 
-    class="review-textarea" 
-    placeholder="Поделитесь своим опытом использования приложения..." 
-    maxlength="300">
-</textarea>
-<button class="submit-review-btn" id="submit-review-btn">
-<span class="btn-icon">📝</span>
-Отправить отзыв
-</button>
-</div>
-
-<div class="reviews-list" id="reviews-list">
-<div class="review-item">
-<div class="review-header">
-<div class="review-avatar">🌟</div>
-<div class="review-info">
-<div class="review-name">Анна К.</div>
-<div class="review-rating">⭐⭐⭐⭐⭐</div>
-<div class="review-date">2 дня назад</div>
-</div>
-</div>
-<div class="review-text">Очень точные предсказания! Карта дня помогает настроиться на правильный лад.</div>
-</div>
-<div class="review-item">
-<div class="review-header">
-<div class="review-avatar">🔮</div>
-<div class="review-info">
-<div class="review-name">Михаил Р.</div>
-<div class="review-rating">⭐⭐⭐⭐</div>
-<div class="review-date">5 дней назад</div>
-</div>
-</div>
-<div class="review-text">Интересное приложение. Расклады красивые, интерфейс удобный.</div>
-</div>
-</div>
-</div>
-</div>
-
-<!-- Premium -->
-<div class="tab-content" id="premium-tab">
-<div class="premium-container">
-<div class="premium-header">
-<div class="premium-icon">👑</div>
-<h2>Премиум подписка</h2>
-<p>Откройте все возможности мистических предсказаний</p>
-</div>
-
-<div class="premium-features">
-<div class="feature-item">
-<div class="feature-icon">∞</div>
-<div class="feature-text">
-<strong>Неограниченные вопросы</strong>
-<p>Спрашивайте карты сколько угодно раз</p>
-</div>
-</div>
-<div class="feature-item">
-<div class="feature-icon">🎴</div>
-<div class="feature-text">
-<strong>Эксклюзивные расклады</strong>
-<p>Кельтский крест, расклад на любовь и карьеру</p>
-</div>
-</div>
-<div class="feature-item">
-<div class="feature-icon">🔍</div>
-<div class="feature-text">
-<strong>Подробные толкования</strong>
-<p>Глубокий анализ каждой карты и ситуации</p>
-</div>
-</div>
-<div class="feature-item">
-<div class="feature-icon">📱</div>
-<div class="feature-text">
-<strong>Без рекламы</strong>
-<p>Чистый интерфейс для концентрации</p>
-</div>
-</div>
-</div>
-
-<div class="premium-pricing">
-<div class="price-card featured">
-<div class="price-label">Рекомендуем</div>
-<div class="price-value">299₽</div>
-<div class="price-period">на 30 дней</div>
-<div class="price-benefits">
-<div class="price-benefit">• Полный доступ ко всем функциям</div>
-<div class="price-benefit">• Приоритетная поддержка</div>
-<div class="price-benefit">• Мгновенная активация</div>
-</div>
-<a class="premium-buy-btn" href="https://www.wildberries.ru/catalog/199937445/detail.aspx" target="_blank">
-    🛒 Купить Premium за 299₽
-</a>
-</div>
-</div>
-
-<div class="premium-how-to">
-<h4>💳 Как купить подписку:</h4>
-<div class="how-to-steps">
-<div class="step">
-<span class="step-number">1</span>
-<span class="step-text">Нажмите кнопку "Купить Premium"</span>
-</div>
-<div class="step">
-<span class="step-number">2</span>
-<span class="step-text">Перейдите на Wildberries и оформите заказ</span>
-</div>
-<div class="step">
-<span class="step-number">3</span>
-<span class="step-text">Получите код активации на email</span>
-</div>
-<div class="step">
-<span class="step-number">4</span>
-<span class="step-text">Введите код в боте командой /subscribe</span>
-</div>
-</div>
-</div>
-
-<div class="premium-guarantee">
-<div class="guarantee-icon">🛡️</div>
-<div class="guarantee-text">
-<strong>Гарантия возврата средств</strong><br/>
-Если Premium не оправдает ожидания в первые 7 дней - вернем деньги
-</div>
-</div>
-</div>
-</div>
-
-<!-- Модальное окно профиля -->
-<div class="profile-modal" id="profile-modal" style="display: none;">
-<div class="profile-modal-overlay">
-<div class="profile-modal-content">
-<div class="profile-header">
-<div class="profile-icon">🔮</div>
-<h2>Добро пожаловать в Шёпот карт</h2>
-<p>Чтобы карты дали более точное предсказание, расскажите немного о себе</p>
-</div>
-<form class="profile-form" id="profile-form">
-<div class="form-group">
-<label for="display-name">Как к вам обращаться?</label>
-<input class="form-input" id="display-name" maxlength="50" name="display_name" placeholder="Введите ваше имя" required="" type="text"/>
-<div class="input-hint">Это имя будет использоваться в предсказаниях</div>
-</div>
-<div class="form-group">
-<label for="birth-date">Дата рождения (необязательно)</label>
-<input class="form-input" id="birth-date" max="2010-01-01" name="birth_date" type="date"/>
-<div class="input-hint">Поможет учесть астрологические влияния</div>
-</div>
-<div class="form-actions">
-<button class="btn btn-primary" id="save-profile-btn" type="submit">
-<span class="btn-icon">✨</span>
-Начать гадание
-</button>
-<button class="btn btn-secondary" id="skip-profile-btn" type="button">
-Пропустить
-</button>
-</div>
-</form>
-<div class="profile-footer">
-<div class="privacy-note">
-<span class="privacy-icon">🔒</span>
-<span>Ваши данные защищены и используются только для персонализации предсказаний</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-
-<!-- Основной скрипт приложения -->
-<script src="./script.js"></script>
-</body>
-</html>
+        <!-- Карта дня -->
+        <div class="tab-content active" id="daily-tab">
+            <div class="card-container">
+                <div class="tarot-card" id="daily-card">
+                    <div class="card-back">
+                        <div class="card-symbol">🔮</div>
+                        <div class="card-text">Нажмите, чтобы<br/>узнать карту дня</div>
+                    </div>
+                </div>
+                <div class="loading" id="daily-loading">
+                    <div class="magic-sparkles">✨ ⭐ ✨</div>
+                    <div>Карты шепчут...</div>
+                </div>
+            </div>
+            
+            <!-- AI-толкование карты дня -->
+            <div class="ai-answer-container" id="daily-ai-container">
+                <div class="ai-answer-header">
+                    <h4>🔮 Предсказание на сегодня</h4>
+                </div>
+                <div class="loading" id="daily-ai-loading">
+                    <div class="magic-messages">
+                        <div class="magic-message">✨ Карты открывают тайны...</div>
+                    </div>
+                </div>
+                <div
