@@ -7,7 +7,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
     color: #fff;
     min-height: 100vh;
@@ -15,10 +15,13 @@ body {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
+    /* Убираем overflow-y: hidden, если он где-то был, чтобы body мог прокручиваться, если container больше экрана */
+    overflow-y: auto; /* Добавлено для возможности прокрутки body, если контент слишком большой */
 }
 
 .container {
     max-width: 400px;
+    width: 100%; /* Добавлено: убедимся, что ширина всегда 100% до max-width */
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
@@ -26,13 +29,22 @@ body {
     padding: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    min-height: calc(100vh - 20px);
+    /* min-height: calc(100vh - 20px);  Удалено или изменено, см. ниже в медиа-запросах */
+
+    /* Ключевые изменения для Flexbox Layout */
+    display: flex;
+    flex-direction: column;
+    /* Устанавливаем высоту контейнера для мобильных */
+    height: calc(100vh - 20px); /* Высота контейнера равна высоте вьюпорта минус padding body */
+    overflow: hidden; /* Скрываем общий скролл контейнера, скролл будет внутри tab-content */
 }
 
 /* ===== HEADER ===== */
 .header {
     text-align: center;
     margin-bottom: 25px;
+    flex-shrink: 0; /* Добавлено: предотвращает сжатие хедера */
+    padding: 15px 16px 20px 16px; /* Используем паддинги из HTML, чтобы они не были перекрыты */
 }
 
 .logo {
@@ -210,6 +222,9 @@ body {
 .tab-content {
     display: none;
     animation: fadeIn 0.3s ease;
+    flex-grow: 1; /* Добавлено: позволяет контенту занимать все доступное пространство */
+    overflow-y: auto; /* Добавлено: делает контент прокручиваемым, если он превышает высоту */
+    padding: 16px; /* Ваши исходные паддинги */
 }
 
 .tab-content.active {
@@ -220,6 +235,8 @@ body {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Остальные стили без изменений */
 
 /* ===== CARDS ===== */
 .card-container {
@@ -1266,10 +1283,10 @@ body {
 @media (max-width: 480px) {
     .container {
         max-width: 100%;
-        padding: 15px;
+        padding: 15px; /* Убедитесь, что паддинг внутри контейнера */
         margin: 0;
         border-radius: 0;
-        min-height: 100vh;
+        min-height: 100vh; /* Для мобильных устройств контейнер занимает всю высоту */
     }
 
     .header {
@@ -1401,21 +1418,23 @@ body {
         border-radius: 20px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        min-height: auto;
-        max-height: 90vh;
-        overflow: hidden;
+        min-height: auto; /* На десктопе контейнер может быть меньше высоты экрана */
+        max-height: 90vh; /* Максимальная высота на десктопе */
+        overflow: hidden; /* Скрываем общий скролл контейнера */
+        padding: 20px; /* Вернуть паддинг контейнеру на десктопе */
     }
     
     .tab-content {
-        overflow-y: auto;
-        max-height: calc(90vh - 200px);
+        overflow-y: auto; /* Контент внутри вкладки прокручивается */
+        /* max-height: calc(90vh - 200px);  Эта строка теперь менее актуальна, так как flex-grow: 1 справится */
     }
 }
 
-/* ===== TELEGRAM SPECIFIC ===== */
+/* ===== TELEGRAM SPECIFIC (для узких, но высоких экранов) ===== */
 @media (max-height: 600px) {
     .container {
-        min-height: auto;
+        min-height: auto; /* Позволяет контейнеру быть меньше высоты экрана на коротких устройствах */
+        height: 100vh; /* Занимает всю доступную высоту вьюпорта */
         padding: 15px;
     }
     
