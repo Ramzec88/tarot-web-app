@@ -11,40 +11,46 @@ body {
     background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
     color: #fff;
     min-height: 100vh;
-    padding: 10px;
+    padding: 10px; /* Отступ вокруг основного контейнера */
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
-    /* Убираем overflow-y: hidden, если он где-то был, чтобы body мог прокручиваться, если container больше экрана */
-    overflow-y: auto; /* Добавлено для возможности прокрутки body, если контент слишком большой */
+    /* Убираем overflow-y: auto; если он был, чтобы скролл был только у контейнера, а не у body */
+    overflow-y: hidden; /* Важно: убираем прокрутку у body */
+
+    /* Изменения для выравнивания контейнера сверху */
+    display: flex;
+    flex-direction: column; /* Элементы body будут выстроены в столбец */
+    align-items: center; /* Центрируем контейнер по горизонтали */
+    justify-content: flex-start; /* Выравниваем контейнер сверху по вертикали */
 }
 
 .container {
-    max-width: 400px;
-    width: 100%; /* Добавлено: убедимся, что ширина всегда 100% до max-width */
-    margin: 0 auto;
+    max-width: 400px; /* Максимальная ширина */
+    width: calc(100% - 20px); /* 100% ширины экрана минус 2 * 10px паддинг body */
+    margin: 0 auto; /* Центрируем по горизонтали */
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-radius: 20px;
     padding: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    /* min-height: calc(100vh - 20px);  Удалено или изменено, см. ниже в медиа-запросах */
-
-    /* Ключевые изменения для Flexbox Layout */
-    display: flex;
-    flex-direction: column;
-    /* Устанавливаем высоту контейнера для мобильных */
-    height: calc(100vh - 20px); /* Высота контейнера равна высоте вьюпорта минус padding body */
-    overflow: hidden; /* Скрываем общий скролл контейнера, скролл будет внутри tab-content */
+    min-height: calc(100vh - 20px); /* Минимальная высота, чтобы занимать весь экран */
+    /* overflow: hidden;  Удалено: контейнер должен прокручиваться сам */
+    overflow-y: auto; /* Контейнер должен прокручиваться */
+    flex-shrink: 0; /* Контейнер не должен сжиматься */
+    
+    /* Убираем flex-direction: column; и связанные flex свойства отсюда,
+       так как контейнер теперь является просто прокручиваемым блоком,
+       а его содержимое внутри управляет своим макетом. */
 }
 
 /* ===== HEADER ===== */
 .header {
     text-align: center;
     margin-bottom: 25px;
-    flex-shrink: 0; /* Добавлено: предотвращает сжатие хедера */
-    padding: 15px 16px 20px 16px; /* Используем паддинги из HTML, чтобы они не были перекрыты */
+    /* flex-shrink: 0;  Удалено: хедер теперь прокручивается */
+    padding: 15px 16px 20px 16px; 
 }
 
 .logo {
@@ -93,7 +99,7 @@ body {
     font-weight: bold;
 }
 
-/* ===== НАВИГАЦИЯ - ФИКСИРОВАННЫЕ СТИЛИ (КАК НА КАРТЕ ДНЯ) ===== */
+/* ===== НАВИГАЦИЯ ===== */
 .nav-tabs {
     display: flex;
     margin: 0 16px 12px 16px;
@@ -104,12 +110,10 @@ body {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    /* ФИКСАЦИЯ: добавляем стабильную высоту */
-    height: 52px;
-    min-height: 52px;
-    /* ФИКСАЦИЯ: предотвращаем изменение размеров при скроллинге */
-    flex-shrink: 0;
-    flex-wrap: nowrap; /* ФИКСАЦИЯ: Убираем возможные проблемы с flex-wrap и переносами */
+    /* height: 52px; Удалено: высота может быть динамической, чтобы вместить контент */
+    /* min-height: 52px; Удалено */
+    /* flex-shrink: 0; Удалено: навигация теперь прокручивается */
+    flex-wrap: nowrap;
 }
 
 .nav-tabs::-webkit-scrollbar {
@@ -126,12 +130,10 @@ body {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    /* ФИКСАЦИЯ: добавляем стабильную высоту */
-    height: 44px;
-    min-height: 44px;
-    /* ФИКСАЦИЯ: предотвращаем изменение размеров при скроллинге */
-    flex-shrink: 0;
-    flex-wrap: nowrap; /* ФИКСАЦИЯ: Убираем возможные проблемы с flex-wrap и переносами */
+    /* height: 44px; Удалено */
+    /* min-height: 44px; Удалено */
+    /* flex-shrink: 0; Удалено */
+    flex-wrap: nowrap;
 }
 
 .nav-tabs-secondary::-webkit-scrollbar {
@@ -139,7 +141,6 @@ body {
 }
 
 .nav-tab {
-    /* СОХРАНЯЕМ ОРИГИНАЛЬНОЕ ПОВЕДЕНИЕ: flex: 1 как на странице Карта дня */
     flex: 1;
     padding: 10px 8px;
     text-align: center;
@@ -152,17 +153,16 @@ body {
     min-width: fit-content;
     background: transparent;
     color: #b0b0b0;
-    /* ФИКСАЦИЯ: добавляем принудительное центрирование */
+    
+    /* ФИКСАЦИЯ ЦЕНТРИРОВАНИЯ ТЕКСТА КНОПОК */
     display: flex;
-    align-items: center;
-    justify-content: center;
-    /* ФИКСАЦИЯ: стабильная высота кнопки */
-    height: 40px;
-    /* ФИКСАЦИЯ: предотвращаем деформацию текста */
+    align-items: center; /* Выравнивает текст по вертикали по центру */
+    justify-content: center; /* Выравнивает текст по горизонтали по центру */
+    
+    /* height: 40px; Удалено: позволим содержимому определять высоту */
     box-sizing: border-box;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* ФИКСАЦИЯ: Стабилизация при изменении размера viewport */
     flex-basis: 0;
     flex-grow: 1;
     max-width: none;
@@ -171,8 +171,7 @@ body {
 .nav-tab:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
-    /* ФИКСАЦИЯ: убираем transform чтобы не было смещений */
-    transform: none;
+    transform: none; /* Убираем transform для hover, чтобы избежать смещений */
 }
 
 .nav-tab.active {
@@ -185,8 +184,7 @@ body {
     background: rgba(255, 255, 255, 0.05);
     font-size: 12px;
     padding: 8px 12px;
-    /* ФИКСАЦИЯ: стабильная высота для вторичных кнопок */
-    height: 32px;
+    /* height: 32px; Удалено */
 }
 
 .nav-tab.secondary:hover {
@@ -208,8 +206,7 @@ body {
 
 .nav-tab.premium-tab:hover {
     box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
-    /* ФИКСАЦИЯ: убираем translateY чтобы не было смещения при hover */
-    transform: none;
+    transform: none; /* Убираем translateY чтобы не было смещения при hover */
 }
 
 .nav-tab.premium-tab.active {
@@ -222,9 +219,10 @@ body {
 .tab-content {
     display: none;
     animation: fadeIn 0.3s ease;
-    flex-grow: 1; /* Добавлено: позволяет контенту занимать все доступное пространство */
-    overflow-y: auto; /* Добавлено: делает контент прокручиваемым, если он превышает высоту */
-    padding: 16px; /* Ваши исходные паддинги */
+    /* flex-grow: 1; Удалено: tab-content теперь не часть flex-контейнера. */
+    overflow-y: visible; /* Контент внутри вкладки может быть длинным, и его контейнер (главный .container) будет скроллиться */
+    padding: 16px;
+    /* max-height: calc(90vh - 200px); Удалено */
 }
 
 .tab-content.active {
@@ -1281,16 +1279,23 @@ body {
 
 /* ===== MOBILE ADAPTATIONS ===== */
 @media (max-width: 480px) {
+    body {
+        /* На мобильных body должен быть flex-контейнером, но не задавать высоту */
+        justify-content: flex-start; /* Выравнивание контейнера сверху */
+    }
+
     .container {
         max-width: 100%;
-        padding: 15px; /* Убедитесь, что паддинг внутри контейнера */
-        margin: 0;
+        width: calc(100% - 32px); /* Ширина на мобильных с учетом паддинга по бокам */
+        padding: 15px; /* Паддинг внутри контейнера */
+        margin: 0 auto; /* Центрируем по горизонтали */
         border-radius: 0;
-        min-height: 100vh; /* Для мобильных устройств контейнер занимает всю высоту */
+        min-height: calc(100vh - 32px); /* Минимальная высота, чтобы занимать всю видимую область */
+        height: auto; /* Высота контейнера определяется содержимым */
     }
 
     .header {
-        padding: 12px 16px 20px 16px;
+        padding: 12px 0 20px 0; /* Убираем горизонтальные паддинги, они теперь у контейнера */
     }
 
     .logo {
@@ -1298,34 +1303,27 @@ body {
     }
 
     .tab-content {
-        padding: 12px 16px;
+        padding: 12px 0; /* Убираем горизонтальные паддинги, они теперь у контейнера */
     }
 
     .nav-tabs, .nav-tabs-secondary {
-        margin-left: 16px;
-        margin-right: 16px;
+        margin-left: 0; /* Убираем margin, так как паддинг уже на контейнере */
+        margin-right: 0;
         padding: 3px;
-        /* ФИКСАЦИЯ: сохраняем стабильные высоты на мобильных */
-        height: 48px;
-        min-height: 48px;
-    }
-
-    .nav-tabs-secondary {
-        height: 40px;
-        min-height: 40px;
+        height: auto; /* Убираем фиксированную высоту */
+        min-height: auto;
     }
 
     .nav-tab {
         font-size: 11px;
         padding: 8px 6px;
-        /* ФИКСАЦИЯ: адаптивная высота для мобильных */
-        height: 36px;
+        height: auto; /* Убираем фиксированную высоту */
     }
 
     .nav-tab.secondary {
         font-size: 10px;
         padding: 6px 8px;
-        height: 28px;
+        height: auto; /* Убираем фиксированную высоту */
     }
 
     .tarot-card {
@@ -1359,30 +1357,28 @@ body {
 
 @media (max-width: 390px) {
     .nav-tabs, .nav-tabs-secondary {
-        margin-left: 12px;
-        margin-right: 12px;
+        margin-left: 0; /* Убираем margin */
+        margin-right: 0;
     }
     
     .nav-tab {
         font-size: 10px;
         padding: 6px 4px;
-        height: 32px;
     }
 
     .nav-tab.secondary {
         font-size: 9px;
         padding: 4px 6px;
-        height: 24px;
     }
 
     .nav-tabs {
-        height: 44px;
-        min-height: 44px;
+        height: auto; /* Убираем фиксированную высоту */
+        min-height: auto;
     }
 
     .nav-tabs-secondary {
-        height: 36px;
-        min-height: 36px;
+        height: auto; /* Убираем фиксированную высоту */
+        min-height: auto;
     }
 }
 
@@ -1407,9 +1403,10 @@ body {
     body {
         padding: 20px;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        align-items: center; /* Центрируем по вертикали для десктопа */
+        justify-content: center; /* Центрируем по горизонтали для десктопа */
         min-height: 100vh;
+        overflow-y: hidden; /* Скрываем прокрутку body, если контейнер не превышает max-height */
     }
     
     .container {
@@ -1418,23 +1415,23 @@ body {
         border-radius: 20px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        min-height: auto; /* На десктопе контейнер может быть меньше высоты экрана */
+        min-height: auto; /* Высота контейнера определяется содержимым */
         max-height: 90vh; /* Максимальная высота на десктопе */
-        overflow: hidden; /* Скрываем общий скролл контейнера */
-        padding: 20px; /* Вернуть паддинг контейнеру на десктопе */
+        overflow-y: auto; /* Контейнер прокручивается */
+        padding: 20px;
+        width: 400px; /* Фиксируем ширину для десктопа */
     }
     
     .tab-content {
-        overflow-y: auto; /* Контент внутри вкладки прокручивается */
-        /* max-height: calc(90vh - 200px);  Эта строка теперь менее актуальна, так как flex-grow: 1 справится */
+        /* overflow-y: auto;  Удалено, так как контейнер уже прокручивается */
     }
 }
 
 /* ===== TELEGRAM SPECIFIC (для узких, но высоких экранов) ===== */
 @media (max-height: 600px) {
     .container {
-        min-height: auto; /* Позволяет контейнеру быть меньше высоты экрана на коротких устройствах */
-        height: 100vh; /* Занимает всю доступную высоту вьюпорта */
+        min-height: auto;
+        height: auto; /* Пусть высота определяется контентом */
         padding: 15px;
     }
     
