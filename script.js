@@ -1527,4 +1527,4 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     }, 50);
 }
 
-console.log('✅ Script.js загружен полностью');)
+console.log('✅ Script.js загружен полностью');
