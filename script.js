@@ -125,14 +125,6 @@ function initBasicUI() {
     console.log('🎨 Инициализация базового UI...');
     
     try {
-        // Показываем все скрытые элементы
-        const hiddenElements = document.querySelectorAll('[style*="display: none"]');
-        hiddenElements.forEach(el => {
-            if (el.id !== 'app-loader') {
-                el.style.display = '';
-            }
-        });
-        
         // Убеждаемся что активная вкладка видна
         const dailyTab = document.getElementById('daily-tab');
         if (dailyTab) {
@@ -144,6 +136,12 @@ function initBasicUI() {
         if (firstTabBtn) {
             firstTabBtn.classList.add('active');
         }
+        
+        // Инициализируем счетчик символов для textarea
+        initCharCounters();
+        
+        // Инициализируем звездочки рейтинга
+        initRatingStars();
         
         console.log('✅ Базовый UI инициализирован');
         
@@ -310,39 +308,63 @@ function setupEventListeners() {
     console.log('🎛️ Настройка обработчиков событий...');
     
     try {
-        // Обработчики табов
+        // ОСНОВНОЕ: Обработчики табов
         const tabButtons = document.querySelectorAll('.nav-tab[data-tab]');
         tabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const tabName = this.getAttribute('data-tab');
-                switchTab(tabName);
-            });
+            // Удаляем старые обработчики
+            button.removeEventListener('click', handleTabClick);
+            // Добавляем новые
+            button.addEventListener('click', handleTabClick);
         });
         
         // Карта дня
         const dailyCard = document.getElementById('daily-card');
         if (dailyCard) {
+            dailyCard.removeEventListener('click', handleDailyCardClick);
             dailyCard.addEventListener('click', handleDailyCardClick);
         }
         
         // Кнопка вопроса
         const askBtn = document.getElementById('ask-btn');
         if (askBtn) {
+            askBtn.removeEventListener('click', handleAskQuestion);
             askBtn.addEventListener('click', handleAskQuestion);
         }
         
         // Enter в поле вопроса
         const questionInput = document.getElementById('question-input');
         if (questionInput) {
-            questionInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    handleAskQuestion();
-                }
-            });
+            questionInput.removeEventListener('keypress', handleQuestionKeypress);
+            questionInput.addEventListener('keypress', handleQuestionKeypress);
+            questionInput.addEventListener('input', updateCharCounter);
+        }
+
+        // Кнопка уточняющего вопроса
+        const followupBtn = document.getElementById('followup-btn');
+        if (followupBtn) {
+            followupBtn.removeEventListener('click', handleFollowupQuestion);
+            followupBtn.addEventListener('click', handleFollowupQuestion);
+        }
+
+        // Расклады
+        const spreadCards = document.querySelectorAll('.spread-card[data-spread]');
+        spreadCards.forEach(card => {
+            card.removeEventListener('click', handleSpreadClick);
+            card.addEventListener('click', handleSpreadClick);
+        });
+
+        // Premium кнопка
+        const buyPremiumBtn = document.getElementById('buy-premium');
+        if (buyPremiumBtn) {
+            buyPremiumBtn.removeEventListener('click', handlePremiumPurchase);
+            buyPremiumBtn.addEventListener('click', handlePremiumPurchase);
         }
 
         // Обработчики профиля
         setupProfileEventListeners();
+
+        // Обработчики отзывов
+        setupReviewEventListeners();
 
         console.log('✅ Обработчики событий настроены');
         
@@ -351,11 +373,26 @@ function setupEventListeners() {
     }
 }
 
+// 🎯 ОБРАБОТЧИК КЛИКА ПО ТАБУ
+function handleTabClick(event) {
+    const tabName = event.currentTarget.getAttribute('data-tab');
+    if (tabName) {
+        switchTab(tabName);
+    }
+}
+
 // 🔄 ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
 function switchTab(tabName) {
     console.log('🔄 Переключение на вкладку:', tabName);
     
     try {
+        // Проверяем существование вкладки
+        const targetTab = document.getElementById(`${tabName}-tab`);
+        if (!targetTab) {
+            console.error(`❌ Вкладка ${tabName}-tab не найдена`);
+            return;
+        }
+
         // Убираем активность со всех табов
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -367,14 +404,21 @@ function switchTab(tabName) {
         
         // Активируем нужную кнопку и контент
         const tabButton = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
-        const tabContent = document.getElementById(`${tabName}-tab`);
         
-        if (tabButton) tabButton.classList.add('active');
-        if (tabContent) tabContent.classList.add('active');
+        if (tabButton) {
+            tabButton.classList.add('active');
+        }
+        
+        targetTab.classList.add('active');
         
         // Обновляем состояние
         appState.currentTab = tabName;
         saveAppState();
+        
+        // Вызываем специальные обработчики для определенных вкладок
+        if (tabName === 'history') {
+            loadHistoryData();
+        }
         
         console.log('✅ Вкладка переключена на:', tabName);
         
@@ -393,33 +437,45 @@ async function handleDailyCardClick() {
             return;
         }
         
+        // Показываем загрузку
+        const loadingElement = document.getElementById('daily-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'block';
+        }
+        
         // Получаем случайную карту
         const card = getRandomCard();
         
-        // Показываем карту
-        const cardElement = document.getElementById('daily-card');
-        if (cardElement) {
-            cardElement.innerHTML = `
-                <div class="card-front">
-                    <div class="card-symbol">${card.symbol}</div>
-                    <div class="card-name">${card.name}</div>
-                </div>
-            `;
-            cardElement.classList.add('flipped');
-        }
-        
-        // Показываем толкование
+        // Показываем карту с задержкой для эффекта
         setTimeout(() => {
-            const aiContainer = document.getElementById('daily-ai-container');
-            if (aiContainer) {
-                aiContainer.innerHTML = `
-                    <div class="ai-interpretation">
-                        <div class="ai-header">🤖 Толкование карты</div>
-                        <div class="ai-content">${card.interpretation}</div>
+            const cardElement = document.getElementById('daily-card');
+            if (cardElement) {
+                cardElement.innerHTML = `
+                    <div class="card-front">
+                        <div class="card-symbol">${card.symbol}</div>
+                        <div class="card-name">${card.name}</div>
                     </div>
                 `;
+                cardElement.classList.add('flipped');
             }
-        }, 1000);
+            
+            // Скрываем загрузку
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+            
+            // Показываем толкование
+            const interpretationElement = document.getElementById('daily-interpretation');
+            if (interpretationElement) {
+                interpretationElement.textContent = card.interpretation;
+            }
+            
+            const aiContainer = document.getElementById('daily-ai-container');
+            if (aiContainer) {
+                aiContainer.style.display = 'block';
+            }
+            
+        }, 1500);
         
         // Отмечаем что карта использована
         appState.dailyCardUsed = true;
@@ -430,6 +486,19 @@ async function handleDailyCardClick() {
     } catch (error) {
         console.error('❌ Ошибка получения карты дня:', error);
         showErrorMessage('Не удалось получить карту дня');
+        
+        const loadingElement = document.getElementById('daily-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+}
+
+// ❓ ОБРАБОТЧИК KEYPRESS ДЛЯ ПОЛЯ ВОПРОСА
+function handleQuestionKeypress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        handleAskQuestion();
     }
 }
 
@@ -446,6 +515,11 @@ async function handleAskQuestion() {
             return;
         }
         
+        if (question.length < 10) {
+            showMessage('Вопрос слишком короткий. Опишите ситуацию подробнее.', 'warning');
+            return;
+        }
+        
         if (appState.questionsLeft <= 0 && !appState.isPremium) {
             showMessage('У вас закончились бесплатные вопросы. Оформите Premium!', 'warning');
             switchTab('premium');
@@ -456,50 +530,57 @@ async function handleAskQuestion() {
         const loadingElement = document.getElementById('question-loading');
         if (loadingElement) {
             loadingElement.style.display = 'block';
-            loadingElement.textContent = 'Карты размышляют...';
         }
+        
+        // Скрываем предыдущие результаты
+        const answerSection = document.getElementById('first-answer-section');
+        const followUpSection = document.getElementById('follow-up-section');
+        if (answerSection) answerSection.style.display = 'none';
+        if (followUpSection) followUpSection.style.display = 'none';
         
         // Получаем ответ (пока что локально)
         const answer = await getAnswerToQuestion(question);
         
-        // Показываем ответ
-        const answerSection = document.getElementById('first-answer-section');
-        if (answerSection) {
-            answerSection.style.display = 'block';
-            
-            // Карта ответа
-            const answerCard = document.getElementById('answer-card');
-            if (answerCard) {
-                answerCard.innerHTML = `
-                    <div class="card-front">
-                        <div class="card-symbol">${answer.card.symbol}</div>
-                        <div class="card-name">${answer.card.name}</div>
-                    </div>
-                `;
-                answerCard.classList.add('flipped');
+        // Показываем ответ с задержкой
+        setTimeout(() => {
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
             }
             
-            // ИИ толкование
-            setTimeout(() => {
-                if (loadingElement) loadingElement.style.display = 'none';
+            if (answerSection) {
+                answerSection.style.display = 'block';
                 
+                // Карта ответа
+                const answerCard = document.getElementById('answer-card');
+                if (answerCard) {
+                    answerCard.innerHTML = `
+                        <div class="card-front">
+                            <div class="card-symbol">${answer.card.symbol}</div>
+                            <div class="card-name">${answer.card.name}</div>
+                        </div>
+                    `;
+                    answerCard.classList.add('flipped');
+                }
+                
+                // ИИ толкование
                 const aiContainer = document.getElementById('first-ai-container');
                 if (aiContainer) {
                     aiContainer.innerHTML = `
-                        <div class="ai-interpretation">
-                            <div class="ai-header">🤖 Ответ на ваш вопрос</div>
-                            <div class="ai-content">${answer.interpretation}</div>
+                        <div class="ai-answer-header">
+                            <h4>🤖 Ответ на ваш вопрос</h4>
                         </div>
+                        <div class="ai-answer-box">${answer.interpretation}</div>
                     `;
                 }
                 
                 // Показываем блок уточняющего вопроса
-                const followUpSection = document.getElementById('follow-up-section');
-                if (followUpSection) {
-                    followUpSection.style.display = 'block';
-                }
-            }, 2000);
-        }
+                setTimeout(() => {
+                    if (followUpSection) {
+                        followUpSection.style.display = 'block';
+                    }
+                }, 1000);
+            }
+        }, 2000);
         
         // Уменьшаем количество вопросов
         if (!appState.isPremium) {
@@ -511,6 +592,7 @@ async function handleAskQuestion() {
         // Очищаем поле ввода
         if (questionInput) {
             questionInput.value = '';
+            updateCharCounter({ target: questionInput });
         }
         
         console.log('✅ Вопрос обработан');
@@ -521,6 +603,251 @@ async function handleAskQuestion() {
         
         const loadingElement = document.getElementById('question-loading');
         if (loadingElement) loadingElement.style.display = 'none';
+    }
+}
+
+// 🔍 ОБРАБОТЧИК УТОЧНЯЮЩЕГО ВОПРОСА
+async function handleFollowupQuestion() {
+    console.log('🔍 Обработка уточняющего вопроса');
+    
+    try {
+        const followupInput = document.getElementById('followup-input');
+        const question = followupInput ? followupInput.value.trim() : '';
+        
+        if (!question) {
+            showMessage('Пожалуйста, введите уточняющий вопрос', 'warning');
+            return;
+        }
+        
+        if (appState.questionsLeft <= 0 && !appState.isPremium) {
+            showMessage('У вас закончились бесплатные вопросы. Оформите Premium!', 'warning');
+            switchTab('premium');
+            return;
+        }
+        
+        const followupBtn = document.getElementById('followup-btn');
+        if (followupBtn) {
+            followupBtn.disabled = true;
+            followupBtn.innerHTML = '<span>🔮</span><span>Получаю ответ...</span>';
+        }
+        
+        // Получаем уточняющий ответ
+        const answer = await getAnswerToQuestion(question);
+        
+        setTimeout(() => {
+            // Добавляем новый блок с ответом
+            const followUpSection = document.getElementById('follow-up-section');
+            if (followUpSection) {
+                const answerDiv = document.createElement('div');
+                answerDiv.className = 'ai-answer-container';
+                answerDiv.innerHTML = `
+                    <div class="ai-answer-header">
+                        <h4>🔮 Уточнение: ${answer.card.name}</h4>
+                    </div>
+                    <div class="ai-answer-box">${answer.interpretation}</div>
+                `;
+                followUpSection.appendChild(answerDiv);
+            }
+            
+            // Восстанавливаем кнопку
+            if (followupBtn) {
+                followupBtn.disabled = false;
+                followupBtn.innerHTML = '<span>🔮</span><span>Узнать подробнее</span>';
+            }
+            
+            // Очищаем поле
+            if (followupInput) {
+                followupInput.value = '';
+            }
+            
+            // Уменьшаем количество вопросов
+            if (!appState.isPremium) {
+                appState.questionsLeft = Math.max(0, appState.questionsLeft - 1);
+                updateUI();
+                saveAppState();
+            }
+        }, 1500);
+        
+    } catch (error) {
+        console.error('❌ Ошибка обработки уточняющего вопроса:', error);
+        showErrorMessage('Не удалось получить уточняющий ответ');
+        
+        const followupBtn = document.getElementById('followup-btn');
+        if (followupBtn) {
+            followupBtn.disabled = false;
+            followupBtn.innerHTML = '<span>🔮</span><span>Узнать подробнее</span>';
+        }
+    }
+}
+
+// 🎴 ОБРАБОТЧИК КЛИКА ПО РАСКЛАДУ
+function handleSpreadClick(event) {
+    const spreadType = event.currentTarget.getAttribute('data-spread');
+    
+    if (!spreadType) return;
+    
+    // Проверяем премиум расклады
+    const premiumSpreads = ['spiritual', 'future', 'celtic'];
+    if (premiumSpreads.includes(spreadType) && !appState.isPremium) {
+        showMessage('Этот расклад доступен только в Premium версии', 'warning');
+        switchTab('premium');
+        return;
+    }
+    
+    console.log('🎴 Выбран расклад:', spreadType);
+    performSpread(spreadType);
+}
+
+// 🔮 ВЫПОЛНЕНИЕ РАСКЛАДА
+async function performSpread(spreadType) {
+    try {
+        const spreadResult = document.getElementById('spread-result');
+        const spreadCards = document.getElementById('spread-cards');
+        const spreadInterpretation = document.getElementById('spread-interpretation');
+        
+        if (!spreadResult || !spreadCards || !spreadInterpretation) return;
+        
+        // Показываем результат
+        spreadResult.style.display = 'block';
+        
+        // Очищаем предыдущие карты
+        spreadCards.innerHTML = '';
+        
+        // Определяем количество карт для расклада
+        const cardCount = getSpreadCardCount(spreadType);
+        const cards = [];
+        
+        // Генерируем карты
+        for (let i = 0; i < cardCount; i++) {
+            const card = getRandomCard();
+            cards.push(card);
+            
+            const cardElement = document.createElement('div');
+            cardElement.className = 'tarot-card';
+            cardElement.innerHTML = `
+                <div class="card-front">
+                    <div class="card-symbol">${card.symbol}</div>
+                    <div class="card-name">${card.name}</div>
+                </div>
+            `;
+            spreadCards.appendChild(cardElement);
+        }
+        
+        // Генерируем толкование
+        const interpretation = generateSpreadInterpretation(spreadType, cards);
+        spreadInterpretation.innerHTML = interpretation;
+        
+        // Прокручиваем к результату
+        spreadResult.scrollIntoView({ behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('❌ Ошибка выполнения расклада:', error);
+        showErrorMessage('Не удалось выполнить расклад');
+    }
+}
+
+// 📊 КОЛИЧЕСТВО КАРТ ДЛЯ РАСКЛАДА
+function getSpreadCardCount(spreadType) {
+    const counts = {
+        love: 3,
+        career: 3,
+        health: 2,
+        spiritual: 4,
+        future: 5,
+        celtic: 10
+    };
+    return counts[spreadType] || 3;
+}
+
+// 📝 ГЕНЕРАЦИЯ ТОЛКОВАНИЯ РАСКЛАДА
+function generateSpreadInterpretation(spreadType, cards) {
+    const interpretations = {
+        love: `
+            <h4>💕 Расклад на любовь</h4>
+            <p><strong>Прошлое:</strong> ${cards[0].name} говорит о ${cards[0].interpretation}</p>
+            <p><strong>Настоящее:</strong> ${cards[1].name} указывает на текущие чувства и отношения.</p>
+            <p><strong>Будущее:</strong> ${cards[2].name} предсказывает развитие ваших романтических отношений.</p>
+        `,
+        career: `
+            <h4>💼 Расклад на карьеру</h4>
+            <p><strong>Текущая ситуация:</strong> ${cards[0].name} показывает ваше положение на работе.</p>
+            <p><strong>Препятствия:</strong> ${cards[1].name} указывает на возможные трудности.</p>
+            <p><strong>Результат:</strong> ${cards[2].name} предсказывает исход ваших карьерных планов.</p>
+        `,
+        health: `
+            <h4>🌿 Расклад на здоровье</h4>
+            <p><strong>Физическое состояние:</strong> ${cards[0].name} отражает ваше здоровье.</p>
+            <p><strong>Рекомендации:</strong> ${cards[1].name} дает совет для улучшения самочувствия.</p>
+        `
+    };
+    
+    return interpretations[spreadType] || `<p>Карты показывают важные аспекты вашей ситуации.</p>`;
+}
+
+// 💳 ОБРАБОТЧИК ПОКУПКИ ПРЕМИУМА
+function handlePremiumPurchase(event) {
+    event.preventDefault();
+    
+    console.log('💳 Попытка покупки Premium');
+    
+    // Пока что просто показываем сообщение
+    showMessage('Функция оплаты будет доступна в следующем обновлении! 🚀', 'info');
+    
+    // В будущем здесь будет интеграция с платежной системой
+    // Для тестирования можно временно активировать Premium
+    if (confirm('Активировать Premium для тестирования?')) {
+        appState.isPremium = true;
+        appState.questionsLeft = 999;
+        saveAppState();
+        updateUI();
+        showMessage('Premium активирован! 👑', 'success');
+    }
+}
+
+// 📜 ЗАГРУЗКА ДАННЫХ ИСТОРИИ
+function loadHistoryData() {
+    console.log('📜 Загрузка истории...');
+    
+    try {
+        const historyList = document.getElementById('history-list');
+        if (!historyList) return;
+        
+        // Получаем сохраненную историю
+        const history = getHistoryFromStorage();
+        
+        if (history.length === 0) {
+            historyList.innerHTML = `
+                <div class="history-empty">
+                    <div class="empty-icon">📜</div>
+                    <h4>История пуста</h4>
+                    <p>Ваши гадания будут сохраняться здесь</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Отображаем историю
+        historyList.innerHTML = history.map(item => `
+            <div class="history-item">
+                <div class="history-header-item">
+                    <div class="history-type">
+                        <span class="history-icon">${item.icon}</span>
+                        <span>${item.type}</span>
+                    </div>
+                    <div class="history-date">${item.date}</div>
+                </div>
+                <div class="history-preview">${item.preview}</div>
+                ${item.card ? `
+                    <div class="history-card">
+                        <span class="history-mini-card">${item.card.symbol}</span>
+                        <span>${item.card.name}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки истории:', error);
     }
 }
 
@@ -538,24 +865,28 @@ function updateUI() {
             if (appState.isPremium) {
                 if (statusIcon) statusIcon.textContent = '👑';
                 if (statusText) statusText.textContent = 'Premium активен';
-                statusElement.style.background = 'linear-gradient(45deg, #ffd700, #ffed4a)';
-                statusElement.style.color = '#1a1a2e';
+                statusElement.className = 'subscription-status premium';
             } else {
                 if (statusIcon) statusIcon.textContent = '🆓';
                 if (statusText) statusText.textContent = 'Бесплатная версия';
-                statusElement.style.background = 'rgba(255, 255, 255, 0.1)';
-                statusElement.style.color = '#fff';
+                statusElement.className = 'subscription-status';
             }
         }
         
         // Обновляем счетчик вопросов
         const questionsCountElement = document.getElementById('questions-count');
         if (questionsCountElement) {
-            questionsCountElement.textContent = appState.questionsLeft;
+            questionsCountElement.textContent = appState.isPremium ? '∞' : appState.questionsLeft;
         }
         
-        // Обновляем видимость элементов в зависимости от состояния
-        updateElementsVisibility();
+        const questionsLeftElement = document.getElementById('questions-left');
+        if (questionsLeftElement) {
+            if (appState.isPremium) {
+                questionsLeftElement.textContent = '(Premium)';
+            } else {
+                questionsLeftElement.textContent = `(осталось: ${appState.questionsLeft})`;
+            }
+        }
         
         console.log('✅ UI обновлен');
         
@@ -564,39 +895,126 @@ function updateUI() {
     }
 }
 
-// 👁️ ОБНОВЛЕНИЕ ВИДИМОСТИ ЭЛЕМЕНТОВ
-function updateElementsVisibility() {
+// 🔧 ИНИЦИАЛИЗАЦИЯ СЧЕТЧИКОВ СИМВОЛОВ
+function initCharCounters() {
     try {
-        // Показать/скрыть premium элементы
-        const premiumElements = document.querySelectorAll('.premium-only');
-        premiumElements.forEach(el => {
-            el.style.display = appState.isPremium ? 'block' : 'none';
-        });
-        
-        // Показать/скрыть базовые элементы
-        const basicElements = document.querySelectorAll('.basic-only');
-        basicElements.forEach(el => {
-            el.style.display = !appState.isPremium ? 'block' : 'none';
-        });
-        
+        const questionInput = document.getElementById('question-input');
+        if (questionInput) {
+            updateCharCounter({ target: questionInput });
+        }
     } catch (error) {
-        console.error('❌ Ошибка обновления видимости элементов:', error);
+        console.error('❌ Ошибка инициализации счетчиков:', error);
     }
 }
 
-// 🎲 ПОЛУЧЕНИЕ СЛУЧАЙНОЙ КАРТЫ
-function getRandomCard() {
-    const cards = getFallbackCards();
-    if (cards && cards.length > 0) {
-        return cards[Math.floor(Math.random() * cards.length)];
+// 🔢 ОБНОВЛЕНИЕ СЧЕТЧИКА СИМВОЛОВ
+function updateCharCounter(event) {
+    try {
+        const input = event.target;
+        const maxLength = input.getAttribute('maxlength') || 500;
+        const currentLength = input.value.length;
+        
+        const counter = document.getElementById('char-count');
+        if (counter) {
+            counter.textContent = currentLength;
+            
+            // Меняем цвет при приближении к лимиту
+            const parent = counter.parentElement;
+            if (parent) {
+                if (currentLength > maxLength * 0.9) {
+                    parent.style.color = '#ef4444';
+                } else if (currentLength > maxLength * 0.7) {
+                    parent.style.color = '#f59e0b';
+                } else {
+                    parent.style.color = '#a0a0a0';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка обновления счетчика:', error);
     }
+}
+
+// ⭐ ИНИЦИАЛИЗАЦИЯ ЗВЕЗДОЧЕК РЕЙТИНГА
+function initRatingStars() {
+    try {
+        const stars = document.querySelectorAll('.star[data-rating]');
+        stars.forEach(star => {
+            star.addEventListener('click', handleStarClick);
+        });
+    } catch (error) {
+        console.error('❌ Ошибка инициализации звездочек:', error);
+    }
+}
+
+// ⭐ ОБРАБОТЧИК КЛИКА ПО ЗВЕЗДОЧКЕ
+function handleStarClick(event) {
+    const rating = parseInt(event.target.getAttribute('data-rating'));
+    appState.currentRating = rating;
     
-    // Fallback карта если нет конфигурации
-    return {
-        name: "Звезда",
-        symbol: "⭐",
-        interpretation: "Карта надежды и вдохновения. Сегодня звезды благоволят вашим начинаниям."
-    };
+    // Обновляем визуальное состояние звездочек
+    const stars = document.querySelectorAll('.star[data-rating]');
+    stars.forEach((star, index) => {
+        if (index < rating) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+}
+
+// 📝 НАСТРОЙКА ОБРАБОТЧИКОВ ОТЗЫВОВ
+function setupReviewEventListeners() {
+    try {
+        const submitReviewBtn = document.getElementById('submit-review');
+        if (submitReviewBtn) {
+            submitReviewBtn.removeEventListener('click', handleSubmitReview);
+            submitReviewBtn.addEventListener('click', handleSubmitReview);
+        }
+    } catch (error) {
+        console.error('❌ Ошибка настройки обработчиков отзывов:', error);
+    }
+}
+
+// 📝 ОБРАБОТЧИК ОТПРАВКИ ОТЗЫВА
+function handleSubmitReview() {
+    try {
+        const reviewText = document.getElementById('review-text');
+        const text = reviewText ? reviewText.value.trim() : '';
+        
+        if (!text) {
+            showMessage('Пожалуйста, напишите отзыв', 'warning');
+            return;
+        }
+        
+        if (appState.currentRating === 0) {
+            showMessage('Пожалуйста, поставьте оценку', 'warning');
+            return;
+        }
+        
+        // Сохраняем отзыв (пока что локально)
+        const review = {
+            rating: appState.currentRating,
+            text: text,
+            date: new Date().toISOString(),
+            userName: currentUser?.firstName || 'Пользователь'
+        };
+        
+        console.log('📝 Отзыв отправлен:', review);
+        
+        showMessage('Спасибо за ваш отзыв! ⭐', 'success');
+        
+        // Очищаем форму
+        if (reviewText) reviewText.value = '';
+        appState.currentRating = 0;
+        
+        const stars = document.querySelectorAll('.star[data-rating]');
+        stars.forEach(star => star.classList.remove('active'));
+        
+    } catch (error) {
+        console.error('❌ Ошибка отправки отзыва:', error);
+        showErrorMessage('Не удалось отправить отзыв');
+    }
 }
 
 // 🤖 ПОЛУЧЕНИЕ ОТВЕТА НА ВОПРОС
@@ -625,48 +1043,138 @@ async function getAnswerToQuestion(question) {
     }
 }
 
-// 🔔 ПОКАЗАТЬ СООБЩЕНИЕ
-function showMessage(message, type = 'info') {
-    console.log(`🔔 Сообщение (${type}):`, message);
+// 🎲 ПОЛУЧЕНИЕ СЛУЧАЙНОЙ КАРТЫ
+function getRandomCard() {
+    const cards = getFallbackCards();
+    if (cards && cards.length > 0) {
+        return cards[Math.floor(Math.random() * cards.length)];
+    }
     
-    try {
-        // Создаем элемент сообщения
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `app-message app-message-${type}`;
-        messageDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: ${type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#10b981'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            z-index: 10000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            max-width: 90%;
-            text-align: center;
-            font-size: 14px;
-        `;
-        messageDiv.textContent = message;
-        
-        document.body.appendChild(messageDiv);
-        
-        // Убираем сообщение через 3 секунды
-        setTimeout(() => {
-            if (messageDiv.parentNode) {
-                messageDiv.parentNode.removeChild(messageDiv);
+    // Fallback карта если нет конфигурации
+    return {
+        name: "Звезда",
+        symbol: "⭐",
+        interpretation: "Карта надежды и вдохновения. Сегодня звезды благоволят вашим начинаниям."
+    };
+}
+
+// ✅ Получение fallback-карт без рекурсии
+function getFallbackCards() {
+    // Сначала пробуем получить из конфигурации
+    if (window.getFallbackCards && typeof window.getFallbackCards === 'function') {
+        try {
+            const configCards = window.getFallbackCards();
+            if (configCards && configCards.length > 0) {
+                return configCards;
             }
-        }, 3000);
-        
+        } catch (error) {
+            console.warn('⚠️ Ошибка получения карт из конфигурации:', error);
+        }
+    }
+    
+    // Fallback набор карт
+    return [
+        {
+            name: "Звезда",
+            symbol: "🌟",
+            interpretation: "Карта надежды и вдохновения. Время для осуществления мечтаний."
+        },
+        {
+            name: "Солнце",
+            symbol: "☀️",
+            interpretation: "Символ радости и успеха. Впереди светлые времена."
+        },
+        {
+            name: "Луна",
+            symbol: "🌙",
+            interpretation: "Карта интуиции и тайн. Доверьтесь внутреннему голосу."
+        },
+        {
+            name: "Маг",
+            symbol: "🧙",
+            interpretation: "Вы обладаете силой для новых начинаний."
+        },
+        {
+            name: "Императрица",
+            symbol: "👸",
+            interpretation: "Период творчества и плодородия. Время для создания нового."
+        },
+        {
+            name: "Император",
+            symbol: "👑",
+            interpretation: "Сила и стабильность. Вы контролируете ситуацию."
+        },
+        {
+            name: "Влюбленные",
+            symbol: "💕",
+            interpretation: "Важный выбор в отношениях. Слушайте свое сердце."
+        },
+        {
+            name: "Колесо Фортуны",
+            symbol: "🎡",
+            interpretation: "Перемены неизбежны. Удача поворачивается к вам лицом."
+        },
+        {
+            name: "Справедливость",
+            symbol: "⚖️",
+            interpretation: "Время для честности и справедливых решений."
+        },
+        {
+            name: "Отшельник",
+            symbol: "🕯️",
+            interpretation: "Период внутреннего поиска. Мудрость приходит изнутри."
+        }
+    ];
+}
+
+// 📜 ПОЛУЧЕНИЕ ИСТОРИИ ИЗ ЛОКАЛЬНОГО ХРАНИЛИЩА
+function getHistoryFromStorage() {
+    try {
+        const history = localStorage.getItem('tarot_history');
+        return history ? JSON.parse(history) : [];
     } catch (error) {
-        console.error('❌ Ошибка показа сообщения:', error);
+        console.error('❌ Ошибка загрузки истории:', error);
+        return [];
     }
 }
 
-// ❌ ПОКАЗАТЬ СООБЩЕНИЕ ОБ ОШИБКЕ
-function showErrorMessage(message) {
-    showMessage(message, 'error');
+// 💾 СОХРАНЕНИЕ В ИСТОРИЮ
+function saveToHistory(type, data) {
+    try {
+        const history = getHistoryFromStorage();
+        const newItem = {
+            id: Date.now(),
+            type: type,
+            date: new Date().toLocaleDateString('ru-RU'),
+            icon: getHistoryIcon(type),
+            preview: data.preview || data.question || 'Гадание',
+            card: data.card,
+            interpretation: data.interpretation,
+            timestamp: Date.now()
+        };
+        
+        history.unshift(newItem);
+        
+        // Ограничиваем историю 50 записями
+        if (history.length > 50) {
+            history.splice(50);
+        }
+        
+        localStorage.setItem('tarot_history', JSON.stringify(history));
+    } catch (error) {
+        console.error('❌ Ошибка сохранения в историю:', error);
+    }
+}
+
+// 🎭 ПОЛУЧЕНИЕ ИКОНКИ ДЛЯ ТИПА ИСТОРИИ
+function getHistoryIcon(type) {
+    const icons = {
+        'daily': '🌅',
+        'question': '❓',
+        'spread': '🎴',
+        'followup': '🔍'
+    };
+    return icons[type] || '🔮';
 }
 
 // 🔍 ПРОВЕРКА И ПОКАЗ ПРИВЕТСТВИЯ
@@ -690,7 +1198,7 @@ function checkAndShowWelcome() {
     }
 }
 
-// ================= ПРОФИЛЬ: ДОБАВЛЕННЫЕ ФУНКЦИИ =================
+// ================= ПРОФИЛЬ: ФУНКЦИИ =================
 
 // 📋 ОБРАБОТКА ПРОФИЛЯ - ЗАКРЫТИЕ МОДАЛЬНОГО ОКНА
 function closeProfileModal() {
@@ -722,51 +1230,64 @@ async function handleProfileSubmit(event) {
         const submitBtn = document.getElementById('save-profile-btn');
         const displayNameInput = document.getElementById('display-name');
         const birthDateInput = document.getElementById('birth-date');
+        
         // Показываем состояние загрузки
         if (submitBtn) {
             submitBtn.classList.add('loading');
             submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>⏳</span><span>Сохраняем...</span>';
         }
+        
         // Получаем данные из формы
         const profileData = {
             displayName: displayNameInput ? displayNameInput.value.trim() : '',
             birthDate: birthDateInput ? birthDateInput.value : '',
             createdAt: new Date().toISOString()
         };
+        
         console.log('📝 Данные профиля:', profileData);
+        
         // Валидация
         if (!profileData.displayName) {
             showErrorMessage('Пожалуйста, введите ваше имя');
             return;
         }
+        
         if (profileData.displayName.length < 2) {
             showErrorMessage('Имя должно содержать не менее 2 символов');
             return;
         }
+        
         // Сохраняем данные локально
         saveUserData(profileData);
+        
         // Обновляем глобальные данные пользователя
         if (currentUser) {
             currentUser.displayName = profileData.displayName;
             currentUser.birthDate = profileData.birthDate;
             currentUser.isAnonymous = false;
         }
+        
         // Пытаемся сохранить в Supabase (если доступен)
         try {
             if (supabase && currentUser && currentUser.id) {
-                // Здесь можно добавить сохранение в Supabase
                 console.log('💾 Сохранение профиля в Supabase...');
+                // Здесь можно добавить сохранение в Supabase
             }
         } catch (supabaseError) {
             console.warn('⚠️ Не удалось сохранить в Supabase:', supabaseError);
         }
+        
         // Показываем сообщение об успехе
         showMessage(`Добро пожаловать, ${profileData.displayName}! 🎉`, 'success');
+        
         // Закрываем модальное окно
         setTimeout(() => {
             closeProfileModal();
         }, 1000);
+        
         console.log('✅ Профиль успешно сохранен');
+        
     } catch (error) {
         console.error('❌ Ошибка сохранения профиля:', error);
         showErrorMessage('Произошла ошибка при сохранении профиля');
@@ -776,6 +1297,7 @@ async function handleProfileSubmit(event) {
         if (submitBtn) {
             submitBtn.classList.remove('loading');
             submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>✨</span><span>Начать гадание</span>';
         }
     }
 }
@@ -801,38 +1323,96 @@ function setupProfileEventListeners() {
         // Форма профиля
         const profileForm = document.getElementById('profile-form');
         if (profileForm) {
+            profileForm.removeEventListener('submit', handleProfileSubmit);
             profileForm.addEventListener('submit', handleProfileSubmit);
         }
+        
         // Кнопка "Начать гадание"
         const saveProfileBtn = document.getElementById('save-profile-btn');
         if (saveProfileBtn) {
-            saveProfileBtn.addEventListener('click', function(e) {
-                // Если это не submit формы, вызываем обработчик вручную
-                if (e.target.type !== 'submit') {
-                    e.preventDefault();
-                    handleProfileSubmit(e);
-                }
-            });
+            saveProfileBtn.removeEventListener('click', handleProfileClick);
+            saveProfileBtn.addEventListener('click', handleProfileClick);
         }
+        
         // Кнопка "Пропустить"
         const skipProfileBtn = document.getElementById('skip-profile-btn');
         if (skipProfileBtn) {
+            skipProfileBtn.removeEventListener('click', handleProfileSkip);
             skipProfileBtn.addEventListener('click', handleProfileSkip);
         }
+        
         // Закрытие по клику на оверлей
-        const profileModalOverlay = document.querySelector('.profile-modal-overlay');
-        if (profileModalOverlay) {
-            profileModalOverlay.addEventListener('click', function(e) {
-                // Закрываем только если клик был именно на оверлей, а не на контент
-                if (e.target === profileModalOverlay) {
-                    handleProfileSkip();
-                }
-            });
+        const profileModal = document.getElementById('profile-modal');
+        if (profileModal) {
+            profileModal.removeEventListener('click', handleModalOverlayClick);
+            profileModal.addEventListener('click', handleModalOverlayClick);
         }
+        
         console.log('✅ Обработчики профиля настроены');
     } catch (error) {
         console.error('❌ Ошибка настройки обработчиков профиля:', error);
     }
+}
+
+// 🖱️ ОБРАБОТЧИК КЛИКА ПО КНОПКЕ ПРОФИЛЯ
+function handleProfileClick(event) {
+    // Если это не submit формы, вызываем обработчик вручную
+    if (event.target.type !== 'submit') {
+        event.preventDefault();
+        handleProfileSubmit(event);
+    }
+}
+
+// 🖱️ ОБРАБОТЧИК КЛИКА ПО ОВЕРЛЕЮ МОДАЛЬНОГО ОКНА
+function handleModalOverlayClick(event) {
+    // Закрываем только если клик был именно на оверлей, а не на контент
+    if (event.target === event.currentTarget) {
+        handleProfileSkip();
+    }
+}
+
+// 🔔 ПОКАЗАТЬ СООБЩЕНИЕ
+function showMessage(message, type = 'info') {
+    console.log(`🔔 Сообщение (${type}):`, message);
+    
+    try {
+        // Создаем элемент сообщения
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `app-message app-message-${type}`;
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: ${type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : type === 'success' ? '#10b981' : '#3b82f6'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            max-width: 90%;
+            text-align: center;
+            font-size: 14px;
+        `;
+        messageDiv.textContent = message;
+        
+        document.body.appendChild(messageDiv);
+        
+        // Убираем сообщение через 3 секунды
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 3000);
+        
+    } catch (error) {
+        console.error('❌ Ошибка показа сообщения:', error);
+    }
+}
+
+// ❌ ПОКАЗАТЬ СООБЩЕНИЕ ОБ ОШИБКЕ
+function showErrorMessage(message) {
+    showMessage(message, 'error');
 }
 
 // 💾 ФУНКЦИИ СОХРАНЕНИЯ/ЗАГРУЗКИ ДАННЫХ
@@ -888,31 +1468,6 @@ function loadAppState() {
     }
 }
 
-// ✅ Получение fallback-карт без рекурсии
-function getFallbackCards() {
-  return [
-    {
-      name: "Звезда",
-      symbol: "🌟",
-      interpretation: "Карта надежды и вдохновения. Время для осуществления мечтаний."
-    },
-    {
-      name: "Солнце",
-      symbol: "☀️",
-      interpretation: "Символ радости и успеха. Впереди светлые времена."
-    },
-    {
-      name: "Луна",
-      symbol: "🌙",
-      interpretation: "Карта интуиции и тайн. Доверьтесь внутреннему голосу."
-    },
-    {
-      name: "Маг",
-      symbol: "🧙",
-      interpretation: "Вы обладаете силой для новых начинаний."
-    }
-  ];
-}
 // 🔧 ОТЛАДОЧНЫЕ ФУНКЦИИ
 function debugApp() {
     console.log('🔧 Состояние приложения:', {
@@ -938,7 +1493,9 @@ window.tarotApp = {
     debugApp,
     saveAppState,
     getRandomCard,
-    getFallbackCards
+    getFallbackCards,
+    saveToHistory,
+    loadHistoryData
 };
 
 // 🏁 АВТОМАТИЧЕСКИЙ ЗАПУСК
@@ -970,4 +1527,4 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     }, 50);
 }
 
-console.log('✅ Script.js загружен полностью');
+console.log('✅ Script.js загружен полностью');)
