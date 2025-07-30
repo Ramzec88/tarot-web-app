@@ -9,8 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardImage = document.getElementById('cardImage');
     const cardInfoAfterFlip = document.getElementById('cardInfoAfterFlip');
     const flippedCardName = document.getElementById('flippedCardName');
+    const cardIntroText = document.getElementById('cardIntroText'); // Новый элемент для вводного текста
 
-    const preInterpretationTextElement = document.getElementById('preInterpretationText');
+    // const preInterpretationTextElement = document.getElementById('preInterpretationText'); // Удален, текст теперь в cardIntroText
     const aiAnswerContainer = document.getElementById('aiAnswerContainer');
     const aiInterpretationTitle = document.getElementById('aiInterpretationTitle');
     const aiInterpretationTextElement = document.getElementById('aiInterpretationText');
@@ -18,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const askMoreQuestionsBtn = document.getElementById('askMoreQuestionsBtn');
     const premiumBannerBtn = document.getElementById('premiumBannerBtn');
 
-    const starAnimationContainer = document.getElementById('starAnimationContainer');
+    const starAnimationContainer = document.getElementById('starAnimationContainer'); // Теперь внутри tarotCard
 
     let allCards = []; // Для хранения данных карт из JSON
 
@@ -38,12 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function switchTab(tabId) {
         tabContents.forEach(content => {
             content.classList.remove('active');
-            content.classList.add('hidden'); // Убедимся, что скрыто
+            content.classList.add('hidden');
         });
         document.getElementById(tabId).classList.add('active');
-        document.getElementById(tabId).classList.remove('hidden'); // Показываем активную
+        document.getElementById(tabId).classList.remove('hidden');
 
-        // Обновление активного класса для кнопок навигации
         const allNavTabs = document.querySelectorAll('.nav-tab');
         allNavTabs.forEach(tab => tab.classList.remove('active'));
 
@@ -52,8 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             targetNavTab.classList.add('active');
         }
 
-        // При переключении вкладок, сбрасываем состояние карты дня и скрываем баннер/интерпретацию
-        if (tabId !== 'daily-card') {
+        if (tabId !== 'daily-card-tab-content') { // Исправлен ID
             resetDailyCardState();
         }
     }
@@ -64,19 +63,28 @@ document.addEventListener('DOMContentLoaded', () => {
         cardFront.classList.add('hidden');
         cardBack.classList.remove('hidden');
         cardInfoAfterFlip.classList.add('hidden');
-        preInterpretationTextElement.classList.add('hidden');
-        aiAnswerContainer.classList.remove('show'); // Плавное скрытие
+        cardIntroText.textContent = ''; // Очищаем вводный текст
+        aiAnswerContainer.classList.remove('show');
         aiAnswerContainer.classList.add('hidden');
-        afterDailyCardBanner.classList.remove('show'); // Плавное скрытие
+        afterDailyCardBanner.classList.remove('show');
         afterDailyCardBanner.classList.add('hidden');
-        aiInterpretationTextElement.textContent = ''; // Очищаем текст ИИ
-        aiInterpretationTextElement.classList.remove('finished-typing'); // Сбрасываем анимацию печати
+        aiInterpretationTextElement.textContent = '';
+        aiInterpretationTextElement.classList.remove('finished-typing');
         starAnimationContainer.innerHTML = ''; // Очищаем звездочки
+        
+        // Сбрасываем использованную карту дня только если это новый день
+        const today = new Date().toDateString();
+        const lastCardDate = appState.lastCardDate;
+        if (lastCardDate !== today) {
+            appState.dailyCardUsed = false;
+            saveAppState();
+            console.log('Daily card reset for new day.');
+        }
     }
 
     // Функция для обновления статуса подписки
     function updateSubscriptionStatus(isPremium = false) {
-        const statusElement = document.getElementById('subscriptionStatus');
+        const statusElement = document.getElementById('subscriptionStatus'); // ID изменен в HTML
         const statusIcon = document.getElementById('statusIcon');
         const statusText = document.getElementById('statusText');
 
@@ -94,7 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Загрузка данных карт из cards.json
     async function loadCards() {
         try {
-            const response = await fetch('cards.json.txt');
+            // Используем прямой путь, если файл лежит рядом
+            const response = await fetch('cards.json.txt'); // Убедитесь, что cards.json.txt лежит рядом
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -102,34 +111,40 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Cards loaded:', allCards);
         } catch (error) {
             console.error('Error loading cards:', error);
+            // Если не удалось загрузить, используем fallbackCards
+            allCards = getFallbackCards(); 
+            console.log('Using fallback cards:', allCards);
         }
     }
 
-    // Анимация звездочек
-    function animateStars(count = 5) {
-        starAnimationContainer.innerHTML = ''; // Очистить предыдущие звездочки
-        const stars = ['✨', '🌟', '💫', '⭐']; // Разные виды звездочек
+    // Анимация звездочек (теперь внутри карты)
+    function animateStars(count = 3) { // Всего 3 смайла
+        starAnimationContainer.innerHTML = '';
+        const stars = ['✨', '🌟', '💫']; 
+        const positions = [ // Позиции для 3 звездочек
+            { x: '10%', y: '20%' }, // Левая верхняя
+            { x: '15%', y: '80%' }, // Левая нижняя
+            { x: '80%', y: '50%' }  // Правая середина
+        ];
+
         for (let i = 0; i < count; i++) {
             const star = document.createElement('span');
-            star.textContent = stars[Math.floor(Math.random() * stars.length)];
+            star.textContent = stars[i % stars.length]; // Используем все 3 разных смайла
             star.classList.add('sparkle-star');
             
-            // Произвольные позиции для звездочек
-            star.style.left = `${Math.random() * 100}%`;
-            star.style.top = `${Math.random() * 100}%`;
+            star.style.left = positions[i].x;
+            star.style.top = positions[i].y;
             
-            // Произвольная задержка и длительность анимации
-            star.style.animationDelay = `${Math.random() * 0.3}s`;
-            star.style.animationDuration = `${0.8 + Math.random() * 0.4}s`;
-
+            star.style.animationDelay = `${i * 0.1}s`; // Небольшая задержка для каждого смайла
+            star.style.animationDuration = `${0.8 + Math.random() * 0.4}s`; // Длительность анимации
             starAnimationContainer.appendChild(star);
         }
     }
 
     // Анимация печати текста
-    function typeText(element, text, speed = 30) {
+    function typeText(element, text, speed = 15) { // Уменьшил скорость для плавности
         let i = 0;
-        element.textContent = ''; // Очищаем текст перед началом печати
+        element.textContent = ''; 
         element.classList.remove('finished-typing');
 
         return new Promise(resolve => {
@@ -137,28 +152,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (i < text.length) {
                     element.textContent += text.charAt(i);
                     i++;
-                    setTimeout(typeChar, speed);
+                    requestAnimationFrame(typeChar); // Использовать requestAnimationFrame для более плавной анимации
                 } else {
-                    element.classList.add('finished-typing'); // Убираем каретку
+                    element.classList.add('finished-typing');
                     resolve();
                 }
             }
-            typeChar();
+            requestAnimationFrame(typeChar);
         });
     }
 
     // Обработчик нажатия на карту дня
     async function handleDailyCardClick() {
-        if (tarotCard.classList.contains('flipped')) {
-            // Если карта уже перевернута, сбрасываем состояние
-            resetDailyCardState();
+        if (appState.dailyCardUsed) {
+            showMessage('Карта дня уже была получена сегодня! Вы можете получить новую карту завтра.', 'info');
             return;
         }
 
-        // 1. Анимация звездочек
-        animateStars(10); // Показываем 10 звездочек
+        // Сбросить состояние для нового переворота
+        resetDailyCardState(); 
+        
+        // Показываем звездочки сразу
+        animateStars(3); 
 
-        // 2. Переворачиваем карту (CSS-анимация)
+        // 1. Переворачиваем карту (CSS-анимация)
         tarotCard.classList.add('flipped');
 
         // Выбираем случайную карту
@@ -167,39 +184,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Ждем половину анимации, чтобы обновить содержимое
         setTimeout(() => {
+            // Скрываем звездочки после половины анимации, чтобы они не мешали
+            starAnimationContainer.innerHTML = '';
+
             // Обновляем изображение и информацию на лицевой стороне
             cardImage.src = randomCard.image;
             cardImage.alt = randomCard.name;
-            flippedCardName.textContent = `${randomCard.name} ${randomCard.emoji || ''}`; // Имя карты + смайл
             cardFront.classList.remove('hidden');
             cardBack.classList.add('hidden');
-
-            // Показываем имя карты после переворота
-            cardInfoAfterFlip.classList.remove('hidden');
-
-            // 3. Появление вводного текста
-            const randomPrePhrase = preInterpretationPhrases[Math.floor(Math.random() * preInterpretationPhrases.length)];
-            preInterpretationTextElement.textContent = randomPrePhrase;
-            preInterpretationTextElement.classList.remove('hidden');
-
         }, 400); // Половина от 0.8s анимации cardFlip
 
-        // Через небольшую задержку после переворота и вводного текста показываем ИИ-интерпретацию
-        setTimeout(async () => {
-            aiInterpretationTitle.innerHTML = 'ИИ-интерпретация <span class="status-icon">🔮</span>'; // Включаем название внутрь
-            aiAnswerContainer.classList.remove('hidden');
-            aiAnswerContainer.classList.add('show'); // Плавное появление контейнера
+        // После полной анимации переворота карты и скрытия звездочек
+        setTimeout(() => {
+            // Показываем имя карты и вводный текст
+            flippedCardName.textContent = `${randomCard.name} ${randomCard.symbol || ''}`; // Используем symbol из cards.json
+            cardInfoAfterFlip.classList.remove('hidden');
 
-            // Анимация печати текста
-            await typeText(aiInterpretationTextElement, simulatedAiText);
+            const randomPrePhrase = preInterpretationPhrases[Math.floor(Math.random() * preInterpretationPhrases.length)];
+            cardIntroText.textContent = randomPrePhrase;
+            cardIntroText.classList.remove('hidden'); // Показываем вводный текст
+            
+            // Заголовок ИИ-интерпретации
+            aiInterpretationTitle.textContent = 'ИИ-интерпретация 🔮'; // Теперь текст константный
 
-            // 4. Появление баннера после завершения печати ИИ-текста
-            setTimeout(() => {
-                afterDailyCardBanner.classList.remove('hidden');
-                afterDailyCardBanner.classList.add('show'); // Плавное появление баннера
-            }, 500); // Небольшая задержка после печати
-        }, 1200); // Общая задержка, чтобы все шло последовательно (переворот + вводный текст)
+            // Показываем контейнер ИИ-интерпретации
+            aiAnswerContainer.classList.remove('hidden'); // Убираем display: none
+            aiAnswerContainer.classList.add('show'); // Добавляем opacity transition
+
+            // Запускаем анимацию печати текста
+            typeText(aiInterpretationTextElement, simulatedAiText).then(() => {
+                // Показываем баннер после завершения печати ИИ-текста
+                setTimeout(() => {
+                    afterDailyCardBanner.classList.remove('hidden'); // Убираем display: none
+                    afterDailyCardBanner.classList.add('show'); // Плавное появление баннера
+                }, 500); // Небольшая задержка после печати
+            });
+            
+        }, 800); // Полная длительность анимации cardFlip
+
+        appState.dailyCardUsed = true;
+        appState.lastCardDate = new Date().toDateString(); // Сохраняем дату использования
+        saveAppState();
+        console.log('✅ Карта дня показана:', randomCard.name);
     }
+
+    // ... (остальной код handleAskQuestion, handleFollowupQuestion, etc. без изменений,
+    // за исключением исправления ID для daily-card-tab-content в switchTab)
 
     // ==== Event Listeners Setup ====
     function setupEventListeners() {
@@ -215,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Убедимся, что слушатель на самой карте
         tarotCard.addEventListener('click', handleDailyCardClick);
 
         // Слушатели для кнопок баннера
@@ -223,15 +254,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log('✅ Обработчики событий настроены');
     }
+    
+    // ... (остальной код без изменений) ...
 
-    // ==== Initializations ====
-    async function initializeApp() {
-        await loadCards(); // Загружаем карты при запуске
-        updateSubscriptionStatus(false); // Изначально базовый вариант
-        setupEventListeners();
-        switchTab('daily-card'); // Убедимся, что начальная вкладка - "Карта дня"
-        console.log('🚀 Приложение инициализировано!');
+    // 🎲 ПОЛУЧЕНИЕ СЛУЧАЙНОЙ КАРТЫ (Используем allCards, если загружены, иначе Fallback)
+    function getRandomCard() {
+        if (allCards.length > 0) {
+            return allCards[Math.floor(Math.random() * allCards.length)];
+        }
+        return getFallbackCards()[0]; // Возвращаем первую из fallback-карт, если allCards пуст
     }
 
-    initializeApp();
+    // ✅ Получение fallback-карт без рекурсии (обновлены symbol на emoji)
+    function getFallbackCards() {
+        // Сначала пробуем получить из конфигурации
+        if (window.getFallbackCards && typeof window.getFallbackCards === 'function') {
+            try {
+                const configCards = window.getFallbackCards();
+                if (configCards && configCards.length > 0) {
+                    return configCards;
+                }
+            } catch (error) {
+                console.warn('⚠️ Ошибка получения карт из конфигурации:', error);
+            }
+        }
+        
+        // Fallback набор карт (обновил смайлики на более подходящие)
+        return [
+            {
+                name: "Звезда",
+                symbol: "⭐", // Используем symbol для отображения
+                image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=Star", // Placeholder
+                interpretation: "Карта надежды и вдохновения. Сегодня звезды благоволят вашим начинаниям."
+            },
+            {
+                name: "Солнце",
+                symbol: "☀️",
+                image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=Sun", // Placeholder
+                interpretation: "Символ радости и успеха. Впереди светлые времена."
+            },
+            {
+                name: "Луна",
+                symbol: "🌙",
+                image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=Moon", // Placeholder
+                interpretation: "Карта интуиции и тайн. Доверьтесь внутреннему голосу."
+            }
+        ];
+    }
+
+    // ... (остальной код инициализации и утилит) ...
 });
