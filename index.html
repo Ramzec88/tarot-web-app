@@ -319,62 +319,6 @@
             font-size: 14px;
         }
 
-        /* ===== БАННЕРЫ ===== */
-        .daily-info-banner, .subscription-banner {
-            margin-top: 20px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
-            border: 1px solid rgba(102, 126, 234, 0.3);
-            border-radius: 16px;
-            padding: 20px;
-            display: none;
-        }
-
-        .daily-info-banner.show, .subscription-banner.show {
-            display: block;
-        }
-
-        .banner-content h4 {
-            color: #ffd700;
-            margin-bottom: 8px;
-            font-size: 16px;
-        }
-
-        .banner-content p {
-            color: #e0e0e0;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-
-        .banner-buttons {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .banner-btn {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        .banner-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .banner-btn.premium {
-            background: linear-gradient(45deg, #ffd700, #ffed4a);
-            color: #1a1a2e;
-        }
-
         /* ===== ФОРМА ВОПРОСОВ ===== */
         .question-container {
             max-width: 100%;
@@ -442,30 +386,6 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
-        }
-
-        /* ===== КАРТЫ В РАСКЛАДАХ ===== */
-        .question-card-container, .followup-container {
-            margin-top: 20px;
-            display: none;
-        }
-
-        .question-card-container.show, .followup-container.show {
-            display: block;
-        }
-
-        .tarot-cards-grid {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 16px 0;
-        }
-
-        .tarot-cards-grid .tarot-card {
-            width: 120px;
-            height: 180px;
-            flex-shrink: 0;
         }
 
         /* ===== РАСКЛАДЫ ===== */
@@ -1012,11 +932,6 @@
                 height: 256px;
             }
 
-            .tarot-cards-grid .tarot-card {
-                width: 100px;
-                height: 150px;
-            }
-
             .spreads-grid {
                 grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
                 gap: 12px;
@@ -1029,10 +944,6 @@
             }
 
             .form-actions {
-                flex-direction: column;
-            }
-
-            .banner-buttons {
                 flex-direction: column;
             }
 
@@ -1164,9 +1075,379 @@
                 <div class="ai-answer-header">
                     <h4>🔮 Предсказание на сегодня</h4>
                 </div>
-                <div class="loading" id="daily-ai-loading">
+                <div class="ai-answer-box" id="daily-interpretation">
+                    <!-- Здесь будет толкование карты дня -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Вопрос -->
+        <div class="tab-content" id="question-tab">
+            <div class="question-container">
+                <div class="question-form">
+                    <h3>🤔 Задайте свой вопрос картам</h3>
+                    <textarea 
+                        class="question-textarea" 
+                        id="question-input" 
+                        placeholder="Напишите свой вопрос... Карты готовы дать ответ на любые жизненные ситуации."
+                        maxlength="500"
+                    ></textarea>
+                    <div class="char-counter">
+                        <span id="char-count">0</span>/500
+                    </div>
+                    <button class="question-btn" id="ask-btn">
+                        <span>✨</span>
+                        <span>Получить ответ</span>
+                        <span id="questions-left">(осталось: <span id="questions-count">3</span>)</span>
+                    </button>
+                </div>
+
+                <!-- Загрузка -->
+                <div class="loading" id="question-loading">
+                    <div class="magic-sparkles">🔮 ✨ 🔮</div>
                     <div class="magic-messages">
-                        <div class="magic-message">✨ Карты открывают тайны...</div>
+                        <div class="magic-message">Карты размышляют над вашим вопросом...</div>
                     </div>
                 </div>
-                <div
+
+                <!-- Первый ответ -->
+                <div class="question-card-container" id="first-answer-section">
+                    <h4>🎴 Ваша карта-ответ</h4>
+                    <div class="card-container">
+                        <div class="tarot-card" id="answer-card">
+                            <!-- Карта ответа будет здесь -->
+                        </div>
+                    </div>
+                    
+                    <!-- AI толкование -->
+                    <div class="ai-answer-container" id="first-ai-container">
+                        <!-- AI ответ будет здесь -->
+                    </div>
+                </div>
+
+                <!-- Уточняющий вопрос -->
+                <div class="followup-container" id="follow-up-section">
+                    <div class="question-form">
+                        <h4>🔍 Хотите узнать больше?</h4>
+                        <p style="color: #a0a0a0; margin-bottom: 16px; font-size: 14px;">
+                            Задайте уточняющий вопрос для более детального толкования
+                        </p>
+                        <textarea 
+                            class="question-textarea" 
+                            id="followup-input" 
+                            placeholder="Уточните то, что вас больше всего интересует..."
+                            maxlength="300"
+                            style="min-height: 80px;"
+                        ></textarea>
+                        <button class="question-btn" id="followup-btn" style="font-size: 14px; padding: 12px;">
+                            <span>🔮</span>
+                            <span>Узнать подробнее</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Расклады -->
+        <div class="tab-content" id="spreads-tab">
+            <div class="spreads-container">
+                <div class="spreads-header" style="text-align: center; margin-bottom: 24px;">
+                    <h3 style="color: #ffd700; margin-bottom: 8px;">🔮 Расклады Таро</h3>
+                    <p style="color: #a0a0a0; font-size: 14px;">Выберите расклад для детального гадания</p>
+                </div>
+
+                <div class="spreads-grid">
+                    <div class="spread-card" data-spread="love">
+                        <div class="spread-icon">💕</div>
+                        <div class="spread-name">Любовь</div>
+                        <div class="spread-description">Отношения и чувства</div>
+                    </div>
+
+                    <div class="spread-card" data-spread="career">
+                        <div class="spread-icon">💼</div>
+                        <div class="spread-name">Карьера</div>
+                        <div class="spread-description">Работа и финансы</div>
+                    </div>
+
+                    <div class="spread-card" data-spread="health">
+                        <div class="spread-icon">🌿</div>
+                        <div class="spread-name">Здоровье</div>
+                        <div class="spread-description">Физическое состояние</div>
+                    </div>
+
+                    <div class="spread-card" data-spread="spiritual">
+                        <div class="spread-icon">🧘</div>
+                        <div class="spread-name">Духовность</div>
+                        <div class="spread-description">Внутреннее развитие</div>
+                        <div class="premium-badge">Premium</div>
+                    </div>
+
+                    <div class="spread-card" data-spread="future">
+                        <div class="spread-icon">🔮</div>
+                        <div class="spread-name">Будущее</div>
+                        <div class="spread-description">Что ждет впереди</div>
+                        <div class="premium-badge">Premium</div>
+                    </div>
+
+                    <div class="spread-card" data-spread="celtic">
+                        <div class="spread-icon">🍀</div>
+                        <div class="spread-name">Кельтский крест</div>
+                        <div class="spread-description">Полный анализ ситуации</div>
+                        <div class="premium-badge">Premium</div>
+                    </div>
+                </div>
+
+                <!-- Результат расклада -->
+                <div class="spread-result" id="spread-result" style="display: none;">
+                    <h4 style="color: #ffd700; margin-bottom: 16px;">Результат расклада</h4>
+                    <div class="tarot-cards-grid" id="spread-cards">
+                        <!-- Карты расклада будут здесь -->
+                    </div>
+                    <div class="ai-answer-container">
+                        <div class="ai-answer-box" id="spread-interpretation">
+                            <!-- Толкование расклада -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- История -->
+        <div class="tab-content" id="history-tab">
+            <div class="history-container">
+                <div class="history-header">
+                    <h3>📜 История гаданий</h3>
+                    <p style="color: #a0a0a0; font-size: 14px;">Ваши прошлые обращения к картам</p>
+                </div>
+
+                <div class="history-list" id="history-list">
+                    <!-- Заглушка для пустой истории -->
+                    <div class="history-empty">
+                        <div class="empty-icon">📜</div>
+                        <h4>История пуста</h4>
+                        <p>Ваши гадания будут сохраняться здесь</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Отзывы -->
+        <div class="tab-content" id="reviews-tab">
+            <div class="reviews-container">
+                <div class="reviews-header">
+                    <h3 style="color: #ffd700; margin-bottom: 8px;">⭐ Отзывы пользователей</h3>
+                    <p style="color: #a0a0a0; font-size: 14px;">Поделитесь своим опытом</p>
+                </div>
+
+                <!-- Форма отзыва -->
+                <div class="review-form">
+                    <h4 style="color: #ffd700; margin-bottom: 16px;">Оставить отзыв</h4>
+                    
+                    <div class="rating-input">
+                        <span style="margin-right: 8px;">Оценка:</span>
+                        <div class="stars" id="rating-stars">
+                            <span class="star" data-rating="1">⭐</span>
+                            <span class="star" data-rating="2">⭐</span>
+                            <span class="star" data-rating="3">⭐</span>
+                            <span class="star" data-rating="4">⭐</span>
+                            <span class="star" data-rating="5">⭐</span>
+                        </div>
+                    </div>
+
+                    <textarea 
+                        class="review-textarea" 
+                        id="review-text" 
+                        placeholder="Расскажите о своем опыте использования приложения..."
+                        maxlength="500"
+                    ></textarea>
+
+                    <button class="submit-review-btn" id="submit-review">
+                        <span>📝</span>
+                        <span>Отправить отзыв</span>
+                    </button>
+                </div>
+
+                <!-- Список отзывов -->
+                <div class="reviews-list" id="reviews-list">
+                    <!-- Примеры отзывов -->
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="review-avatar">М</div>
+                            <div class="review-info">
+                                <div class="review-name">Мария</div>
+                                <div class="review-rating">⭐⭐⭐⭐⭐</div>
+                                <div class="review-date">2 дня назад</div>
+                            </div>
+                        </div>
+                        <div class="review-text">
+                            Удивительно точные предсказания! Карта дня действительно помогает настроиться на день. Рекомендую всем, кто интересуется Таро.
+                        </div>
+                    </div>
+
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="review-avatar">А</div>
+                            <div class="review-info">
+                                <div class="review-name">Анна</div>
+                                <div class="review-rating">⭐⭐⭐⭐⭐</div>
+                                <div class="review-date">5 дней назад</div>
+                            </div>
+                        </div>
+                        <div class="review-text">
+                            Очень красивый интерфейс и глубокие толкования. Премиум версия стоит своих денег - расклады просто потрясающие!
+                        </div>
+                    </div>
+
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="review-avatar">Д</div>
+                            <div class="review-info">
+                                <div class="review-name">Дмитрий</div>
+                                <div class="review-rating">⭐⭐⭐⭐</div>
+                                <div class="review-date">1 неделю назад</div>
+                            </div>
+                        </div>
+                        <div class="review-text">
+                            Не верил в Таро, но попробовал из любопытства. Некоторые предсказания оказались удивительно точными. Интересный опыт!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Premium -->
+        <div class="tab-content" id="premium-tab">
+            <div class="premium-container">
+                <div class="premium-header">
+                    <div class="premium-icon">👑</div>
+                    <h2>Premium подписка</h2>
+                    <p style="color: #a0a0a0;">Раскройте полный потенциал мистических карт</p>
+                </div>
+
+                <div class="premium-features">
+                    <div class="feature-item">
+                        <div class="feature-icon">🔮</div>
+                        <div class="feature-text">
+                            <strong>Неограниченные вопросы</strong>
+                            <p>Задавайте столько вопросов, сколько хотите</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">🎴</div>
+                        <div class="feature-text">
+                            <strong>Эксклюзивные расклады</strong>
+                            <p>Доступ к специальным раскладам Таро</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">🧙</div>
+                        <div class="feature-text">
+                            <strong>Углубленные толкования</strong>
+                            <p>Детальные предсказания от опытных тарологов</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">📱</div>
+                        <div class="feature-text">
+                            <strong>Приоритетная поддержка</strong>
+                            <p>Быстрая помощь и индивидуальный подход</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">💫</div>
+                        <div class="feature-text">
+                            <strong>Еженедельные прогнозы</strong>
+                            <p>Персональные предсказания на каждую неделю</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="premium-pricing">
+                    <div class="price-card">
+                        <div class="price-label">Популярный выбор</div>
+                        <div class="price-value">299₽</div>
+                        <div class="price-period">за месяц</div>
+                        
+                        <div class="price-benefits">
+                            <div class="price-benefit">✅ Все функции Premium</div>
+                            <div class="price-benefit">✅ 7 дней бесплатно</div>
+                            <div class="price-benefit">✅ Отмена в любое время</div>
+                        </div>
+
+                        <a href="#" class="premium-buy-btn" id="buy-premium">
+                            👑 Получить Premium
+                        </a>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 24px;">
+                    <p style="color: #a0a0a0; font-size: 12px;">
+                        🔒 Безопасная оплата через проверенные сервисы<br/>
+                        📞 Поддержка: @Helppodarok_bot
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно профиля -->
+    <div class="profile-modal" id="profile-modal">
+        <div class="profile-modal-content">
+            <div class="profile-header">
+                <div class="profile-icon">👋</div>
+                <h2>Добро пожаловать!</h2>
+                <p style="color: #a0a0a0;">Расскажите немного о себе для более точных предсказаний</p>
+            </div>
+
+            <form id="profile-form">
+                <div class="form-group">
+                    <label for="display-name">Как к вам обращаться?</label>
+                    <input 
+                        type="text" 
+                        id="display-name" 
+                        class="form-input" 
+                        placeholder="Введите ваше имя"
+                        maxlength="50"
+                        required
+                    />
+                    <div class="input-hint">Это имя будет использоваться в предсказаниях</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="birth-date">Дата рождения (опционально)</label>
+                    <input 
+                        type="date" 
+                        id="birth-date" 
+                        class="form-input"
+                    />
+                    <div class="input-hint">Поможет сделать предсказания более персональными</div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="save-profile-btn">
+                        <span>✨</span>
+                        <span>Начать гадание</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="skip-profile-btn">
+                        <span>⏭️</span>
+                        <span>Пропустить</span>
+                    </button>
+                </div>
+            </form>
+
+            <div class="privacy-note">
+                <span>🔒</span>
+                <span>Ваши данные защищены и используются только для улучшения предсказаний</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрипты -->
+    <script src="./config.js"></script>
+    <script src="./script.js"></script>
+</body>
+</html>
