@@ -11,7 +11,7 @@ body {
     background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
     color: #fff;
     min-height: 100vh;
-    padding: 10px;
+    padding: 10px; /* Отступ вокруг основного контейнера */
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
@@ -34,15 +34,16 @@ body {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.2);
     min-height: calc(100vh - 20px);
-    overflow-y: auto;
+    overflow-y: auto; /* Контейнер должен прокручиваться */
     flex-shrink: 0;
 }
 
 /* ===== HEADER ===== */
 .header {
     text-align: center;
-    margin-bottom: 25px;
-    padding: 15px 16px 20px 16px;
+    /* Уменьшаем отступ снизу, чтобы поднять меню ближе к заголовку */
+    margin-bottom: 15px; /* Было 25px */
+    padding: 15px 16px 0px 16px; /* Уменьшаем нижний паддинг хедера */
 }
 
 .logo {
@@ -52,21 +53,21 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 4px;
+    margin-bottom: 2px; /* Уменьшаем отступ после логотипа */
 }
 
 .subtitle {
     color: #b0b0b0;
     font-size: 13px;
-    margin-bottom: 6px;
+    margin-bottom: 4px; /* Уменьшаем отступ после подзаголовка */
 }
 
 .subscription-status {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 6px;
-    padding: 8px 15px;
+    margin-top: 4px; /* Уменьшаем отступ сверху статуса подписки */
+    padding: 6px 12px; /* Немного уменьшаем паддинг статуса */
     background: rgba(255, 255, 255, 0.1);
     border-radius: 20px;
     font-size: 12px;
@@ -94,7 +95,7 @@ body {
 /* ===== НАВИГАЦИЯ ===== */
 .nav-tabs {
     display: flex;
-    margin: 0 16px 12px 16px;
+    margin: 0 16px 8px 16px; /* Уменьшаем нижний отступ, чтобы приблизить вторую линию */
     background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;
     padding: 4px;
@@ -120,6 +121,9 @@ body {
     scrollbar-width: none;
     -ms-overflow-style: none;
     flex-wrap: nowrap;
+    /* Убедимся, что вторая линия меню такой же ширины */
+    width: calc(100% - 32px); /* Ширина контейнера - боковые отступы */
+    align-self: center; /* Центрируем, если родитель - flex, а сам nav-tabs-secondary не 100% */
 }
 
 .nav-tabs-secondary::-webkit-scrollbar {
@@ -225,7 +229,8 @@ body {
     width: 180px;
     height: 270px;
     margin: 0 auto 20px;
-    background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
+    /* ФИОЛЕТОВАЯ РУБАШКА КАРТЫ */
+    background: linear-gradient(145deg, #4b0082, #6a0dad); /* Глубокий фиолетовый градиент */
     border-radius: 15px;
     display: flex;
     flex-direction: column;
@@ -237,24 +242,24 @@ body {
     border: 2px solid #ffd700;
     position: relative;
     overflow: hidden;
-    transform-style: preserve-3d; /* Для 3D-переворота */
+    transform-style: preserve-3d;
 }
 
 .tarot-card.flipped {
-    animation: cardFlip 0.8s ease-in-out forwards; /* forwards, чтобы оставалась перевернутой */
+    animation: cardFlip 0.8s ease-in-out forwards;
 }
 
 @keyframes cardFlip {
     0% { transform: rotateY(0deg); }
     50% { transform: rotateY(90deg); }
-    100% { transform: rotateY(180deg); } /* Переворачиваем на 180 */
+    100% { transform: rotateY(180deg); }
 }
 
 .card-back, .card-front {
-    position: absolute; /* Делаем их абсолютными внутри .tarot-card */
+    position: absolute;
     width: 100%;
     height: 100%;
-    backface-visibility: hidden; /* Скрываем обратную сторону */
+    backface-visibility: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -263,17 +268,19 @@ body {
 }
 
 .card-front {
-    transform: rotateY(180deg); /* Изначально повернута, чтобы при flip показать ее */
-    background: linear-gradient(145deg, #2d2d2d, #1a1a1a); /* Фон лицевой стороны */
-    border-radius: 15px; /* Заокругление для лицевой стороны */
-    overflow: hidden; /* Скрыть изображение, если оно выходит за границы */
+    transform: rotateY(180deg);
+    /* ФОН ЛИЦЕВОЙ СТОРОНЫ КАРТЫ (совпадает с рубашкой, чтобы не было видно переключения) */
+    background: linear-gradient(145deg, #4b0082, #6a0dad); 
+    border-radius: 15px; 
+    overflow: hidden;
 }
 
 .card-image {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain; /* Сохраняет пропорции и помещает изображение */
-    border-radius: 10px; /* Немного заокругляем края изображения */
+    max-width: 90%; /* Немного уменьшим, чтобы было видно края карты */
+    max-height: 90%;
+    object-fit: contain; 
+    border-radius: 10px; 
+    box-shadow: 0 0 10px rgba(0,0,0,0.5); /* Добавим тень к изображению */
 }
 
 .card-symbol {
@@ -285,38 +292,38 @@ body {
     background-clip: text;
 }
 
-.card-text {
-    font-size: 14px;
-    color: #b0b0b0;
-    line-height: 1.4;
-}
-
+/* Надписи под картой */
 .card-info-after-flip {
-    margin-top: 15px;
+    margin-top: 15px; /* Отступ от перевернутой карты */
+    text-align: center;
 }
 
 .card-name {
     font-size: 20px;
     font-weight: bold;
     color: #ffd700;
-    margin-bottom: 12px;
-    text-align: center;
+    margin-bottom: 8px; /* Немного уменьшил, чтобы приблизиться к следующему тексту */
 }
 
-.card-meaning {
-    font-size: 12px;
-    color: #e0e0e0;
+.card-intro-text { /* Новый класс для текста "сейчас узнаем..." */
+    font-size: 15px;
+    color: #a0a0a0;
+    margin-bottom: 20px; /* Отступ до ИИ-блока */
     line-height: 1.4;
-    padding: 0 15px;
-    text-align: center;
+    font-style: italic;
 }
 
-/* ===== ЗВЕЗДОЧКИ АНИМАЦИЯ ===== */
+
+/* ===== ЗВЕЗДОЧКИ АНИМАЦИЯ (ВНУТРИ КАРТЫ) ===== */
 #starAnimationContainer {
-    position: relative;
-    height: 50px; /* Задаем высоту, чтобы звездочки имели место */
-    margin-top: -30px; /* Чтобы звездочки появлялись над картой */
-    pointer-events: none; /* Не блокировать события */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2; /* Поверх рубашки, но под перевернутой картой */
+    overflow: hidden; /* Обрезать звездочки по границе карты */
 }
 
 .sparkle-star {
@@ -324,7 +331,7 @@ body {
     color: #ffd700;
     font-size: 20px;
     opacity: 0;
-    animation: starburst 1s forwards;
+    animation: starburst 1.0s forwards; /* Уменьшаем длительность для более быстрого исчезания */
     transform: translate(-50%, -50%); /* Центрирование */
 }
 
@@ -344,25 +351,15 @@ body {
 }
 
 
-/* ===== ВВОДНЫЙ ТЕКСТ ПЕРЕД ИИ ===== */
-.pre-interpretation-text {
-    text-align: center;
-    font-size: 15px;
-    color: #b0b0b0;
-    margin: 20px auto;
-    line-height: 1.5;
-    max-width: 80%;
-    font-style: italic;
-    animation: fadeIn 0.5s ease forwards; /* Плавное появление */
-}
-
-
 /* ===== AI ANSWERS ===== */
 .ai-answer-container {
     margin-top: 20px;
-    /* display: none; */ /* Скрывать через JS, чтобы transition работал */
     opacity: 0;
     transition: opacity 0.5s ease-in-out;
+}
+
+.ai-answer-container.hidden { /* Для скрытия до анимации */
+    display: none;
 }
 
 .ai-answer-container.show {
@@ -377,37 +374,31 @@ body {
     padding: 16px;
     line-height: 1.6;
     font-size: 14px;
-    position: relative; /* Для анимации печати */
+    position: relative;
 }
 
-.ai-answer-header {
-    margin-bottom: 12px; /* Убрал, т.к. текст внутри ai-answer-box */
-    display: none; /* Скрываем старый заголовок */
-}
-
-.ai-answer-box h4 {
+.ai-block-title { /* Новый класс для заголовка внутри блока ИИ */
     color: #ffd700;
     font-size: 16px;
     margin-bottom: 8px; /* Отступ между заголовком и текстом ИИ */
-    display: inline-block; /* Чтобы можно было поставить смайл рядом */
-    vertical-align: middle;
+    display: block; /* Чтобы заголовок был на отдельной строке */
+    font-weight: bold;
 }
 
 /* Анимация печатания текста */
 .ai-answer-content {
-    white-space: pre-wrap; /* Сохраняем переносы строк */
-    overflow: hidden; /* Скрываем текст, который еще не "напечатан" */
+    white-space: pre-wrap;
+    overflow: hidden;
+    /* Улучшенная плавность */
+    animation: typing 3s steps(60, end), blink-caret .75s step-end infinite; /* Увеличил steps для плавности */
     border-right: .15em solid orange; /* Каретка */
-    font-family: monospace; /* Для равномерной ширины символов */
-    animation: typing 3s steps(40, end), blink-caret .75s step-end infinite;
+    font-family: 'Consolas', 'Monaco', monospace; /* Моноширинный шрифт для эффекта печати */
 }
 
-/* Убираем каретку после завершения печати */
 .ai-answer-content.finished-typing {
     border-right: none;
     animation: none;
 }
-
 
 @keyframes typing {
     from { width: 0 }
@@ -422,47 +413,49 @@ body {
 
 /* ===== БАННЕРЫ ===== */
 .subscription-banner {
-    background: rgba(255, 215, 0, 0.1); /* Мягкий фон, не кричащий */
-    border: 1px solid rgba(255, 215, 0, 0.2); /* Мягкая рамка */
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.2);
     border-radius: 15px;
     padding: 20px;
-    margin-top: 25px; /* Увеличил отступ, чтобы не сливался с ИИ-ответом */
-    color: #e0e0e0; /* Более мягкий цвет текста */
+    margin-top: 25px; 
+    color: #e0e0e0; 
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Мягкая тень */
-    /* Убрал анимацию glow, чтобы баннер был "не кричащим" */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     
-    display: none; 
-    opacity: 0;
+    opacity: 0; /* Изначально скрыт, будет показан через JS */
     transition: opacity 0.5s ease-in-out;
 }
 
+.subscription-banner.hidden { /* Добавлено, чтобы display: none работал */
+    display: none;
+}
+
 .subscription-banner.show {
-    display: flex;
+    display: flex; /* Важно: использовать flex, если он изначально flex */
     opacity: 1;
 }
 
 .banner-icon {
     font-size: 30px;
     margin-bottom: 10px;
-    color: #ffd700; /* Цвет иконки */
+    color: #ffd700; 
 }
 
 .banner-content h4 {
     margin: 0 0 10px 0;
     font-size: 16px;
     font-weight: bold;
-    color: #ffd700; /* Заголовок баннера */
+    color: #ffd700; 
 }
 
 .banner-content p {
     margin: 0 0 15px 0;
-    font-size: 13px; /* Немного уменьшил шрифт */
+    font-size: 13px; 
     line-height: 1.4;
-    color: #b0b0b0; /* Подтекст баннера */
+    color: #b0b0b0; 
 }
 
 .banner-buttons {
@@ -476,13 +469,13 @@ body {
     padding: 10px 16px;
     border: none;
     border-radius: 20px;
-    font-size: 13px; /* Немного уменьшил шрифт кнопки */
+    font-size: 13px; 
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.1); /* Мягкий фон кнопки */
+    background: rgba(255, 255, 255, 0.1); 
     color: white;
 }
 
@@ -492,16 +485,14 @@ body {
 }
 
 .banner-btn.premium {
-    background: linear-gradient(45deg, #667eea, #764ba2); /* Используем цвета навигационной панели для Premium кнопки */
+    background: linear-gradient(45deg, #667eea, #764ba2); 
     color: #fff;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); /* Мягкая тень */
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); 
 }
 .banner-btn.premium:hover {
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
 }
 
-
-/* ... (остальные стили без изменений) ... */
 
 /* ===== MOBILE ADAPTATIONS ===== */
 @media (max-width: 480px) {
@@ -511,7 +502,7 @@ body {
 
     .container {
         max-width: 100%;
-        width: calc(100% - 32px);
+        width: calc(100% - 32px); 
         padding: 15px; 
         margin: 0 auto; 
         border-radius: 0;
@@ -520,7 +511,7 @@ body {
     }
 
     .header {
-        padding: 12px 0 20px 0; 
+        padding: 12px 0 10px 0; /* Уменьшаем нижний паддинг хедера на мобильных */
     }
 
     .logo {
@@ -551,16 +542,6 @@ body {
         height: auto; 
     }
 
-    .nav-tabs {
-        height: auto; 
-        min-height: auto;
-    }
-
-    .nav-tabs-secondary {
-        height: auto; 
-        min-height: auto;
-    }
-
     .tarot-card {
         width: 160px;
         height: 240px;
@@ -585,11 +566,11 @@ body {
     }
 
     .premium-buy-btn {
-        width: 100%; /* Make premium button full width on mobile */
+        width: 100%;
     }
 
     .price-card {
-        max-width: none; /* Remove max-width for price card on mobile */
+        max-width: none;
     }
 }
 
