@@ -139,11 +139,11 @@ function setupConfigFromData(data) {
 function setupFallbackConfigs() {
     console.log('🛡️ Установка fallback конфигураций...');
 
-    // Fallback Supabase конфигурация (тестовые значения)
+    // Fallback Supabase конфигурация (рабочие значения)
     if (!window.SUPABASE_CONFIG) {
         window.SUPABASE_CONFIG = {
-            url: 'https://your-project.supabase.co',
-            anonKey: 'your-anon-key'
+            url: 'https://xqtokipsfzywippmvpgp.supabase.co',
+            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
         };
     }
 
