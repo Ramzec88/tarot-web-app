@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест изображений карт Таро</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .image-test {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .test-image {
+            width: 120px;
+            height: 180px;
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .image-info {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        .status.loading { background: #ffa500; }
+        .status.success { background: #4caf50; }
+        .status.error { background: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🃏 Тест загрузки изображений карт Таро</h1>
+        <p>Проверяем, какие форматы ссылок Google Drive работают:</p>
+        
+        <div id="testResults"></div>
+        
+        <h2>📋 Результаты тестирования:</h2>
+        <div id="summary"></div>
+    </div>
+
+    <script>
+        // Тестовые ссылки из cards.json
+        const testImages = [
+            {
+                name: "Дурак (оригинал)",
+                url: "https://drive.google.com/uc?export=view&id=1GwjJI6U9-O0g5bkNfYehU1sBFK7alKHc"
+            },
+            {
+                name: "Дурак (thumbnail)",
+                url: "https://drive.google.com/thumbnail?id=1GwjJI6U9-O0g5bkNfYehU1sBFK7alKHc&sz=w400"
+            },
+            {
+                name: "Маг (оригинал)",
+                url: "https://drive.google.com/uc?export=view&id=159xF6IrCRTZBBSNOb7nmTXc6tzvWVB7R"
+            },
+            {
+                name: "Маг (thumbnail)",
+                url: "https://drive.google.com/thumbnail?id=159xF6IrCRTZBBSNOb7nmTXc6tzvWVB7R&sz=w400"
+            },
+            {
+                name: "Placeholder 1",
+                url: "https://via.placeholder.com/180x270/4B0082/FFD700?text=🔮+Дурак"
+            },
+            {
+                name: "Placeholder 2",
+                url: "https://via.placeholder.com/180x270/4B0082/FFD700?text=⭐+Звезда"
+            }
+        ];
+
+        const results = [];
+        const testContainer = document.getElementById('testResults');
+
+        function createImageTest(testImage, index) {
+            const testDiv = document.createElement('div');
+            testDiv.className = 'image-test';
+            
+            const img = document.createElement('img');
+            img.className = 'test-image';
+            img.alt = testImage.name;
+            
+            const info = document.createElement('div');
+            info.className = 'image-info';
+            info.innerHTML = `<strong>${testImage.name}</strong>`;
+            
+            const status = document.createElement('div');
+            status.className = 'status loading';
+            status.textContent = 'Загрузка...';
+            
+            testDiv.appendChild(img);
+            testDiv.appendChild(info);
+            testDiv.appendChild(status);
+            testContainer.appendChild(testDiv);
+
+            // Тестируем загрузку
+            img.onload = () => {
+                status.className = 'status success';
+                status.textContent = '✅ Загружено';
+                results[index] = { ...testImage, status: 'success' };
+                updateSummary();
+            };
+
+            img.onerror = () => {
+                status.className = 'status error';
+                status.textContent = '❌ Ошибка';
+                results[index] = { ...testImage, status: 'error' };
+                updateSummary();
+            };
+
+            img.src = testImage.url;
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const completed = results.filter(r => r).length;
+            const successful = results.filter(r => r && r.status === 'success').length;
+            const failed = results.filter(r => r && r.status === 'error').length;
+
+            summary.innerHTML = `
+                <p><strong>Прогресс:</strong> ${completed}/${testImages.length}</p>
+                <p><strong>Успешно:</strong> ${successful}</p>
+                <p><strong>Ошибок:</strong> ${failed}</p>
+                ${completed === testImages.length ? '<p><strong>Тестирование завершено!</strong></p>' : ''}
+            `;
+
+            if (completed === testImages.length) {
+                console.log('🔍 Результаты тестирования изображений:', results);
+            }
+        }
+
+        // Запускаем тесты
+        testImages.forEach((testImage, index) => {
+            createImageTest(testImage, index);
+        });
+    </script>
+</body>
+</html>
