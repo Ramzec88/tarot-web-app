@@ -1,49 +1,4 @@
-// 📚 ИСТОРИЯ
-async function addToHistory(type, title, content) {
-    const telegramId = getTelegramUserId();
-    
-    try {
-        if (window.TarotDB && window.TarotDB.isConnected()) {
-            // Сохраняем в Supabase
-            if (type === 'daily-card') {
-                await window.TarotDB.saveDailyCard(telegramId, {
-                    id: Date.now(),
-                    name: title,
-                    interpretation: content
-                });
-            } else if (type === 'question') {
-                const question = await window.TarotDB.saveQuestion(telegramId, title);
-                if (question) {
-                    await window.TarotDB.saveAnswer(question.id, {
-                        id: Date.now(),
-                        name: 'AI Response'
-                    }, content);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('❌ Ошибка сохранения в Supabase:', error);
-    }
-    
-    // Локальное сохранение как fallback
-    const historyItem = {
-        id: Date.now(),
-        type: type,
-        title: title,
-        content: content,
-        date: new Date().toLocaleString('ru-RU')
-    };
-    
-    appState.history.unshift(historyItem);
-    
-    // Ограничиваем количество записей
-    if (appState.history.length > 50) {
-        appState.history = appState.history.slice(0, 50);
-    }
-    
-    saveAppState();
-    updateHistoryDisplay();
-}// ========================================================================
+// ========================================================================
 // ИСПРАВЛЕННЫЙ SCRIPT.JS - Шёпот карт
 // ========================================================================
 
@@ -60,6 +15,7 @@ let appState = {
 // 📦 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 let allCards = [];
 let isInitialized = false;
+let currentRating = 0; // Для системы отзывов
 
 // 🎯 DOM ЭЛЕМЕНТЫ
 let mainNav, secondaryNav, tabContents;
@@ -196,7 +152,7 @@ function getFallbackCards() {
             name: "Луна", 
             symbol: "🌙",
             image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=🌙+Луна",
-            meaningUpright: "Иллюзии, интуиция, страхы",
+            meaningUpright: "Иллюзии, интуиция, страхи",
             description: "Карта интуиции и тайн. Доверьтесь внутреннему голосу и будьте внимательны к знакам судьбы."
         },
         {
@@ -339,6 +295,11 @@ function switchTab(tabId) {
     // Обновляем счетчик вопросов при переходе на вкладку вопросов
     if (tabId === 'question') {
         updateQuestionsCounter();
+    }
+    
+    // Обновляем историю при переходе на вкладку истории
+    if (tabId === 'history') {
+        updateHistoryDisplay();
     }
 }
 
@@ -560,7 +521,33 @@ async function handleAskQuestion() {
 // 📚 ИСТОРИЯ
 // ========================================================================
 
-function addToHistory(type, title, content) {
+async function addToHistory(type, title, content) {
+    const telegramId = getTelegramUserId();
+    
+    try {
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Сохраняем в Supabase
+            if (type === 'daily-card') {
+                await window.TarotDB.saveDailyCard(telegramId, {
+                    id: Date.now(),
+                    name: title,
+                    interpretation: content
+                });
+            } else if (type === 'question') {
+                const question = await window.TarotDB.saveQuestion(telegramId, title);
+                if (question) {
+                    await window.TarotDB.saveAnswer(question.id, {
+                        id: Date.now(),
+                        name: 'AI Response'
+                    }, content);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сохранения в Supabase:', error);
+    }
+    
+    // Локальное сохранение как fallback
     const historyItem = {
         id: Date.now(),
         type: type,
@@ -588,37 +575,58 @@ function updateHistoryDisplay() {
     
     if (appState.history.length === 0) {
         historyEmptyState?.classList.remove('hidden');
+        
+        // Очищаем список если он есть
+        const existingItems = historyList.querySelectorAll('.history-item');
+        existingItems.forEach(item => item.remove());
         return;
     }
     
     historyEmptyState?.classList.add('hidden');
     
-    const historyHTML = appState.history.map(item => `
-        <div class="history-item">
+    // Очищаем текущий список
+    const existingItems = historyList.querySelectorAll('.history-item');
+    existingItems.forEach(item => item.remove());
+    
+    // Создаем новые элементы истории
+    appState.history.forEach(item => {
+        const historyItemElement = document.createElement('div');
+        historyItemElement.className = 'history-item';
+        historyItemElement.innerHTML = `
             <div class="history-header">
                 <div class="history-type">${item.type === 'daily-card' ? '🃏 Карта дня' : '❓ Вопрос'}</div>
                 <div class="history-date">${item.date}</div>
             </div>
             <div class="history-title">${item.title}</div>
-            <div class="history-content">${item.content.substring(0, 100)}...</div>
-        </div>
-    `).join('');
-    
-    historyList.innerHTML = historyHTML;
+            <div class="history-content">${item.content.length > 100 ? item.content.substring(0, 100) + '...' : item.content}</div>
+        `;
+        
+        // Добавляем обработчик клика для раскрытия полного содержимого
+        historyItemElement.addEventListener('click', () => {
+            const content = historyItemElement.querySelector('.history-content');
+            if (content.textContent.endsWith('...')) {
+                content.textContent = item.content;
+            } else {
+                content.textContent = item.content.length > 100 ? item.content.substring(0, 100) + '...' : item.content;
+            }
+        });
+        
+        historyList.appendChild(historyItemElement);
+    });
 }
 
 // ========================================================================
 // ⭐ ОТЗЫВЫ
 // ========================================================================
 
-function handleStarRating() {
+function setupStarRating() {
     const stars = document.querySelectorAll('.star');
-    let selectedRating = 0;
     
     stars.forEach((star, index) => {
         star.addEventListener('click', () => {
-            selectedRating = index + 1;
-            updateStarsDisplay(selectedRating);
+            currentRating = index + 1;
+            updateStarsDisplay(currentRating);
+            console.log('⭐ Выбранный рейтинг:', currentRating);
         });
         
         star.addEventListener('mouseenter', () => {
@@ -628,7 +636,7 @@ function handleStarRating() {
     
     const starRating = document.getElementById('starRating');
     starRating?.addEventListener('mouseleave', () => {
-        updateStarsDisplay(selectedRating);
+        updateStarsDisplay(currentRating);
     });
     
     function updateStarsDisplay(rating) {
@@ -640,18 +648,15 @@ function handleStarRating() {
             }
         });
     }
-    
-    return () => selectedRating;
 }
 
 function handleSubmitReview() {
     const reviewText = document.getElementById('reviewText');
-    const getRating = handleStarRating();
     
-    const rating = getRating();
+    const rating = currentRating;
     const text = reviewText?.value.trim();
     
-    if (!rating) {
+    if (!rating || rating === 0) {
         showMessage('Пожалуйста, поставьте оценку', 'error');
         return;
     }
@@ -668,6 +673,7 @@ function handleSubmitReview() {
     
     // Очищаем форму
     if (reviewText) reviewText.value = '';
+    currentRating = 0;
     document.querySelectorAll('.star').forEach(star => star.classList.remove('active'));
 }
 
@@ -704,6 +710,20 @@ function handlePremiumPurchase() {
     updateQuestionsCounter();
     
     showMessage('Premium активирован! Теперь у вас безлимитные возможности!', 'success');
+}
+
+// ========================================================================
+// 🛠️ УТИЛИТЫ
+// ========================================================================
+
+function getTelegramUserId() {
+    // Пытаемся получить ID пользователя из Telegram WebApp
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+        return window.Telegram.WebApp.initDataUnsafe.user.id;
+    }
+    
+    // Fallback для тестирования
+    return 'test_user_' + Date.now();
 }
 
 // ========================================================================
@@ -784,6 +804,7 @@ function setupEventListeners() {
     submitQuestionBtn?.addEventListener('click', handleAskQuestion);
     
     // Отзывы
+    setupStarRating();
     const submitReviewBtn = document.getElementById('submitReviewBtn');
     submitReviewBtn?.addEventListener('click', handleSubmitReview);
     
@@ -838,8 +859,8 @@ async function initApp() {
         updateQuestionsCounter();
         updateHistoryDisplay();
         
-        // 7. Инициализируем рейтинг отзывов
-        handleStarRating();
+        // 7. Инициализируем Telegram WebApp если доступен
+        initializeTelegramWebApp();
         
         isInitialized = true;
         console.log('✅ Приложение успешно инициализировано');
@@ -848,6 +869,62 @@ async function initApp() {
         console.error('❌ Ошибка инициализации приложения:', error);
         showMessage('Произошла ошибка при загрузке приложения', 'error');
     }
+}
+
+// ========================================================================
+// 📱 ИНТЕГРАЦИЯ С TELEGRAM WEBAPP
+// ========================================================================
+
+function initializeTelegramWebApp() {
+    try {
+        if (window.Telegram && window.Telegram.WebApp) {
+            console.log('📱 Telegram WebApp обнаружен');
+            
+            // Расширяем на весь экран
+            window.Telegram.WebApp.expand();
+            
+            // Устанавливаем цвета темы
+            window.Telegram.WebApp.setHeaderColor('#1a1a2e');
+            window.Telegram.WebApp.setBackgroundColor('#1a1a2e');
+            
+            // Показываем, что приложение готово
+            window.Telegram.WebApp.ready();
+            
+            console.log('✅ Telegram WebApp инициализирован');
+        } else {
+            console.log('🌐 Работаем в браузере (не в Telegram)');
+        }
+    } catch (error) {
+        console.warn('⚠️ Ошибка инициализации Telegram WebApp:', error);
+    }
+}
+
+// ========================================================================
+// 🧪 ФУНКЦИИ ДЛЯ ОТЛАДКИ
+// ========================================================================
+
+function debugApp() {
+    console.log('🧪 Отладочная информация:');
+    console.log('Состояние приложения:', appState);
+    console.log('Карты загружены:', allCards.length);
+    console.log('Приложение инициализировано:', isInitialized);
+    console.log('Текущий рейтинг:', currentRating);
+    console.log('DOM элементы:', {
+        tarotCard: !!tarotCard,
+        questionTextarea: !!questionTextarea,
+        submitQuestionBtn: !!submitQuestionBtn,
+        historyList: !!document.getElementById('historyList')
+    });
+}
+
+function resetApp() {
+    console.log('🔄 Сброс приложения...');
+    localStorage.removeItem('tarotAppState');
+    location.reload();
+}
+
+function testNotification() {
+    showMessage('Тестовое уведомление', 'info');
 }
 
 // ========================================================================
@@ -868,7 +945,14 @@ if (document.readyState === 'loading') {
 }
 
 // Экспорт для отладки
-window.appState = appState;
-window.switchTab = switchTab;
-window.showMessage = showMessage;
-window.getRandomCard = getRandomCard;
+window.TarotApp = {
+    appState,
+    switchTab,
+    showMessage,
+    getRandomCard,
+    debugApp,
+    resetApp,
+    testNotification,
+    updateHistoryDisplay,
+    currentRating
+};
