@@ -53,59 +53,85 @@ async function loadConfigFromAPI() {
     try {
         console.log('🌐 Попытка загрузки конфигурации из API...');
 
-        const response = await fetch('/api/config', {
+        // Определяем URL для API (работает и в dev, и в production)
+        const apiUrl = window.location.hostname === 'localhost' 
+            ? '/api/config'  // Для локальной разработки
+            : `${window.location.origin}/api/config`; // Для Vercel
+
+        const response = await fetch(apiUrl, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            timeout: 5000
+            cache: 'no-cache' // Всегда получаем свежую конфигурацию
         });
 
         if (response.ok) {
-            const config = await response.json();
+            const data = await response.json();
             console.log('✅ Конфигурация загружена из API');
 
-            // Устанавливаем Supabase конфигурацию
-            if (config.supabase) {
-                window.SUPABASE_CONFIG = {
-                    url: config.supabase.url,
-                    anonKey: config.supabase.anonKey
-                };
-                console.log('✅ Supabase конфигурация загружена');
+            // Проверяем успешность ответа
+            if (data.success === false) {
+                console.warn('⚠️ API вернул ошибку, используем fallback');
+                // Используем fallback из ответа сервера
+                if (data.fallback) {
+                    setupConfigFromData(data.fallback);
+                    return true;
+                }
+                return false;
             }
 
-            // Устанавливаем API конфигурацию
-            if (config.api) {
-                window.API_CONFIG = {
-                    n8nWebhookUrl: config.api.n8nWebhookUrl,
-                    cardsUrl: config.api.cardsUrl,
-                    paymentUrl: config.api.paymentUrl,
-                    timeout: 10000,
-                    retryAttempts: 3
-                };
-                console.log('✅ API конфигурация загружена');
-            }
-
-            // Устанавливаем конфигурацию приложения
-            if (config.app) {
-                window.APP_CONFIG = {
-                    ...getDefaultAppConfig(),
-                    freeQuestionsLimit: config.app.freeQuestionsLimit || 3,
-                    premiumPrice: config.app.premiumPrice || 299
-                };
-                console.log('✅ App конфигурация загружена');
-            }
-
+            // Устанавливаем конфигурацию из успешного ответа
+            setupConfigFromData(data);
             return true;
+
         } else {
-            console.warn('⚠️ API вернул ошибку:', response.status);
+            console.warn('⚠️ API вернул ошибку HTTP:', response.status, response.statusText);
             return false;
         }
 
     } catch (error) {
         console.warn('⚠️ Ошибка загрузки из API (используем fallback):', error.message);
         return false;
+    }
+}
+
+// 🔧 ФУНКЦИЯ УСТАНОВКИ КОНФИГУРАЦИИ ИЗ ДАННЫХ
+function setupConfigFromData(data) {
+    // Устанавливаем Supabase конфигурацию
+    if (data.supabase && data.supabase.url && data.supabase.anonKey) {
+        window.SUPABASE_CONFIG = {
+            url: data.supabase.url,
+            anonKey: data.supabase.anonKey
+        };
+        console.log('✅ Supabase конфигурация загружена:', data.supabase.url);
+    } else {
+        console.warn('⚠️ Supabase конфигурация неполная');
+    }
+
+    // Устанавливаем API конфигурацию
+    if (data.api) {
+        window.API_CONFIG = {
+            n8nWebhookUrl: data.api.n8nWebhookUrl || '',
+            cardsUrl: data.api.cardsUrl || '',
+            paymentUrl: data.api.paymentUrl || '',
+            timeout: 10000,
+            retryAttempts: 3
+        };
+        console.log('✅ API конфигурация загружена');
+    }
+
+    // Устанавливаем конфигурацию приложения
+    if (data.app) {
+        window.APP_CONFIG = {
+            ...getDefaultAppConfig(),
+            freeQuestionsLimit: data.app.freeQuestionsLimit || 3,
+            premiumPrice: data.app.premiumPrice || 299,
+            version: data.app.version || '1.0.0',
+            supportBot: data.app.supportBot || '@Helppodarok_bot'
+        };
+        console.log('✅ App конфигурация загружена');
     }
 }
 
