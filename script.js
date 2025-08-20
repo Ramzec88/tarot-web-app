@@ -26,6 +26,7 @@ let afterDailyCardBanner, askMoreQuestionsBtn, premiumBannerBtn;
 let starAnimationContainer, questionsLeftElement;
 let questionTextarea, submitQuestionBtn, charCounter;
 let loadingState, questionAnswerContainer, questionAnswerText;
+let premiumTestToggle, premiumTestLabel;
 
 // 🔮 ВРЕМЕННАЯ СИМУЛЯЦИЯ ИИ-ОТВЕТА
 const simulatedAiText = "Глубокое погружение в энергии дня показывает, что перед вами открываются новые возможности для творчества и самовыражения. Используйте этот период для развития своих скрытых талантов и проявления уникальности. Избегайте сомнений и смело идите вперед, доверяя своей интуиции. Сегодняшний день благоприятен для начала новых проектов и установления гармоничных отношений с окружающими. Помните, что истинная сила исходит изнутри, и, проявляя ее, вы сможете преодолеть любые препятствия.";
@@ -698,6 +699,23 @@ function updateSubscriptionStatus(isPremium = false) {
         statusIcon.textContent = '🌑';
         statusText.textContent = 'Базовый вариант';
     }
+
+    // Update test toggle
+    if (premiumTestToggle) {
+        premiumTestToggle.checked = isPremium;
+    }
+    if (premiumTestLabel) {
+        premiumTestLabel.textContent = isPremium ? 'Premium режим' : 'Базовый режим';
+    }
+}
+
+function handlePremiumTestToggle() {
+    const isPremium = premiumTestToggle.checked;
+    appState.isPremium = isPremium;
+    saveAppState();
+    updateSubscriptionStatus(isPremium);
+    updateQuestionsCounter();
+    showMessage(`Режим изменен на ${isPremium ? 'Premium' : 'Базовый'}`, 'info');
 }
 
 function handlePremiumPurchase() {
@@ -770,6 +788,10 @@ function initializeDOMElements() {
     questionAnswerContainer = document.getElementById('questionAnswerContainer');
     questionAnswerText = document.getElementById('questionAnswerText');
     
+    // Test Toggle
+    premiumTestToggle = document.getElementById('premiumTestToggle');
+    premiumTestLabel = document.getElementById('premiumTestLabel');
+
     console.log('✅ DOM элементы инициализированы');
 }
 
@@ -812,6 +834,9 @@ function setupEventListeners() {
     // Premium
     const premiumBuyBtn = document.getElementById('premiumBuyBtn');
     premiumBuyBtn?.addEventListener('click', handlePremiumPurchase);
+
+    // Test Toggle
+    premiumTestToggle?.addEventListener('change', handlePremiumTestToggle);
     
     console.log('✅ Обработчики событий настроены');
 }
