@@ -555,6 +555,20 @@ body {
     transform: none;
 }
 
+.answer-card-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.answer-card-image {
+    width: 100px;
+    height: 150px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid #ffd700;
+}
+
 /* ===== LOADING ===== */
 .loading {
     text-align: center;

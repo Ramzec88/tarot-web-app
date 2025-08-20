@@ -25,7 +25,7 @@ let aiAnswerContainer, aiInterpretationTitle, aiInterpretationTextElement;
 let afterDailyCardBanner, askMoreQuestionsBtn, premiumBannerBtn;
 let starAnimationContainer, questionsLeftElement;
 let questionTextarea, submitQuestionBtn, charCounter;
-let loadingState, questionAnswerContainer, questionAnswerText;
+let loadingState, questionAnswerContainer, questionAnswerText, answerCardImage;
 let premiumTestToggle, premiumTestLabel;
 
 // 🔮 ВРЕМЕННАЯ СИМУЛЯЦИЯ ИИ-ОТВЕТА
@@ -426,13 +426,20 @@ async function handleDailyCardClick() {
 
 function updateQuestionsCounter() {
     if (!questionsLeftElement) return;
-    
-    const remaining = Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed);
-    questionsLeftElement.textContent = `Осталось бесплатных вопросов: ${remaining}`;
-    
-    if (remaining === 0 && !appState.isPremium) {
-        questionsLeftElement.textContent = 'Бесплатные вопросы закончились. Получите Premium!';
-        questionsLeftElement.style.color = '#ff6b6b';
+
+    if (appState.isPremium) {
+        questionsLeftElement.textContent = '👑 У вас безлимитные вопросы';
+        questionsLeftElement.style.color = '#ffd700'; // Gold color for premium
+    } else {
+        const remaining = Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed);
+
+        if (remaining > 0) {
+            questionsLeftElement.textContent = `Осталось бесплатных вопросов: ${remaining}`;
+            questionsLeftElement.style.color = '#b0b0b0'; // Default color
+        } else {
+            questionsLeftElement.textContent = 'Бесплатные вопросы закончились. Получите Premium!';
+            questionsLeftElement.style.color = '#ff6b6b'; // Red color for limit reached
+        }
     }
 }
 
@@ -475,6 +482,7 @@ async function handleAskQuestion() {
     // Показываем загрузку
     loadingState?.classList.remove('hidden');
     questionAnswerContainer?.classList.add('hidden');
+    if (answerCardImage) answerCardImage.classList.add('hidden');
     submitQuestionBtn.disabled = true;
     
     try {
@@ -488,6 +496,12 @@ async function handleAskQuestion() {
         // Показываем ответ
         loadingState?.classList.add('hidden');
         
+        if (answerCardImage) {
+            answerCardImage.src = randomCard.image;
+            answerCardImage.alt = randomCard.name;
+            answerCardImage.classList.remove('hidden');
+        }
+
         if (questionAnswerText) {
             await typeText(questionAnswerText, answer);
         }
@@ -787,6 +801,7 @@ function initializeDOMElements() {
     loadingState = document.getElementById('loadingState');
     questionAnswerContainer = document.getElementById('questionAnswerContainer');
     questionAnswerText = document.getElementById('questionAnswerText');
+    answerCardImage = document.getElementById('answerCardImage');
     
     // Test Toggle
     premiumTestToggle = document.getElementById('premiumTestToggle');
