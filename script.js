@@ -1,5 +1,5 @@
 // ========================================================================
-// ИСПРАВЛЕННЫЙ SCRIPT.JS - Шёпот карт
+// ИСПРАВЛЕННЫЙ SCRIPT.JS - Шёпот карт (с рабочими изображениями)
 // ========================================================================
 
 // 🌟 СОСТОЯНИЕ ПРИЛОЖЕНИЯ
@@ -15,7 +15,7 @@ let appState = {
 // 📦 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 let allCards = [];
 let isInitialized = false;
-let currentRating = 0; // Для системы отзывов
+let currentRating = 0;
 
 // 🎯 DOM ЭЛЕМЕНТЫ
 let mainNav, secondaryNav, tabContents;
@@ -63,7 +63,7 @@ function loadAppState() {
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки состояния:', error);
-        appState = { ...appState }; // Используем состояние по умолчанию
+        appState = { ...appState };
     }
 }
 
@@ -90,122 +90,190 @@ function showMessage(message, type = 'info', duration = 3000) {
 }
 
 // ========================================================================
-// 🃏 ЗАГРУЗКА ДАННЫХ КАРТ
+// 🃏 ЗАГРУЗКА ДАННЫХ КАРТ (ИСПРАВЛЕНО)
 // ========================================================================
 
 async function loadCards() {
     try {
         console.log('🃏 Загрузка карт...');
         
-        // Исправляем путь к файлу карт
-        const response = await fetch('cards.json');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        // Пытаемся загрузить из разных источников
+        const possiblePaths = [
+            './cards.json',
+            '/cards.json',
+            'cards.json'
+        ];
+        
+        let cardsLoaded = false;
+        
+        for (const path of possiblePaths) {
+            try {
+                console.log(`Попытка загрузки из: ${path}`);
+                const response = await fetch(path);
+                
+                if (response.ok) {
+                    const cards = await response.json();
+                    if (cards && Array.isArray(cards) && cards.length > 0) {
+                        allCards = processCardsImages(cards);
+                        console.log(`✅ Карты загружены из ${path}:`, allCards.length);
+                        cardsLoaded = true;
+                        break;
+                    }
+                }
+            } catch (error) {
+                console.warn(`Не удалось загрузить из ${path}:`, error.message);
+            }
         }
         
-        allCards = await response.json();
-        console.log('✅ Карты загружены:', allCards.length);
-        
-        if (!allCards || allCards.length === 0) {
-            throw new Error('Пустой файл карт');
+        if (!cardsLoaded) {
+            throw new Error('Все пути загрузки карт не удались');
         }
         
     } catch (error) {
-        console.warn('⚠️ Не удалось загрузить карты, используем fallback:', error);
-        allCards = getFallbackCards();
-        console.log('✅ Fallback карты загружены:', allCards.length);
+        console.warn('⚠️ Не удалось загрузить карты из файла, используем встроенные:', error);
+        allCards = getBuiltInCards();
+        console.log('✅ Встроенные карты загружены:', allCards.length);
     }
 }
 
-function getFallbackCards() {
-    // Используем карты из config.js если доступны
-    if (window.getFallbackCards && typeof window.getFallbackCards === 'function') {
-        try {
-            const configCards = window.getFallbackCards();
-            if (configCards && configCards.length > 0) {
-                return configCards;
+// Обработка изображений карт
+function processCardsImages(cards) {
+    return cards.map(card => {
+        // Исправляем Google Drive ссылки
+        if (card.image && card.image.includes('drive.google.com')) {
+            // Извлекаем ID из ссылки и создаем прямую ссылку
+            const fileIdMatch = card.image.match(/[?&]id=([^&]+)/);
+            if (fileIdMatch) {
+                const fileId = fileIdMatch[1];
+                card.image = `https://drive.google.com/uc?export=view&id=${fileId}`;
             }
-        } catch (error) {
-            console.warn('⚠️ Ошибка получения карт из конфигурации:', error);
         }
-    }
+        
+        // Если изображение недоступно, создаем красивый placeholder
+        if (!card.image || card.image.includes('placeholder')) {
+            card.image = createCardPlaceholder(card);
+        }
+        
+        return card;
+    });
+}
+
+// Создание красивого placeholder для карты
+function createCardPlaceholder(card) {
+    const symbol = card.symbol || '🔮';
+    const name = encodeURIComponent(card.name || 'Карта');
+    const colors = [
+        '4B0082/FFD700', // Фиолетовый/Золотой
+        '663399/FF69B4', // Пурпурный/Розовый  
+        '2E8B57/98FB98', // Зеленый/Светло-зеленый
+        '8B0000/FFA500', // Темно-красный/Оранжевый
+        '191970/87CEEB', // Темно-синий/Голубой
+        '800080/DDA0DD'  // Пурпурный/Сливовый
+    ];
     
-    // Внутренний fallback с рабочими placeholder изображениями
-    return [
+    const colorPair = colors[Math.floor(Math.random() * colors.length)];
+    
+    return `https://via.placeholder.com/180x270/${colorPair}?text=${symbol}+${name}&fontSize=16`;
+}
+
+// Встроенные карты с правильными изображениями
+function getBuiltInCards() {
+    const baseCards = [
         {
-            id: "fallback_1",
+            id: "built_in_1",
             name: "Звезда",
             symbol: "⭐",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=⭐+Звезда",
             meaningUpright: "Надежда, вдохновение, исцеление",
             description: "Карта надежды и вдохновения. Сегодня звезды благоволят вашим начинаниям и открывают новые горизонты возможностей."
         },
         {
-            id: "fallback_2", 
+            id: "built_in_2", 
             name: "Солнце",
             symbol: "☀️",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=☀️+Солнце",
             meaningUpright: "Радость, успех, жизненная сила",
             description: "Символ радости и успеха. Впереди светлые времена, полные энергии и достижений."
         },
         {
-            id: "fallback_3",
+            id: "built_in_3",
             name: "Луна", 
             symbol: "🌙",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=🌙+Луна",
             meaningUpright: "Иллюзии, интуиция, страхи",
             description: "Карта интуиции и тайн. Доверьтесь внутреннему голосу и будьте внимательны к знакам судьбы."
         },
         {
-            id: "fallback_4",
+            id: "built_in_4",
             name: "Маг",
             symbol: "🔮",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=🔮+Маг",
             meaningUpright: "Сила воли, проявление, вдохновение",
             description: "У вас есть все необходимые инструменты для достижения цели. Время действовать с уверенностью."
         },
         {
-            id: "fallback_5",
+            id: "built_in_5",
             name: "Дурак",
             symbol: "🃏",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=🃏+Дурак",
             meaningUpright: "Начало, невинность, спонтанность",
             description: "Карта новых начинаний. Смело идите навстречу неизвестному - впереди вас ждут удивительные открытия."
         },
         {
-            id: "fallback_6",
+            id: "built_in_6",
             name: "Сила",
             symbol: "🦁",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=🦁+Сила",
             meaningUpright: "Мужество, сострадание, внутренняя сила",
             description: "Истинная сила в мягкости. Сегодня вы сможете преодолеть любые препятствия благодаря силе духа."
         },
         {
-            id: "fallback_7",
+            id: "built_in_7",
             name: "Колесо Фортуны",
             symbol: "🎡",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=🎡+Фортуна",
             meaningUpright: "Удача, циклы, судьба",
             description: "Колесо судьбы поворачивается в вашу пользу. Время благоприятных перемен и новых возможностей."
         },
         {
-            id: "fallback_8",
+            id: "built_in_8",
             name: "Императрица",
             symbol: "👑",
-            image: "https://via.placeholder.com/180x270/4B0082/FFD700?text=👑+Императрица",
             meaningUpright: "Изобилие, материнство, природа",
             description: "Время творчества и изобилия. Позвольте себе расцвести и наслаждаться красотой жизни."
+        },
+        {
+            id: "built_in_9",
+            name: "Башня",
+            symbol: "🏗️",
+            meaningUpright: "Разрушение, потрясение, истина",
+            description: "Старые структуры рушатся, чтобы освободить место для нового. Примите перемены как возможность роста."
+        },
+        {
+            id: "built_in_10",
+            name: "Смерть",
+            symbol: "💀",
+            meaningUpright: "Конец, трансформация, перерождение",
+            description: "Время трансформации и обновления. Отпустите прошлое, чтобы открыть дорогу будущему."
         }
     ];
+    
+    // Добавляем изображения для всех карт
+    return baseCards.map(card => ({
+        ...card,
+        image: createCardPlaceholder(card)
+    }));
 }
 
+// Получение случайной карты (исправлено)
 function getRandomCard() {
     if (!allCards || allCards.length === 0) {
-        console.warn('⚠️ Карты не загружены, используем fallback');
-        allCards = getFallbackCards();
+        console.warn('⚠️ Карты не загружены, используем встроенные');
+        allCards = getBuiltInCards();
     }
     
-    return allCards[Math.floor(Math.random() * allCards.length)];
+    const randomCard = allCards[Math.floor(Math.random() * allCards.length)];
+    
+    // Проверяем, что у карты есть изображение
+    if (!randomCard.image) {
+        randomCard.image = createCardPlaceholder(randomCard);
+    }
+    
+    console.log('🎯 Выбранная карта:', randomCard.name, 'Изображение:', randomCard.image);
+    return randomCard;
 }
 
 // ========================================================================
@@ -339,7 +407,7 @@ function resetDailyCardState() {
 }
 
 // ========================================================================
-// 🃏 ОБРАБОТКА КАРТЫ ДНЯ
+// 🃏 ОБРАБОТКА КАРТЫ ДНЯ (ИСПРАВЛЕНО)
 // ========================================================================
 
 async function handleDailyCardClick() {
@@ -361,13 +429,24 @@ async function handleDailyCardClick() {
 
     // Выбираем случайную карту
     const randomCard = getRandomCard();
-    console.log('🎯 Выбранная карта:', randomCard.name);
+    console.log('🎯 Выбранная карта:', randomCard.name, 'URL изображения:', randomCard.image);
 
     // Обновляем содержимое карты через половину анимации
     setTimeout(() => {
         starAnimationContainer.innerHTML = '';
         
         if (cardImage && randomCard.image) {
+            // Добавляем обработку ошибок загрузки изображения
+            cardImage.onerror = function() {
+                console.warn('❌ Ошибка загрузки изображения:', randomCard.image);
+                // Создаем fallback изображение
+                this.src = createCardPlaceholder(randomCard);
+            };
+            
+            cardImage.onload = function() {
+                console.log('✅ Изображение загружено успешно');
+            };
+            
             cardImage.src = randomCard.image;
             cardImage.alt = randomCard.name;
         }
@@ -891,6 +970,12 @@ async function initApp() {
         isInitialized = true;
         console.log('✅ Приложение успешно инициализировано');
         
+        // 8. Показываем информацию о загруженных картах
+        if (allCards && allCards.length > 0) {
+            console.log(`🃏 Всего карт загружено: ${allCards.length}`);
+            console.log('🖼️ Примеры изображений карт:', allCards.slice(0, 3).map(c => ({ name: c.name, image: c.image })));
+        }
+        
     } catch (error) {
         console.error('❌ Ошибка инициализации приложения:', error);
         showMessage('Произошла ошибка при загрузке приложения', 'error');
@@ -941,6 +1026,13 @@ function debugApp() {
         submitQuestionBtn: !!submitQuestionBtn,
         historyList: !!document.getElementById('historyList')
     });
+    
+    if (allCards.length > 0) {
+        console.log('🃏 Примеры карт:');
+        allCards.slice(0, 3).forEach(card => {
+            console.log(`- ${card.name}: ${card.image}`);
+        });
+    }
 }
 
 function resetApp() {
@@ -951,6 +1043,26 @@ function resetApp() {
 
 function testNotification() {
     showMessage('Тестовое уведомление', 'info');
+}
+
+function testCardImage() {
+    if (allCards.length === 0) {
+        console.warn('⚠️ Карты не загружены');
+        return;
+    }
+    
+    const randomCard = getRandomCard();
+    console.log('🧪 Тестирование изображения карты:', randomCard);
+    
+    // Создаем тестовое изображение
+    const testImg = new Image();
+    testImg.onload = () => {
+        console.log('✅ Изображение загружается успешно:', randomCard.image);
+    };
+    testImg.onerror = () => {
+        console.error('❌ Ошибка загрузки изображения:', randomCard.image);
+    };
+    testImg.src = randomCard.image;
 }
 
 // ========================================================================
@@ -973,12 +1085,16 @@ if (document.readyState === 'loading') {
 // Экспорт для отладки
 window.TarotApp = {
     appState,
+    allCards,
     switchTab,
     showMessage,
     getRandomCard,
     debugApp,
     resetApp,
     testNotification,
+    testCardImage,
     updateHistoryDisplay,
-    currentRating
+    currentRating,
+    createCardPlaceholder,
+    processCardsImages
 };
