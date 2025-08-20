@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarot Web App - Исправленная версия</title>
+    <title>Сетевая диагностика Supabase</title>
     <style>
         * {
             margin: 0;
@@ -13,18 +13,21 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
+            color: white;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
 
         .header {
@@ -33,207 +36,259 @@
         }
 
         .header h1 {
-            color: #2c3e50;
             font-size: 2.5rem;
             margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .status-panel {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 25px;
+        .alert {
+            background: rgba(255, 107, 107, 0.2);
+            border: 2px solid #ff6b6b;
+            border-radius: 12px;
+            padding: 20px;
             margin-bottom: 30px;
-            border-left: 5px solid #28a745;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .status-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .status-icon {
-            font-size: 1.2rem;
-            margin-right: 15px;
-            width: 30px;
             text-align: center;
         }
 
-        .status-text {
-            flex: 1;
-            font-weight: 500;
+        .alert-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ff6b6b;
         }
 
-        .status-details {
-            font-size: 0.9rem;
-            color: #666;
-            margin-left: 45px;
-            margin-top: 5px;
-        }
-
-        .controls {
+        .diagnostic-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
             margin-bottom: 30px;
         }
 
+        .diagnostic-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 4px solid #4ecdc4;
+            transition: all 0.3s ease;
+        }
+
+        .diagnostic-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .diagnostic-card.error {
+            border-left-color: #ff6b6b;
+        }
+
+        .diagnostic-card.success {
+            border-left-color: #51cf66;
+        }
+
+        .diagnostic-card.warning {
+            border-left-color: #ffd43b;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-icon {
+            margin-right: 10px;
+            font-size: 1.4rem;
+        }
+
+        .card-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.success { background: #51cf66; }
+        .status-indicator.error { background: #ff6b6b; }
+        .status-indicator.warning { background: #ffd43b; }
+        .status-indicator.pending { 
+            background: #868e96; 
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
             color: white;
             border: none;
-            padding: 15px 25px;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
+            padding: 12px 25px;
+            border-radius: 10px;
             cursor: pointer;
+            font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
+            box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
         }
 
         .btn.danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
             box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
         }
 
-        .btn.danger:hover {
-            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        .log-panel {
-            background: #2c3e50;
-            color: #ecf0f1;
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 20px;
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
             font-family: 'Monaco', 'Menlo', monospace;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .log-entry {
-            margin-bottom: 8px;
-            padding: 5px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .log-entry:last-child {
-            border-bottom: none;
-        }
-
-        .log-timestamp {
-            color: #95a5a6;
             font-size: 0.85rem;
+            margin: 10px 0;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .log-success { color: #2ecc71; }
-        .log-error { color: #e74c3c; }
-        .log-warning { color: #f39c12; }
-        .log-info { color: #3498db; }
-
-        .card-spread {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+        .solution-section {
+            background: rgba(81, 207, 102, 0.1);
+            border: 2px solid #51cf66;
+            border-radius: 15px;
+            padding: 25px;
             margin-top: 30px;
         }
 
-        .tarot-card {
-            aspect-ratio: 2/3;
-            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
-            border-radius: 15px;
+        .solution-title {
+            font-size: 1.4rem;
+            color: #51cf66;
+            margin-bottom: 15px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            transition: transform 0.3s ease;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
 
-        .tarot-card:hover {
-            transform: scale(1.05) rotateY(10deg);
+        .progress-container {
+            margin: 20px 0;
         }
 
-        .hidden {
-            display: none;
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
         }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #51cf66);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-timestamp {
+            color: #868e96;
+            margin-right: 10px;
+        }
+
+        .log-success { color: #51cf66; }
+        .log-error { color: #ff6b6b; }
+        .log-warning { color: #ffd43b; }
+        .log-info { color: #74c0fc; }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .controls {
-                grid-template-columns: 1fr;
-            }
-            
-            .card-spread {
-                grid-template-columns: 1fr;
-            }
+            .container { padding: 20px; }
+            .diagnostic-grid { grid-template-columns: 1fr; }
+            .controls { flex-direction: column; align-items: center; }
+            .btn { width: 100%; max-width: 300px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔮 Tarot Web App</h1>
-            <p>Исправленная версия с правильной инициализацией</p>
+            <h1>🔧 Диагностика сетевого подключения</h1>
+            <p>Анализ и исправление проблем с Supabase</p>
         </div>
 
-        <div class="status-panel">
-            <div class="status-item">
-                <span class="status-icon">⏳</span>
-                <span class="status-text">Статус загрузки</span>
-            </div>
-            <div id="statusDetails" class="status-details">
-                Инициализация компонентов...
-            </div>
+        <div class="alert">
+            <div class="alert-title">⚠️ Обнаружена проблема сети</div>
+            <p>Ошибка "TypeError: Load failed" указывает на проблемы сетевого подключения к Supabase. Запустим детальную диагностику.</p>
         </div>
 
         <div class="controls">
-            <button class="btn" id="testConnection">🔗 Тест подключения</button>
-            <button class="btn" id="createProfile">👤 Создать профиль</button>
-            <button class="btn" id="drawCards">🎴 Вытянуть карты</button>
+            <button class="btn" id="startDiagnostic">🚀 Запустить диагностику</button>
+            <button class="btn" id="testAlternativeConnection">🔄 Альтернативное подключение</button>
+            <button class="btn" id="fixConfiguration">⚙️ Исправить конфигурацию</button>
             <button class="btn danger" id="clearLogs">🗑️ Очистить логи</button>
         </div>
 
-        <div id="cardSpread" class="card-spread hidden"></div>
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
 
-        <div class="log-panel">
-            <div id="logs"></div>
+        <div class="diagnostic-grid" id="diagnosticGrid"></div>
+
+        <div class="log-container" id="logContainer"></div>
+
+        <div class="solution-section" id="solutionSection" style="display: none;">
+            <div class="solution-title">
+                <span style="margin-right: 10px;">✅</span>
+                Рекомендуемые решения
+            </div>
+            <div id="solutionContent"></div>
         </div>
     </div>
 
     <script>
-        // Глобальные переменные
-        let supabase = null;
-        let TarotDB = null;
-        let isAppReady = false;
+        // Конфигурация
+        const SUPABASE_CONFIG = {
+            url: 'https://jjowuzqrhwcuulcnkxh.supabase.co',
+            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFyaHdjdXVsY25reGgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczNzM4NzU1NywiZXhwIjoyMDUyOTYzNTU3fQ.2TXJ5qnz2vj0k3cGSrEYC8jfhgkKmj5P-e0hJdSb4-Q'
+        };
 
         // Система логирования
         const logger = {
@@ -245,10 +300,8 @@
                     <span class="log-timestamp">[${timestamp}]</span>
                     <span class="log-${type}">${message}</span>
                 `;
-                document.getElementById('logs').appendChild(logEntry);
-                document.getElementById('logs').scrollTop = document.getElementById('logs').scrollHeight;
-                
-                // Также выводим в консоль
+                document.getElementById('logContainer').appendChild(logEntry);
+                document.getElementById('logContainer').scrollTop = document.getElementById('logContainer').scrollHeight;
                 console.log(`[${timestamp}] ${message}`);
             },
             
@@ -258,261 +311,627 @@
             info(message) { this.log(`ℹ️ ${message}`, 'info'); }
         };
 
-        // Конфигурация Supabase
-        const SUPABASE_CONFIG = {
-            url: 'https://jjowuzqrhwcuulcnkxh.supabase.co',
-            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFyaHdjdXVsY25reGgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczNzM4NzU1NywiZXhwIjoyMDUyOTYzNTU3fQ.2TXJ5qnz2vj0k3cGSrEYC8jfhgkKmj5P-e0hJdSb4-Q'
-        };
+        // Утилиты
+        function updateProgress(percentage) {
+            document.getElementById('progressFill').style.width = `${percentage}%`;
+        }
 
-        // Создание TarotDB класса
-        class TarotDBManager {
-            constructor() {
-                this.supabase = null;
-                this.isConnected = false;
-                this.currentUser = null;
+        function createDiagnosticCard(title, icon, status = 'pending') {
+            const card = document.createElement('div');
+            card.className = `diagnostic-card ${status}`;
+            card.innerHTML = `
+                <div class="card-title">
+                    <span class="card-icon">${icon}</span>
+                    <span class="status-indicator ${status}"></span>
+                    ${title}
+                </div>
+                <div class="card-content" id="${title.toLowerCase().replace(/\s+/g, '-')}-content">
+                    Проверка...
+                </div>
+            `;
+            return card;
+        }
+
+        function updateCard(cardId, content, status) {
+            const card = document.getElementById(`${cardId}-content`);
+            if (card) {
+                card.textContent = content;
+                const parentCard = card.closest('.diagnostic-card');
+                parentCard.className = `diagnostic-card ${status}`;
+                const indicator = parentCard.querySelector('.status-indicator');
+                indicator.className = `status-indicator ${status}`;
             }
+        }
 
-            async initialize() {
-                try {
-                    logger.info('Инициализация TarotDB...');
-                    
-                    // Проверяем наличие Supabase
-                    if (typeof window.supabase === 'undefined') {
-                        throw new Error('Supabase не загружен');
-                    }
+        // Тесты сетевого подключения
 
-                    // Создаем клиент Supabase
-                    this.supabase = window.supabase.createClient(
-                        SUPABASE_CONFIG.url,
-                        SUPABASE_CONFIG.key
-                    );
+        // 1. Базовая сетевая доступность
+        async function testNetworkConnectivity() {
+            const cardId = 'сетевая-доступность';
+            logger.info('Тестирование базовой сетевой доступности...');
 
-                    // Проверяем подключение
-                    const { data, error } = await this.supabase
-                        .from('profiles')
-                        .select('count')
-                        .limit(1);
+            try {
+                // Тест доступности интернета
+                const internetTest = await fetch('https://httpbin.org/get', {
+                    method: 'GET',
+                    mode: 'cors',
+                    timeout: 5000
+                });
 
-                    if (error && error.code !== 'PGRST116') {
-                        throw error;
-                    }
-
-                    this.isConnected = true;
-                    logger.success('TarotDB успешно инициализирован');
+                if (internetTest.ok) {
+                    updateCard(cardId, 'Интернет соединение активно', 'success');
+                    logger.success('Базовое интернет соединение работает');
                     return true;
-
-                } catch (error) {
-                    logger.error(`Ошибка инициализации TarotDB: ${error.message}`);
-                    return false;
+                } else {
+                    throw new Error('Интернет недоступен');
                 }
-            }
-
-            getStatus() {
-                return {
-                    connected: this.isConnected,
-                    user: this.currentUser,
-                    timestamp: new Date().toISOString()
-                };
-            }
-
-            async createUserProfile(userData = {}) {
-                try {
-                    const profileData = {
-                        id: `test_${Date.now()}`,
-                        premium: false,
-                        created_at: new Date().toISOString(),
-                        ...userData
-                    };
-
-                    logger.info('Создание профиля пользователя...');
-                    
-                    const { data, error } = await this.supabase
-                        .from('profiles')
-                        .insert([profileData])
-                        .select();
-
-                    if (error) throw error;
-
-                    this.currentUser = data[0];
-                    logger.success(`Профиль создан: ${this.currentUser.id}`);
-                    return this.currentUser;
-
-                } catch (error) {
-                    logger.error(`Ошибка создания профиля: ${error.message}`);
-                    return null;
-                }
-            }
-
-            async getRandomCards(count = 3) {
-                const cards = [
-                    'Дурак', 'Маг', 'Верховная Жрица', 'Императрица', 'Император',
-                    'Иерофант', 'Влюбленные', 'Колесница', 'Сила', 'Отшельник',
-                    'Колесо Фортуны', 'Справедливость', 'Повешенный', 'Смерть',
-                    'Умеренность', 'Дьявол', 'Башня', 'Звезда', 'Луна', 'Солнце',
-                    'Суд', 'Мир'
-                ];
-
-                const selectedCards = [];
-                for (let i = 0; i < count; i++) {
-                    const randomIndex = Math.floor(Math.random() * cards.length);
-                    selectedCards.push(cards[randomIndex]);
-                    cards.splice(randomIndex, 1);
-                }
-
-                logger.success(`Вытянуты карты: ${selectedCards.join(', ')}`);
-                return selectedCards;
+            } catch (error) {
+                updateCard(cardId, `Ошибка: ${error.message}`, 'error');
+                logger.error(`Проблема с интернет соединением: ${error.message}`);
+                return false;
             }
         }
 
-        // Функция обновления статуса
-        function updateStatus(message, isSuccess = true) {
-            const statusItem = document.querySelector('.status-item');
-            const statusIcon = statusItem.querySelector('.status-icon');
-            const statusText = statusItem.querySelector('.status-text');
-            const statusDetails = document.getElementById('statusDetails');
+        // 2. DNS резолюция Supabase
+        async function testSupabaseDNS() {
+            const cardId = 'dns-резолюция';
+            logger.info('Проверка DNS резолюции Supabase...');
 
-            statusIcon.textContent = isSuccess ? '✅' : '❌';
-            statusText.textContent = isSuccess ? 'Система готова' : 'Ошибка инициализации';
-            statusDetails.textContent = message;
+            try {
+                const url = new URL(SUPABASE_CONFIG.url);
+                const hostname = url.hostname;
 
-            const statusPanel = document.querySelector('.status-panel');
-            statusPanel.style.borderLeftColor = isSuccess ? '#28a745' : '#dc3545';
+                // Попытка подключения к базовому домену
+                const response = await fetch(`https://${hostname}`, {
+                    method: 'HEAD',
+                    mode: 'no-cors',
+                    timeout: 10000
+                });
+
+                updateCard(cardId, `DNS для ${hostname} работает`, 'success');
+                logger.success(`DNS резолюция для ${hostname} успешна`);
+                return true;
+            } catch (error) {
+                updateCard(cardId, `DNS ошибка: ${error.message}`, 'error');
+                logger.error(`DNS резолюция не удалась: ${error.message}`);
+                return false;
+            }
         }
 
-        // Функция загрузки Supabase
-        async function loadSupabase() {
+        // 3. CORS политики
+        async function testCORSPolicies() {
+            const cardId = 'cors-политики';
+            logger.info('Проверка CORS политик...');
+
+            try {
+                // Простой OPTIONS запрос
+                const response = await fetch(SUPABASE_CONFIG.url, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'apikey, authorization'
+                    }
+                });
+
+                updateCard(cardId, 'CORS политики корректны', 'success');
+                logger.success('CORS политики позволяют запросы');
+                return true;
+            } catch (error) {
+                updateCard(cardId, `CORS блокирует запросы: ${error.message}`, 'warning');
+                logger.warning(`CORS может блокировать запросы: ${error.message}`);
+                return false;
+            }
+        }
+
+        // 4. Supabase API доступность
+        async function testSupabaseAPI() {
+            const cardId = 'supabase-api';
+            logger.info('Тестирование Supabase API...');
+
+            try {
+                // Тест через прямой fetch без SDK
+                const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SUPABASE_CONFIG.key,
+                        'Authorization': `Bearer ${SUPABASE_CONFIG.key}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    updateCard(cardId, 'Supabase API отвечает', 'success');
+                    logger.success('Supabase API доступен через прямые запросы');
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                updateCard(cardId, `API недоступен: ${error.message}`, 'error');
+                logger.error(`Supabase API недоступен: ${error.message}`);
+                return false;
+            }
+        }
+
+        // 5. Тест конкретной таблицы
+        async function testProfilesTable() {
+            const cardId = 'таблица-profiles';
+            logger.info('Тестирование доступа к таблице profiles...');
+
+            try {
+                const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/profiles?select=count&limit=1`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SUPABASE_CONFIG.key,
+                        'Authorization': `Bearer ${SUPABASE_CONFIG.key}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok || response.status === 406) { // 406 может быть нормальным для пустой таблицы
+                    updateCard(cardId, 'Таблица profiles доступна', 'success');
+                    logger.success('Таблица profiles доступна для запросов');
+                    return true;
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+            } catch (error) {
+                updateCard(cardId, `Таблица недоступна: ${error.message}`, 'error');
+                logger.error(`Таблица profiles недоступна: ${error.message}`);
+                return false;
+            }
+        }
+
+        // 6. Альтернативный Supabase клиент
+        async function testAlternativeSupabaseClient() {
+            const cardId = 'альтернативный-клиент';
+            logger.info('Тестирование альтернативного Supabase клиента...');
+
+            try {
+                // Загружаем Supabase SDK если его нет
+                if (!window.supabase) {
+                    await loadSupabaseSDK();
+                }
+
+                // Создаем клиент с дополнительными опциями
+                const client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key, {
+                    db: {
+                        schema: 'public',
+                    },
+                    auth: {
+                        autoRefreshToken: false,
+                        persistSession: false
+                    },
+                    global: {
+                        headers: {
+                            'X-Client-Info': 'diagnostic-client'
+                        }
+                    }
+                });
+
+                // Простой тест
+                const { data, error, status, statusText } = await client
+                    .from('profiles')
+                    .select('count')
+                    .limit(1);
+
+                if (!error || error.code === 'PGRST116') { // PGRST116 = пустая таблица
+                    updateCard(cardId, 'Альтернативный клиент работает', 'success');
+                    logger.success('Альтернативный Supabase клиент успешно подключился');
+                    return { success: true, client };
+                } else {
+                    throw error;
+                }
+            } catch (error) {
+                updateCard(cardId, `Клиент не работает: ${error.message}`, 'error');
+                logger.error(`Альтернативный клиент не работает: ${error.message}`);
+                return { success: false, client: null };
+            }
+        }
+
+        // Вспомогательная функция загрузки Supabase SDK
+        async function loadSupabaseSDK() {
             return new Promise((resolve, reject) => {
                 if (window.supabase) {
                     resolve();
                     return;
                 }
 
-                logger.info('Загрузка Supabase SDK...');
                 const script = document.createElement('script');
                 script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-                script.onload = () => {
-                    logger.success('Supabase SDK загружен');
-                    resolve();
-                };
-                script.onerror = () => {
-                    logger.error('Ошибка загрузки Supabase SDK');
-                    reject(new Error('Failed to load Supabase'));
-                };
+                script.onload = resolve;
+                script.onerror = reject;
                 document.head.appendChild(script);
             });
         }
 
-        // Основная функция инициализации
-        async function initializeApp() {
-            try {
-                logger.info('Запуск инициализации приложения...');
+        // Основная диагностика
+        async function runNetworkDiagnostic() {
+            const grid = document.getElementById('diagnosticGrid');
+            grid.innerHTML = '';
 
-                // 1. Загружаем Supabase
-                await loadSupabase();
+            // Создаем карточки
+            const tests = [
+                { title: 'Сетевая доступность', icon: '🌐', test: testNetworkConnectivity },
+                { title: 'DNS резолюция', icon: '🔍', test: testSupabaseDNS },
+                { title: 'CORS политики', icon: '🔐', test: testCORSPolicies },
+                { title: 'Supabase API', icon: '☁️', test: testSupabaseAPI },
+                { title: 'Таблица profiles', icon: '🗄️', test: testProfilesTable },
+                { title: 'Альтернативный клиент', icon: '🔄', test: testAlternativeSupabaseClient }
+            ];
 
-                // 2. Создаем и инициализируем TarotDB
-                TarotDB = new TarotDBManager();
-                const dbInitialized = await TarotDB.initialize();
+            tests.forEach(test => {
+                grid.appendChild(createDiagnosticCard(test.title, test.icon));
+            });
 
-                if (!dbInitialized) {
-                    throw new Error('Не удалось инициализировать TarotDB');
+            updateProgress(0);
+            const results = [];
+
+            // Запускаем тесты
+            for (let i = 0; i < tests.length; i++) {
+                const test = tests[i];
+                logger.info(`Запуск теста: ${test.title}`);
+                
+                try {
+                    const result = await test.test();
+                    results.push({ name: test.title, result, success: result === true || result?.success === true });
+                } catch (error) {
+                    logger.error(`Тест ${test.title} завершился с ошибкой: ${error.message}`);
+                    results.push({ name: test.title, result: false, success: false });
                 }
 
-                // 3. Помечаем приложение как готовое
-                isAppReady = true;
-                
-                updateStatus('Все компоненты загружены успешно', true);
-                logger.success('Приложение полностью готово к работе');
+                updateProgress(((i + 1) / tests.length) * 100);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Пауза между тестами
+            }
 
-                // 4. Включаем кнопки
-                enableButtons();
+            // Анализируем результаты и предлагаем решения
+            analyzeDiagnosticResults(results);
+        }
 
-            } catch (error) {
-                logger.error(`Критическая ошибка инициализации: ${error.message}`);
-                updateStatus(`Ошибка: ${error.message}`, false);
+        // Анализ результатов и предложение решений
+        function analyzeDiagnosticResults(results) {
+            const successCount = results.filter(r => r.success).length;
+            const solutionSection = document.getElementById('solutionSection');
+            const solutionContent = document.getElementById('solutionContent');
+
+            logger.info(`Диагностика завершена: ${successCount}/${results.length} тестов пройдено`);
+
+            let solutions = [];
+
+            // Анализируем конкретные проблемы
+            results.forEach(result => {
+                if (!result.success) {
+                    switch (result.name) {
+                        case 'Сетевая доступность':
+                            solutions.push({
+                                title: '🌐 Проблема с интернет соединением',
+                                description: 'Проверьте подключение к интернету и настройки брандмауэра.',
+                                actions: ['Перезагрузите роутер', 'Проверьте DNS настройки', 'Отключите VPN если используется']
+                            });
+                            break;
+                        case 'DNS резолюция':
+                            solutions.push({
+                                title: '🔍 Проблема с DNS',
+                                description: 'DNS не может разрешить адрес Supabase сервера.',
+                                actions: ['Используйте публичный DNS (8.8.8.8)', 'Очистите DNS кэш', 'Проверьте блокировки провайдера']
+                            });
+                            break;
+                        case 'CORS политики':
+                            solutions.push({
+                                title: '🔐 CORS ограничения',
+                                description: 'Браузер блокирует запросы из-за CORS политик.',
+                                actions: ['Проверьте настройки CORS в Supabase', 'Добавьте ваш домен в allowed origins', 'Используйте HTTPS']
+                            });
+                            break;
+                        case 'Supabase API':
+                            solutions.push({
+                                title: '☁️ API недоступен',
+                                description: 'Supabase API не отвечает на запросы.',
+                                actions: ['Проверьте статус сервисов Supabase', 'Убедитесь в правильности URL', 'Проверьте API ключ']
+                            });
+                            break;
+                        case 'Таблица profiles':
+                            solutions.push({
+                                title: '🗄️ Проблема с таблицей',
+                                description: 'Таблица profiles недоступна или не существует.',
+                                actions: ['Создайте таблицу profiles в Supabase', 'Проверьте права доступа', 'Убедитесь в правильности схемы']
+                            });
+                            break;
+                    }
+                }
+            });
+
+            // Общие решения
+            if (successCount < results.length / 2) {
+                solutions.push({
+                    title: '⚙️ Общие рекомендации',
+                    description: 'Множественные проблемы требуют системного подхода.',
+                    actions: [
+                        'Используйте локальный тестовый сервер',
+                        'Проверьте настройки Supabase проекта',
+                        'Обратитесь к документации Supabase',
+                        'Используйте альтернативные методы подключения'
+                    ]
+                });
+            }
+
+            // Отображаем решения
+            if (solutions.length > 0) {
+                solutionContent.innerHTML = solutions.map(solution => `
+                    <div style="margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 10px;">
+                        <h3 style="margin-bottom: 10px; color: #51cf66;">${solution.title}</h3>
+                        <p style="margin-bottom: 10px; opacity: 0.9;">${solution.description}</p>
+                        <ul style="list-style: none; padding: 0;">
+                            ${solution.actions.map(action => `<li style="padding: 5px 0; padding-left: 20px; position: relative;">
+                                <span style="position: absolute; left: 0;">•</span> ${action}
+                            </li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+                solutionSection.style.display = 'block';
             }
         }
 
-        // Функция включения кнопок
-        function enableButtons() {
-            const buttons = document.querySelectorAll('.btn');
-            buttons.forEach(btn => {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-            });
+        // Альтернативное подключение
+        async function tryAlternativeConnection() {
+            logger.info('Попытка альтернативного подключения...');
+            
+            const grid = document.getElementById('diagnosticGrid');
+            grid.innerHTML = '';
+            grid.appendChild(createDiagnosticCard('Альтернативное подключение', '🔄'));
+
+            try {
+                // Метод 1: Прямые HTTP запросы
+                updateCard('альтернативное-подключение', 'Тестирование прямых HTTP запросов...', 'pending');
+                
+                const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/profiles?select=*&limit=1`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SUPABASE_CONFIG.key,
+                        'Authorization': `Bearer ${SUPABASE_CONFIG.key}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok || response.status === 406) {
+                    updateCard('альтернативное-подключение', 'Прямые HTTP запросы работают!', 'success');
+                    logger.success('Альтернативное подключение через HTTP успешно');
+
+                    // Создаем простой клиент
+                    window.SimpleSupabaseClient = {
+                        async select(table, columns = '*', limit = null) {
+                            let url = `${SUPABASE_CONFIG.url}/rest/v1/${table}?select=${columns}`;
+                            if (limit) url += `&limit=${limit}`;
+
+                            const response = await fetch(url, {
+                                headers: {
+                                    'apikey': SUPABASE_CONFIG.key,
+                                    'Authorization': `Bearer ${SUPABASE_CONFIG.key}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+
+                            return await response.json();
+                        },
+
+                        async insert(table, data) {
+                            const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/${table}`, {
+                                method: 'POST',
+                                headers: {
+                                    'apikey': SUPABASE_CONFIG.key,
+                                    'Authorization': `Bearer ${SUPABASE_CONFIG.key}`,
+                                    'Content-Type': 'application/json',
+                                    'Prefer': 'return=representation'
+                                },
+                                body: JSON.stringify(data)
+                            });
+
+                            return await response.json();
+                        }
+                    };
+
+                    logger.success('Создан простой HTTP клиент для Supabase');
+                    return true;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                updateCard('альтернативное-подключение', `Ошибка: ${error.message}`, 'error');
+                logger.error(`Альтернативное подключение не удалось: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Исправление конфигурации
+        async function fixConfiguration() {
+            logger.info('Попытка исправления конфигурации...');
+            
+            const grid = document.getElementById('diagnosticGrid');
+            grid.innerHTML = '';
+            
+            const fixCard = createDiagnosticCard('Исправление конфигурации', '⚙️');
+            grid.appendChild(fixCard);
+
+            try {
+                updateCard('исправление-конфигурации', 'Проверка и исправление настроек...', 'pending');
+
+                // 1. Проверяем URL формат
+                const urlCheck = SUPABASE_CONFIG.url.match(/^https:\/\/[a-z0-9]+\.supabase\.co$/);
+                if (!urlCheck) {
+                    throw new Error('Неправильный формат URL Supabase');
+                }
+
+                // 2. Проверяем формат ключа
+                if (SUPABASE_CONFIG.key.length < 100) {
+                    throw new Error('API ключ слишком короткий');
+                }
+
+                // 3. Создаем исправленную конфигурацию
+                const fixedConfig = {
+                    ...SUPABASE_CONFIG,
+                    // Добавляем дополнительные параметры
+                    options: {
+                        db: { schema: 'public' },
+                        auth: { 
+                            autoRefreshToken: false,
+                            persistSession: false,
+                            detectSessionInUrl: false
+                        },
+                        global: {
+                            headers: {
+                                'X-Client-Info': 'tarot-app/1.0'
+                            }
+                        }
+                    }
+                };
+
+                // 4. Тестируем исправленную конфигурацию
+                await loadSupabaseSDK();
+                const testClient = window.supabase.createClient(
+                    fixedConfig.url, 
+                    fixedConfig.key, 
+                    fixedConfig.options
+                );
+
+                const { data, error } = await testClient
+                    .from('profiles')
+                    .select('count')
+                    .limit(1);
+
+                if (!error || error.code === 'PGRST116') {
+                    updateCard('исправление-конфигурации', 'Конфигурация исправлена и работает!', 'success');
+                    logger.success('Конфигурация успешно исправлена');
+                    
+                    // Сохраняем рабочий клиент
+                    window.FixedSupabaseClient = testClient;
+                    
+                    // Показываем код для использования
+                    displayFixedConfiguration(fixedConfig);
+                    return true;
+                } else {
+                    throw error;
+                }
+
+            } catch (error) {
+                updateCard('исправление-конфигурации', `Не удалось исправить: ${error.message}`, 'error');
+                logger.error(`Исправление конфигурации не удалось: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Отображение исправленной конфигурации
+        function displayFixedConfiguration(config) {
+            const solutionSection = document.getElementById('solutionSection');
+            const solutionContent = document.getElementById('solutionContent');
+
+            solutionContent.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #51cf66; margin-bottom: 15px;">✅ Рабочая конфигурация найдена!</h3>
+                    <p style="margin-bottom: 15px;">Используйте этот код в вашем приложении:</p>
+                    
+                    <div class="code-block">
+// Исправленная конфигурация Supabase
+const FIXED_SUPABASE_CONFIG = {
+    url: '${config.url}',
+    key: '${config.key.substring(0, 20)}...',
+    options: ${JSON.stringify(config.options, null, 2)}
+};
+
+// Создание клиента с исправленными настройками
+const supabaseClient = window.supabase.createClient(
+    FIXED_SUPABASE_CONFIG.url,
+    FIXED_SUPABASE_CONFIG.key,
+    FIXED_SUPABASE_CONFIG.options
+);
+
+// Пример использования
+async function testConnection() {
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .limit(1);
+    
+    if (error && error.code !== 'PGRST116') {
+        console.error('Ошибка:', error);
+    } else {
+        console.log('Подключение работает!', data);
+    }
+}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px; padding: 15px; background: rgba(78, 205, 196, 0.1); border-radius: 10px; border-left: 4px solid #4ecdc4;">
+                    <h4 style="color: #4ecdc4; margin-bottom: 10px;">🔧 Ключевые исправления:</h4>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 5px 0; padding-left: 20px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #4ecdc4;">•</span>
+                            Отключена автоматическая аутентификация
+                        </li>
+                        <li style="padding: 5px 0; padding-left: 20px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #4ecdc4;">•</span>
+                            Отключено сохранение сессии
+                        </li>
+                        <li style="padding: 5px 0; padding-left: 20px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #4ecdc4;">•</span>
+                            Добавлены пользовательские заголовки
+                        </li>
+                        <li style="padding: 5px 0; padding-left: 20px; position: relative;">
+                            <span style="position: absolute; left: 0; color: #4ecdc4;">•</span>
+                            Указана явная схема базы данных
+                        </li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #51cf66; margin-bottom: 10px;">📋 Следующие шаги:</h4>
+                    <ol style="padding-left: 20px;">
+                        <li style="margin-bottom: 8px;">Скопируйте код выше в ваше приложение</li>
+                        <li style="margin-bottom: 8px;">Замените старую конфигурацию на исправленную</li>
+                        <li style="margin-bottom: 8px;">Протестируйте подключение с помощью функции testConnection()</li>
+                        <li style="margin-bottom: 8px;">Если проблемы остаются, используйте альтернативный HTTP клиент</li>
+                    </ol>
+                </div>
+            `;
+
+            solutionSection.style.display = 'block';
         }
 
         // Обработчики событий
-        function setupEventListeners() {
-            // Тест подключения
-            document.getElementById('testConnection').addEventListener('click', async () => {
-                if (!isAppReady) {
-                    logger.warning('Приложение еще не готово');
-                    return;
-                }
-
-                logger.info('Тестирование подключения...');
-                const status = TarotDB.getStatus();
-                logger.success(`Статус подключения: ${status.connected ? 'Активно' : 'Отключено'}`);
+        document.addEventListener('DOMContentLoaded', () => {
+            // Запуск диагностики
+            document.getElementById('startDiagnostic').addEventListener('click', async () => {
+                logger.info('Запуск полной сетевой диагностики...');
+                await runNetworkDiagnostic();
             });
 
-            // Создание профиля
-            document.getElementById('createProfile').addEventListener('click', async () => {
-                if (!isAppReady) {
-                    logger.warning('Приложение еще не готово');
-                    return;
-                }
-
-                await TarotDB.createUserProfile();
+            // Альтернативное подключение
+            document.getElementById('testAlternativeConnection').addEventListener('click', async () => {
+                logger.info('Тестирование альтернативного подключения...');
+                await tryAlternativeConnection();
             });
 
-            // Вытягивание карт
-            document.getElementById('drawCards').addEventListener('click', async () => {
-                if (!isAppReady) {
-                    logger.warning('Приложение еще не готово');
-                    return;
-                }
-
-                const cards = await TarotDB.getRandomCards(3);
-                displayCards(cards);
+            // Исправление конфигурации
+            document.getElementById('fixConfiguration').addEventListener('click', async () => {
+                logger.info('Попытка исправления конфигурации...');
+                await fixConfiguration();
             });
 
             // Очистка логов
             document.getElementById('clearLogs').addEventListener('click', () => {
-                document.getElementById('logs').innerHTML = '';
-                logger.info('Логи очищены');
-            });
-        }
-
-        // Отображение карт
-        function displayCards(cards) {
-            const cardSpread = document.getElementById('cardSpread');
-            cardSpread.innerHTML = '';
-            cardSpread.classList.remove('hidden');
-
-            cards.forEach((card, index) => {
-                const cardElement = document.createElement('div');
-                cardElement.className = 'tarot-card';
-                cardElement.textContent = card;
-                cardElement.style.animationDelay = `${index * 0.2}s`;
-                cardSpread.appendChild(cardElement);
-            });
-        }
-
-        // Запуск приложения при загрузке страницы
-        document.addEventListener('DOMContentLoaded', () => {
-            logger.info('DOM загружен, запуск приложения...');
-            setupEventListeners();
-            
-            // Отключаем кнопки до полной инициализации
-            const buttons = document.querySelectorAll('.btn');
-            buttons.forEach(btn => {
-                btn.disabled = true;
-                btn.style.opacity = '0.6';
+                document.getElementById('logContainer').innerHTML = '';
+                document.getElementById('diagnosticGrid').innerHTML = '';
+                document.getElementById('solutionSection').style.display = 'none';
+                updateProgress(0);
+                logger.info('Интерфейс очищен');
             });
 
-            // Запускаем инициализацию
-            initializeApp();
+            // Автоматический запуск базовой диагностики через 1 секунду
+            setTimeout(() => {
+                logger.info('Автоматический запуск диагностики...');
+                runNetworkDiagnostic();
+            }, 1000);
         });
 
         // Глобальная обработка ошибок
