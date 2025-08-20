@@ -1,4 +1,49 @@
-// ========================================================================
+// 📚 ИСТОРИЯ
+async function addToHistory(type, title, content) {
+    const telegramId = getTelegramUserId();
+    
+    try {
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Сохраняем в Supabase
+            if (type === 'daily-card') {
+                await window.TarotDB.saveDailyCard(telegramId, {
+                    id: Date.now(),
+                    name: title,
+                    interpretation: content
+                });
+            } else if (type === 'question') {
+                const question = await window.TarotDB.saveQuestion(telegramId, title);
+                if (question) {
+                    await window.TarotDB.saveAnswer(question.id, {
+                        id: Date.now(),
+                        name: 'AI Response'
+                    }, content);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сохранения в Supabase:', error);
+    }
+    
+    // Локальное сохранение как fallback
+    const historyItem = {
+        id: Date.now(),
+        type: type,
+        title: title,
+        content: content,
+        date: new Date().toLocaleString('ru-RU')
+    };
+    
+    appState.history.unshift(historyItem);
+    
+    // Ограничиваем количество записей
+    if (appState.history.length > 50) {
+        appState.history = appState.history.slice(0, 50);
+    }
+    
+    saveAppState();
+    updateHistoryDisplay();
+}// ========================================================================
 // ИСПРАВЛЕННЫЙ SCRIPT.JS - Шёпот карт
 // ========================================================================
 
@@ -403,7 +448,7 @@ async function handleDailyCardClick() {
         }, 500);
 
         // Сохраняем в историю
-        addToHistory('daily-card', randomCard.name, interpretationText);
+        await addToHistory('daily-card', randomCard.name, interpretationText);
         
     }, 800);
 
@@ -494,7 +539,7 @@ async function handleAskQuestion() {
         }
         
         // Сохраняем в историю
-        addToHistory('question', question, answer);
+        await addToHistory('question', question, answer);
         
         // Очищаем форму
         questionTextarea.value = '';
