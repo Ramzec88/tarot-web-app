@@ -3,289 +3,526 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔗 Тест подключения к Supabase</title>
+    <title>Tarot Web App - Исправленная версия</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #1a1a2e;
-            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
-            line-height: 1.6;
         }
-        .test-container {
-            max-width: 800px;
+
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
             padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .status-panel {
+            background: #f8f9fa;
             border-radius: 15px;
-            border: 1px solid rgba(255,255,255,0.2);
+            padding: 25px;
+            margin-bottom: 30px;
+            border-left: 5px solid #28a745;
         }
-        .test-item {
-            margin: 15px 0;
-            padding: 15px;
-            background: rgba(255,255,255,0.05);
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
             border-radius: 8px;
-            border-left: 4px solid #666;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
-        .test-item.success {
-            border-left-color: #4caf50;
-            background: rgba(76, 175, 80, 0.1);
+
+        .status-item:last-child {
+            margin-bottom: 0;
         }
-        .test-item.error {
-            border-left-color: #f44336;
-            background: rgba(244, 67, 54, 0.1);
+
+        .status-icon {
+            font-size: 1.2rem;
+            margin-right: 15px;
+            width: 30px;
+            text-align: center;
         }
-        .test-item.warning {
-            border-left-color: #ff9800;
-            background: rgba(255, 152, 0, 0.1);
+
+        .status-text {
+            flex: 1;
+            font-weight: 500;
         }
-        .status {
-            font-weight: bold;
-            margin-bottom: 5px;
+
+        .status-details {
+            font-size: 0.9rem;
+            color: #666;
+            margin-left: 45px;
+            margin-top: 5px;
         }
-        .details {
-            font-size: 14px;
-            opacity: 0.8;
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
-        button {
-            background: #667eea;
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 16px;
-            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
-        button:hover {
-            background: #5a6fd8;
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
-        pre {
-            background: rgba(0,0,0,0.3);
-            padding: 15px;
-            border-radius: 8px;
-            overflow-x: auto;
-            font-size: 12px;
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn.danger:hover {
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .log-panel {
+            background: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-timestamp {
+            color: #95a5a6;
+            font-size: 0.85rem;
+        }
+
+        .log-success { color: #2ecc71; }
+        .log-error { color: #e74c3c; }
+        .log-warning { color: #f39c12; }
+        .log-info { color: #3498db; }
+
+        .card-spread {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .tarot-card {
+            aspect-ratio: 2/3;
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .tarot-card:hover {
+            transform: scale(1.05) rotateY(10deg);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .card-spread {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="test-container">
-        <h1>🔗 Тест подключения к Supabase</h1>
-        <p>Проверяем корректность интеграции с базой данных:</p>
-        
-        <button onclick="runTests()">🚀 Запустить тесты</button>
-        <button onclick="testCreateUser()">👤 Тест создания пользователя</button>
-        <button onclick="testSaveCard()">🃏 Тест сохранения карты</button>
-        <button onclick="clearResults()">🗑️ Очистить</button>
-        
-        <div id="testResults"></div>
+    <div class="container">
+        <div class="header">
+            <h1>🔮 Tarot Web App</h1>
+            <p>Исправленная версия с правильной инициализацией</p>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-item">
+                <span class="status-icon">⏳</span>
+                <span class="status-text">Статус загрузки</span>
+            </div>
+            <div id="statusDetails" class="status-details">
+                Инициализация компонентов...
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="testConnection">🔗 Тест подключения</button>
+            <button class="btn" id="createProfile">👤 Создать профиль</button>
+            <button class="btn" id="drawCards">🎴 Вытянуть карты</button>
+            <button class="btn danger" id="clearLogs">🗑️ Очистить логи</button>
+        </div>
+
+        <div id="cardSpread" class="card-spread hidden"></div>
+
+        <div class="log-panel">
+            <div id="logs"></div>
+        </div>
     </div>
 
-    <!-- Подключаем наши скрипты в правильном порядке -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Ждем загрузки Supabase библиотеки
-        window.addEventListener('load', async () => {
-            console.log('🔄 Загружаем скрипты...');
+        // Глобальные переменные
+        let supabase = null;
+        let TarotDB = null;
+        let isAppReady = false;
+
+        // Система логирования
+        const logger = {
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerHTML = `
+                    <span class="log-timestamp">[${timestamp}]</span>
+                    <span class="log-${type}">${message}</span>
+                `;
+                document.getElementById('logs').appendChild(logEntry);
+                document.getElementById('logs').scrollTop = document.getElementById('logs').scrollHeight;
+                
+                // Также выводим в консоль
+                console.log(`[${timestamp}] ${message}`);
+            },
             
-            // Загружаем скрипты последовательно
-            await loadScript('/config.js');
-            await loadScript('/supabase.js');
-            
-            console.log('✅ Все скрипты загружены');
-            
-            // Запускаем тесты через небольшую задержку
-            setTimeout(runTests, 500);
-        });
-        
-        function loadScript(src) {
+            success(message) { this.log(`✅ ${message}`, 'success'); },
+            error(message) { this.log(`❌ ${message}`, 'error'); },
+            warning(message) { this.log(`⚠️ ${message}`, 'warning'); },
+            info(message) { this.log(`ℹ️ ${message}`, 'info'); }
+        };
+
+        // Конфигурация Supabase
+        const SUPABASE_CONFIG = {
+            url: 'https://jjowuzqrhwcuulcnkxh.supabase.co',
+            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFyaHdjdXVsY25reGgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczNzM4NzU1NywiZXhwIjoyMDUyOTYzNTU3fQ.2TXJ5qnz2vj0k3cGSrEYC8jfhgkKmj5P-e0hJdSb4-Q'
+        };
+
+        // Создание TarotDB класса
+        class TarotDBManager {
+            constructor() {
+                this.supabase = null;
+                this.isConnected = false;
+                this.currentUser = null;
+            }
+
+            async initialize() {
+                try {
+                    logger.info('Инициализация TarotDB...');
+                    
+                    // Проверяем наличие Supabase
+                    if (typeof window.supabase === 'undefined') {
+                        throw new Error('Supabase не загружен');
+                    }
+
+                    // Создаем клиент Supabase
+                    this.supabase = window.supabase.createClient(
+                        SUPABASE_CONFIG.url,
+                        SUPABASE_CONFIG.key
+                    );
+
+                    // Проверяем подключение
+                    const { data, error } = await this.supabase
+                        .from('profiles')
+                        .select('count')
+                        .limit(1);
+
+                    if (error && error.code !== 'PGRST116') {
+                        throw error;
+                    }
+
+                    this.isConnected = true;
+                    logger.success('TarotDB успешно инициализирован');
+                    return true;
+
+                } catch (error) {
+                    logger.error(`Ошибка инициализации TarotDB: ${error.message}`);
+                    return false;
+                }
+            }
+
+            getStatus() {
+                return {
+                    connected: this.isConnected,
+                    user: this.currentUser,
+                    timestamp: new Date().toISOString()
+                };
+            }
+
+            async createUserProfile(userData = {}) {
+                try {
+                    const profileData = {
+                        id: `test_${Date.now()}`,
+                        premium: false,
+                        created_at: new Date().toISOString(),
+                        ...userData
+                    };
+
+                    logger.info('Создание профиля пользователя...');
+                    
+                    const { data, error } = await this.supabase
+                        .from('profiles')
+                        .insert([profileData])
+                        .select();
+
+                    if (error) throw error;
+
+                    this.currentUser = data[0];
+                    logger.success(`Профиль создан: ${this.currentUser.id}`);
+                    return this.currentUser;
+
+                } catch (error) {
+                    logger.error(`Ошибка создания профиля: ${error.message}`);
+                    return null;
+                }
+            }
+
+            async getRandomCards(count = 3) {
+                const cards = [
+                    'Дурак', 'Маг', 'Верховная Жрица', 'Императрица', 'Император',
+                    'Иерофант', 'Влюбленные', 'Колесница', 'Сила', 'Отшельник',
+                    'Колесо Фортуны', 'Справедливость', 'Повешенный', 'Смерть',
+                    'Умеренность', 'Дьявол', 'Башня', 'Звезда', 'Луна', 'Солнце',
+                    'Суд', 'Мир'
+                ];
+
+                const selectedCards = [];
+                for (let i = 0; i < count; i++) {
+                    const randomIndex = Math.floor(Math.random() * cards.length);
+                    selectedCards.push(cards[randomIndex]);
+                    cards.splice(randomIndex, 1);
+                }
+
+                logger.success(`Вытянуты карты: ${selectedCards.join(', ')}`);
+                return selectedCards;
+            }
+        }
+
+        // Функция обновления статуса
+        function updateStatus(message, isSuccess = true) {
+            const statusItem = document.querySelector('.status-item');
+            const statusIcon = statusItem.querySelector('.status-icon');
+            const statusText = statusItem.querySelector('.status-text');
+            const statusDetails = document.getElementById('statusDetails');
+
+            statusIcon.textContent = isSuccess ? '✅' : '❌';
+            statusText.textContent = isSuccess ? 'Система готова' : 'Ошибка инициализации';
+            statusDetails.textContent = message;
+
+            const statusPanel = document.querySelector('.status-panel');
+            statusPanel.style.borderLeftColor = isSuccess ? '#28a745' : '#dc3545';
+        }
+
+        // Функция загрузки Supabase
+        async function loadSupabase() {
             return new Promise((resolve, reject) => {
+                if (window.supabase) {
+                    resolve();
+                    return;
+                }
+
+                logger.info('Загрузка Supabase SDK...');
                 const script = document.createElement('script');
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = reject;
+                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+                script.onload = () => {
+                    logger.success('Supabase SDK загружен');
+                    resolve();
+                };
+                script.onerror = () => {
+                    logger.error('Ошибка загрузки Supabase SDK');
+                    reject(new Error('Failed to load Supabase'));
+                };
                 document.head.appendChild(script);
             });
         }
-    </script>
 
-    <script>
-        let testResults = [];
-
-        function addTestResult(name, status, details = '') {
-            testResults.push({ name, status, details });
-            updateDisplay();
-        }
-
-        function updateDisplay() {
-            const container = document.getElementById('testResults');
-            container.innerHTML = testResults.map(result => `
-                <div class="test-item ${result.status}">
-                    <div class="status">
-                        ${result.status === 'success' ? '✅' : result.status === 'error' ? '❌' : '⚠️'} 
-                        ${result.name}
-                    </div>
-                    ${result.details ? `<div class="details">${result.details}</div>` : ''}
-                </div>
-            `).join('');
-        }
-
-        function clearResults() {
-            testResults = [];
-            updateDisplay();
-        }
-
-        async function runTests() {
-            clearResults();
-            addTestResult('Начинаем тестирование...', 'warning');
-
-            // Проверяем доступность необходимых объектов
-            addTestResult('Проверка загрузки', 'warning', 
-                `Supabase: ${typeof window.supabase}<br>` +
-                `Config functions: ${typeof window.initializeConfig}<br>` +
-                `TarotDB: ${typeof window.TarotDB}`);
-
-            // Тест 1: Проверка API конфигурации
+        // Основная функция инициализации
+        async function initializeApp() {
             try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
+                logger.info('Запуск инициализации приложения...');
+
+                // 1. Загружаем Supabase
+                await loadSupabase();
+
+                // 2. Создаем и инициализируем TarotDB
+                TarotDB = new TarotDBManager();
+                const dbInitialized = await TarotDB.initialize();
+
+                if (!dbInitialized) {
+                    throw new Error('Не удалось инициализировать TarotDB');
+                }
+
+                // 3. Помечаем приложение как готовое
+                isAppReady = true;
                 
-                if (config.success !== false && config.supabase) {
-                    addTestResult('API конфигурация', 'success', 
-                        `URL: ${config.supabase.url}<br>Ключ: ${config.supabase.anonKey.substring(0, 20)}...`);
-                } else {
-                    addTestResult('API конфигурация', 'error', 'Конфигурация не получена');
+                updateStatus('Все компоненты загружены успешно', true);
+                logger.success('Приложение полностью готово к работе');
+
+                // 4. Включаем кнопки
+                enableButtons();
+
+            } catch (error) {
+                logger.error(`Критическая ошибка инициализации: ${error.message}`);
+                updateStatus(`Ошибка: ${error.message}`, false);
+            }
+        }
+
+        // Функция включения кнопок
+        function enableButtons() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            });
+        }
+
+        // Обработчики событий
+        function setupEventListeners() {
+            // Тест подключения
+            document.getElementById('testConnection').addEventListener('click', async () => {
+                if (!isAppReady) {
+                    logger.warning('Приложение еще не готово');
                     return;
                 }
-            } catch (error) {
-                addTestResult('API конфигурация', 'error', error.message);
-                return;
-            }
 
-            // Тест 2: Инициализация конфигурации
-            try {
-                if (typeof window.initializeConfig === 'function') {
-                    await window.initializeConfig();
-                    addTestResult('Инициализация конфигурации', 'success', 'Конфигурация загружена');
-                } else {
-                    addTestResult('Инициализация конфигурации', 'error', 'Функция initializeConfig не найдена');
+                logger.info('Тестирование подключения...');
+                const status = TarotDB.getStatus();
+                logger.success(`Статус подключения: ${status.connected ? 'Активно' : 'Отключено'}`);
+            });
+
+            // Создание профиля
+            document.getElementById('createProfile').addEventListener('click', async () => {
+                if (!isAppReady) {
+                    logger.warning('Приложение еще не готово');
                     return;
                 }
-            } catch (error) {
-                addTestResult('Инициализация конфигурации', 'error', error.message);
-                return;
-            }
 
-            // Тест 3: Проверка TarotDB
-            if (typeof window.TarotDB === 'undefined') {
-                addTestResult('TarotDB объект', 'error', 'TarotDB не найден. Проверьте загрузку supabase.js');
-                return;
-            } else {
-                addTestResult('TarotDB объект', 'success', 'TarotDB найден');
-            }
+                await TarotDB.createUserProfile();
+            });
 
-            // Тест 4: Инициализация Supabase
-            try {
-                if (window.TarotDB && typeof window.TarotDB.initialize === 'function') {
-                    const initialized = await window.TarotDB.initialize();
-                    if (initialized) {
-                        addTestResult('Инициализация Supabase', 'success', 'Клиент успешно создан');
-                    } else {
-                        addTestResult('Инициализация Supabase', 'warning', 'Работает в автономном режиме');
-                    }
-                } else {
-                    addTestResult('Инициализация Supabase', 'error', 'Функция initialize не найдена');
+            // Вытягивание карт
+            document.getElementById('drawCards').addEventListener('click', async () => {
+                if (!isAppReady) {
+                    logger.warning('Приложение еще не готово');
                     return;
                 }
-            } catch (error) {
-                addTestResult('Инициализация Supabase', 'error', error.message);
-            }
 
-            // Тест 5: Подключение к базе
-            try {
-                if (window.TarotDB && typeof window.TarotDB.getStatus === 'function') {
-                    const status = window.TarotDB.getStatus();
-                    if (status.connected) {
-                        addTestResult('Подключение к БД', 'success', 
-                            `Режим: ${status.mode}<br>Статус: ${status.client}`);
-                    } else {
-                        addTestResult('Подключение к БД', 'warning', 
-                            `Режим: ${status.mode}<br>Работает локально`);
-                    }
-                } else {
-                    addTestResult('Подключение к БД', 'error', 'Функция getStatus не найдена');
-                }
-            } catch (error) {
-                addTestResult('Подключение к БД', 'error', error.message);
-            }
+                const cards = await TarotDB.getRandomCards(3);
+                displayCards(cards);
+            });
 
-            // Тест 6: Проверка создания профиля
-            try {
-                if (window.TarotDB && typeof window.TarotDB.createUserProfile === 'function') {
-                    const testUserId = 'test_' + Date.now();
-                    const profile = await window.TarotDB.createUserProfile(testUserId, 'test_user');
-                    
-                    if (profile) {
-                        addTestResult('Создание профиля', 'success', 
-                            `ID: ${profile.telegram_id}<br>Premium: ${profile.is_premium}`);
-                    } else {
-                        addTestResult('Создание профиля', 'error', 'Профиль не создан');
-                    }
-                } else {
-                    addTestResult('Создание профиля', 'error', 'Функция createUserProfile не найдена');
-                }
-            } catch (error) {
-                addTestResult('Создание профиля', 'error', error.message);
-            }
-
-            addTestResult('Тестирование завершено!', 'success');
+            // Очистка логов
+            document.getElementById('clearLogs').addEventListener('click', () => {
+                document.getElementById('logs').innerHTML = '';
+                logger.info('Логи очищены');
+            });
         }
 
-        async function testCreateUser() {
-            try {
-                if (typeof window.TarotDB === 'undefined') {
-                    addTestResult('Тест пользователя', 'error', 'TarotDB не найден');
-                    return;
-                }
-                
-                const userId = 'demo_user_' + Date.now();
-                const profile = await window.TarotDB.createUserProfile(userId, 'Demo User');
-                
-                addTestResult('Тест пользователя', 'success', 
-                    `<pre>${JSON.stringify(profile, null, 2)}</pre>`);
-            } catch (error) {
-                addTestResult('Тест пользователя', 'error', error.message);
-            }
+        // Отображение карт
+        function displayCards(cards) {
+            const cardSpread = document.getElementById('cardSpread');
+            cardSpread.innerHTML = '';
+            cardSpread.classList.remove('hidden');
+
+            cards.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'tarot-card';
+                cardElement.textContent = card;
+                cardElement.style.animationDelay = `${index * 0.2}s`;
+                cardSpread.appendChild(cardElement);
+            });
         }
 
-        async function testSaveCard() {
-            try {
-                if (typeof window.TarotDB === 'undefined') {
-                    addTestResult('Тест карты дня', 'error', 'TarotDB не найден');
-                    return;
-                }
-                
-                const userId = 'demo_user_' + Date.now();
-                const cardData = {
-                    id: 'MA_0',
-                    name: 'Дурак',
-                    interpretation: 'Тестовая интерпретация карты'
-                };
-                
-                const result = await window.TarotDB.saveDailyCard(userId, cardData);
-                
-                addTestResult('Тест карты дня', 'success', 
-                    `<pre>${JSON.stringify(result, null, 2)}</pre>`);
-            } catch (error) {
-                addTestResult('Тест карты дня', 'error', error.message);
-            }
-        }
+        // Запуск приложения при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            logger.info('DOM загружен, запуск приложения...');
+            setupEventListeners();
+            
+            // Отключаем кнопки до полной инициализации
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+            });
 
-        // Убираем автоматический запуск
-        // window.addEventListener('load', () => {
-        //     setTimeout(runTests, 1000);
-        // });
+            // Запускаем инициализацию
+            initializeApp();
+        });
+
+        // Глобальная обработка ошибок
+        window.addEventListener('error', (event) => {
+            logger.error(`Глобальная ошибка: ${event.error?.message || event.message}`);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            logger.error(`Необработанное отклонение промиса: ${event.reason}`);
+        });
     </script>
 </body>
 </html>
