@@ -3,171 +3,701 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔧 Диагностика загрузки</title>
+    <title>Диагностика Tarot App</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #1a1a2e; 
-            color: white; 
-            padding: 20px; 
-            line-height: 1.6;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .log { 
-            background: rgba(0,0,0,0.3); 
-            padding: 10px; 
-            margin: 5px 0; 
-            border-radius: 5px; 
-            font-family: monospace;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
         }
-        .success { border-left: 4px solid #4caf50; }
-        .error { border-left: 4px solid #f44336; }
-        .warning { border-left: 4px solid #ff9800; }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #3498db, #e74c3c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .diagnostic-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-left: 4px solid #3498db;
+        }
+
+        .diagnostic-section.success {
+            border-left-color: #2ecc71;
+        }
+
+        .diagnostic-section.error {
+            border-left-color: #e74c3c;
+        }
+
+        .diagnostic-section.warning {
+            border-left-color: #f39c12;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-icon {
+            margin-right: 10px;
+            font-size: 1.5rem;
+        }
+
+        .test-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .test-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .test-result {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .test-result.pass {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .test-result.fail {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .test-result.pending {
+            background: #f39c12;
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .details {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: #bdc3c7;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>🔧 Диагностика загрузки скриптов</h1>
-    <div id="logs"></div>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Диагностика системы</h1>
+            <p>Полная проверка компонентов Tarot приложения</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="runFullDiagnostic">🚀 Полная диагностика</button>
+            <button class="btn" id="checkSupabase">☁️ Проверить Supabase</button>
+            <button class="btn" id="testDatabase">🗄️ Тест базы данных</button>
+            <button class="btn" id="clearResults">🗑️ Очистить результаты</button>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div id="diagnosticResults"></div>
+    </div>
 
     <script>
-        const logs = [];
-        
-        function addLog(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            logs.push({ timestamp, message, type });
-            updateLogs();
+        // Конфигурация
+        const SUPABASE_CONFIG = {
+            url: 'https://jjowuzqrhwcuulcnkxh.supabase.co',
+            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFyaHdjdXVsY25reGgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczNzM4NzU1NywiZXhwIjoyMDUyOTYzNTU3fQ.2TXJ5qnz2vj0k3cGSrEYC8jfhgkKmj5P-e0hJdSb4-Q'
+        };
+
+        let supabaseClient = null;
+        let testResults = {};
+
+        // Утилиты
+        function updateProgress(percentage) {
+            document.getElementById('progressFill').style.width = `${percentage}%`;
         }
-        
-        function updateLogs() {
-            document.getElementById('logs').innerHTML = logs.map(log => 
-                `<div class="log ${log.type}">[${log.timestamp}] ${log.message}</div>`
-            ).join('');
+
+        function createSection(title, icon, status = 'info') {
+            const section = document.createElement('div');
+            section.className = `diagnostic-section ${status}`;
+            section.innerHTML = `
+                <div class="section-title">
+                    <span class="section-icon">${icon}</span>
+                    ${title}
+                </div>
+                <div class="section-content"></div>
+                <div class="timestamp">Последняя проверка: ${new Date().toLocaleString()}</div>
+            `;
+            return section;
         }
-        
-        addLog('🚀 Начинаем диагностику...', 'info');
-        
-        // Проверяем доступность Supabase
-        const checkSupabase = () => {
-            if (typeof window.supabase !== 'undefined') {
-                addLog('✅ Supabase библиотека загружена', 'success');
-                return true;
-            } else {
-                addLog('❌ Supabase библиотека НЕ загружена', 'error');
-                return false;
+
+        function addTestItem(container, testName, result, details = '') {
+            const statusClass = result === 'pass' ? 'pass' : result === 'fail' ? 'fail' : 'pending';
+            const statusText = result === 'pass' ? 'ПРОЙДЕН' : result === 'fail' ? 'ОШИБКА' : 'ОЖИДАНИЕ';
+            
+            const testItem = document.createElement('div');
+            testItem.className = 'test-item';
+            testItem.innerHTML = `
+                <div class="test-name">${testName}</div>
+                <div class="test-result ${statusClass}">${statusText}</div>
+            `;
+            
+            if (details) {
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'details';
+                detailsDiv.textContent = details;
+                testItem.appendChild(detailsDiv);
             }
-        };
-        
-        // Загружаем Supabase
-        addLog('📦 Загружаем Supabase...', 'info');
-        
-        const supabaseScript = document.createElement('script');
-        supabaseScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-        supabaseScript.onload = () => {
-            addLog('✅ Supabase script загружен', 'success');
-            checkSupabase();
-            loadNextScript();
-        };
-        supabaseScript.onerror = () => {
-            addLog('❌ Ошибка загрузки Supabase', 'error');
-        };
-        document.head.appendChild(supabaseScript);
-        
-        async function loadNextScript() {
-            try {
-                // Загружаем config.js
-                addLog('📦 Загружаем config.js...', 'info');
-                await loadScript('config.js');
-                
-                // Проверяем функции config
-                if (typeof window.initializeConfig === 'function') {
-                    addLog('✅ config.js загружен корректно', 'success');
-                } else {
-                    addLog('❌ config.js загружен, но функции недоступны', 'error');
-                }
-                
-                // Загружаем supabase.js
-                addLog('📦 Загружаем supabase.js...', 'info');
-                await loadScript('supabase.js');
-                
-                // Проверяем TarotDB
-                if (typeof window.TarotDB !== 'undefined') {
-                    addLog('✅ TarotDB объект создан', 'success');
-                    addLog(`📋 Доступные методы: ${Object.keys(window.TarotDB).join(', ')}`, 'info');
-                } else {
-                    addLog('❌ TarotDB объект НЕ создан', 'error');
-                }
-                
-                // Тестируем инициализацию
-                await testInitialization();
-                
-            } catch (error) {
-                addLog(`❌ Ошибка: ${error.message}`, 'error');
-            }
+            
+            container.appendChild(testItem);
         }
-        
-        async function testInitialization() {
-            try {
-                addLog('🧪 Тестируем инициализацию...', 'info');
-                
-                // Инициализируем конфигурацию
-                if (typeof window.initializeConfig === 'function') {
-                    await window.initializeConfig();
-                    addLog('✅ Конфигурация инициализирована', 'success');
-                } else {
-                    addLog('❌ Функция initializeConfig недоступна', 'error');
-                    return;
-                }
-                
-                // Проверяем конфигурацию Supabase
-                if (typeof window.getSupabaseConfig === 'function') {
-                    const config = window.getSupabaseConfig();
-                    if (config && config.url) {
-                        addLog(`✅ Supabase URL: ${config.url}`, 'success');
-                    } else {
-                        addLog('❌ Supabase конфигурация недоступна', 'error');
+
+        // Тесты
+
+        // 1. Проверка окружения браузера
+        async function testBrowserEnvironment() {
+            const section = createSection('Окружение браузера', '🌐', 'info');
+            const content = section.querySelector('.section-content');
+            
+            const tests = [
+                {
+                    name: 'Поддержка ES6+',
+                    test: () => {
+                        try {
+                            eval('const test = () => Promise.resolve();');
+                            return { pass: true };
+                        } catch (e) {
+                            return { pass: false, details: e.message };
+                        }
                     }
+                },
+                {
+                    name: 'Fetch API',
+                    test: () => ({
+                        pass: typeof fetch !== 'undefined',
+                        details: typeof fetch !== 'undefined' ? 'Доступен' : 'Не поддерживается'
+                    })
+                },
+                {
+                    name: 'LocalStorage',
+                    test: () => {
+                        try {
+                            localStorage.setItem('test', 'test');
+                            localStorage.removeItem('test');
+                            return { pass: true, details: 'Доступен' };
+                        } catch (e) {
+                            return { pass: false, details: e.message };
+                        }
+                    }
+                },
+                {
+                    name: 'HTTPS соединение',
+                    test: () => ({
+                        pass: location.protocol === 'https:' || location.hostname === 'localhost',
+                        details: `Протокол: ${location.protocol}`
+                    })
                 }
+            ];
+
+            let passCount = 0;
+            for (const test of tests) {
+                const result = test.test();
+                addTestItem(content, test.name, result.pass ? 'pass' : 'fail', result.details);
+                if (result.pass) passCount++;
+            }
+
+            section.className = `diagnostic-section ${passCount === tests.length ? 'success' : 'warning'}`;
+            return { section, passed: passCount, total: tests.length };
+        }
+
+        // 2. Загрузка Supabase
+        async function testSupabaseLoading() {
+            const section = createSection('Загрузка Supabase SDK', '📦', 'info');
+            const content = section.querySelector('.section-content');
+
+            try {
+                addTestItem(content, 'Проверка существующего Supabase', window.supabase ? 'pass' : 'fail', 
+                    window.supabase ? 'Уже загружен' : 'Требуется загрузка');
+
+                if (!window.supabase) {
+                    addTestItem(content, 'Загрузка Supabase SDK', 'pending', 'Загружается...');
+                    
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                    
+                    content.removeChild(content.lastChild);
+                    addTestItem(content, 'Загрузка Supabase SDK', 'pass', 'Успешно загружен');
+                }
+
+                const tests = [
+                    {
+                        name: 'Supabase объект доступен',
+                        result: window.supabase ? 'pass' : 'fail',
+                        details: window.supabase ? 'Объект найден' : 'Объект не найден'
+                    },
+                    {
+                        name: 'Метод createClient',
+                        result: window.supabase?.createClient ? 'pass' : 'fail',
+                        details: window.supabase?.createClient ? 'Метод доступен' : 'Метод не найден'
+                    }
+                ];
+
+                let passCount = 0;
+                tests.forEach(test => {
+                    addTestItem(content, test.name, test.result, test.details);
+                    if (test.result === 'pass') passCount++;
+                });
+
+                section.className = `diagnostic-section ${passCount === tests.length ? 'success' : 'error'}`;
+                return { section, passed: passCount, total: tests.length };
+
+            } catch (error) {
+                addTestItem(content, 'Критическая ошибка', 'fail', error.message);
+                section.className = 'diagnostic-section error';
+                return { section, passed: 0, total: 1 };
+            }
+        }
+
+        // 3. Подключение к Supabase
+        async function testSupabaseConnection() {
+            const section = createSection('Подключение к Supabase', '🔗', 'info');
+            const content = section.querySelector('.section-content');
+
+            try {
+                addTestItem(content, 'Создание клиента Supabase', 'pending', 'Инициализация...');
                 
-                // Тестируем TarotDB
-                if (window.TarotDB && typeof window.TarotDB.initialize === 'function') {
-                    const result = await window.TarotDB.initialize();
-                    if (result) {
-                        addLog('✅ TarotDB инициализирован успешно', 'success');
+                supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+                
+                content.removeChild(content.lastChild);
+                addTestItem(content, 'Создание клиента Supabase', 'pass', 'Клиент создан');
+
+                addTestItem(content, 'Проверка подключения', 'pending', 'Тестирование соединения...');
+                
+                const { data, error } = await supabaseClient.from('profiles').select('count').limit(1);
+                
+                content.removeChild(content.lastChild);
+                
+                if (error && error.code !== 'PGRST116') {
+                    addTestItem(content, 'Проверка подключения', 'fail', `Ошибка: ${error.message}`);
+                    section.className = 'diagnostic-section error';
+                    return { section, passed: 1, total: 2 };
+                } else {
+                    addTestItem(content, 'Проверка подключения', 'pass', 'Соединение установлено');
+                    
+                    // Дополнительные тесты
+                    const additionalTests = [
+                        {
+                            name: 'Валидация URL',
+                            result: SUPABASE_CONFIG.url.startsWith('https://') ? 'pass' : 'fail',
+                            details: `URL: ${SUPABASE_CONFIG.url}`
+                        },
+                        {
+                            name: 'Валидация ключа',
+                            result: SUPABASE_CONFIG.key.length > 100 ? 'pass' : 'fail',
+                            details: `Длина ключа: ${SUPABASE_CONFIG.key.length} символов`
+                        }
+                    ];
+
+                    let passCount = 2; // Уже 2 прошли
+                    additionalTests.forEach(test => {
+                        addTestItem(content, test.name, test.result, test.details);
+                        if (test.result === 'pass') passCount++;
+                    });
+
+                    section.className = `diagnostic-section ${passCount === 4 ? 'success' : 'warning'}`;
+                    return { section, passed: passCount, total: 4 };
+                }
+
+            } catch (error) {
+                addTestItem(content, 'Критическая ошибка', 'fail', error.message);
+                section.className = 'diagnostic-section error';
+                return { section, passed: 0, total: 1 };
+            }
+        }
+
+        // 4. Тестирование базы данных
+        async function testDatabaseOperations() {
+            const section = createSection('Операции с базой данных', '🗄️', 'info');
+            const content = section.querySelector('.section-content');
+
+            if (!supabaseClient) {
+                addTestItem(content, 'Клиент Supabase', 'fail', 'Клиент не инициализирован');
+                section.className = 'diagnostic-section error';
+                return { section, passed: 0, total: 1 };
+            }
+
+            const tests = [
+                {
+                    name: 'Чтение из таблицы profiles',
+                    test: async () => {
+                        const { data, error } = await supabaseClient
+                            .from('profiles')
+                            .select('*')
+                            .limit(5);
                         
-                        const status = window.TarotDB.getStatus();
-                        addLog(`📊 Статус: ${JSON.stringify(status)}`, 'info');
-                    } else {
-                        addLog('⚠️ TarotDB в автономном режиме', 'warning');
+                        if (error && error.code !== 'PGRST116') {
+                            return { pass: false, details: error.message };
+                        }
+                        return { pass: true, details: `Найдено записей: ${data?.length || 0}` };
                     }
-                } else {
-                    addLog('❌ TarotDB.initialize недоступна', 'error');
+                },
+                {
+                    name: 'Создание тестового профиля',
+                    test: async () => {
+                        const testProfile = {
+                            id: `diagnostic_test_${Date.now()}`,
+                            premium: false,
+                            created_at: new Date().toISOString()
+                        };
+
+                        const { data, error } = await supabaseClient
+                            .from('profiles')
+                            .insert([testProfile])
+                            .select();
+
+                        if (error) {
+                            return { pass: false, details: error.message };
+                        }
+                        return { pass: true, details: `Создан профиль: ${data[0]?.id}` };
+                    }
+                },
+                {
+                    name: 'Удаление тестового профиля',
+                    test: async () => {
+                        const { data, error } = await supabaseClient
+                            .from('profiles')
+                            .delete()
+                            .like('id', 'diagnostic_test_%');
+
+                        if (error) {
+                            return { pass: false, details: error.message };
+                        }
+                        return { pass: true, details: 'Тестовые данные очищены' };
+                    }
                 }
+            ];
+
+            let passCount = 0;
+            for (const test of tests) {
+                addTestItem(content, test.name, 'pending', 'Выполняется...');
                 
-                addLog('🎉 Диагностика завершена!', 'success');
-                
-            } catch (error) {
-                addLog(`❌ Ошибка тестирования: ${error.message}`, 'error');
+                try {
+                    const result = await test.test();
+                    content.removeChild(content.lastChild);
+                    addTestItem(content, test.name, result.pass ? 'pass' : 'fail', result.details);
+                    if (result.pass) passCount++;
+                } catch (error) {
+                    content.removeChild(content.lastChild);
+                    addTestItem(content, test.name, 'fail', error.message);
+                }
             }
+
+            section.className = `diagnostic-section ${passCount === tests.length ? 'success' : passCount > 0 ? 'warning' : 'error'}`;
+            return { section, passed: passCount, total: tests.length };
         }
-        
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = () => {
-                    addLog(`✅ ${src} загружен`, 'success');
-                    resolve();
-                };
-                script.onerror = (error) => {
-                    addLog(`❌ Ошибка загрузки ${src}`, 'error');
-                    reject(error);
-                };
-                document.head.appendChild(script);
-            });
+
+        // 5. Тест производительности
+        async function testPerformance() {
+            const section = createSection('Тест производительности', '⚡', 'info');
+            const content = section.querySelector('.section-content');
+
+            if (!supabaseClient) {
+                addTestItem(content, 'Клиент недоступен', 'fail', 'Требуется подключение к Supabase');
+                section.className = 'diagnostic-section error';
+                return { section, passed: 0, total: 1 };
+            }
+
+            const tests = [
+                {
+                    name: 'Скорость запроса (SELECT)',
+                    test: async () => {
+                        const start = performance.now();
+                        const { data, error } = await supabaseClient
+                            .from('profiles')
+                            .select('*')
+                            .limit(10);
+                        const end = performance.now();
+                        
+                        const duration = Math.round(end - start);
+                        return {
+                            pass: duration < 2000 && !error,
+                            details: error ? error.message : `Время выполнения: ${duration}мс`
+                        };
+                    }
+                },
+                {
+                    name: 'Скорость создания записи',
+                    test: async () => {
+                        const start = performance.now();
+                        const { data, error } = await supabaseClient
+                            .from('profiles')
+                            .insert([{
+                                id: `perf_test_${Date.now()}`,
+                                premium: false
+                            }])
+                            .select();
+                        const end = performance.now();
+                        
+                        // Очищаем тестовую запись
+                        if (data?.[0]) {
+                            await supabaseClient
+                                .from('profiles')
+                                .delete()
+                                .eq('id', data[0].id);
+                        }
+                        
+                        const duration = Math.round(end - start);
+                        return {
+                            pass: duration < 3000 && !error,
+                            details: error ? error.message : `Время выполнения: ${duration}мс`
+                        };
+                    }
+                }
+            ];
+
+            let passCount = 0;
+            for (const test of tests) {
+                addTestItem(content, test.name, 'pending', 'Измерение...');
+                
+                try {
+                    const result = await test.test();
+                    content.removeChild(content.lastChild);
+                    addTestItem(content, test.name, result.pass ? 'pass' : 'fail', result.details);
+                    if (result.pass) passCount++;
+                } catch (error) {
+                    content.removeChild(content.lastChild);
+                    addTestItem(content, test.name, 'fail', error.message);
+                }
+            }
+
+            section.className = `diagnostic-section ${passCount === tests.length ? 'success' : 'warning'}`;
+            return { section, passed: passCount, total: tests.length };
         }
-        
-        // Слушаем событие готовности TarotDB
-        window.addEventListener('TarotDB-ready', (event) => {
-            addLog(`🎯 TarotDB готов! Методы: ${event.detail.methods.join(', ')}`, 'success');
+
+        // Основные функции диагностики
+        async function runFullDiagnostic() {
+            const resultsContainer = document.getElementById('diagnosticResults');
+            resultsContainer.innerHTML = '';
+            updateProgress(0);
+
+            const diagnostics = [
+                { name: 'browser', func: testBrowserEnvironment, weight: 10 },
+                { name: 'supabase-loading', func: testSupabaseLoading, weight: 20 },
+                { name: 'supabase-connection', func: testSupabaseConnection, weight: 30 },
+                { name: 'database', func: testDatabaseOperations, weight: 25 },
+                { name: 'performance', func: testPerformance, weight: 15 }
+            ];
+
+            let totalProgress = 0;
+            let totalPassed = 0;
+            let totalTests = 0;
+
+            for (const diagnostic of diagnostics) {
+                const result = await diagnostic.func();
+                resultsContainer.appendChild(result.section);
+                
+                totalPassed += result.passed;
+                totalTests += result.total;
+                totalProgress += diagnostic.weight;
+                updateProgress(totalProgress);
+                
+                // Небольшая пауза для лучшего UX
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            // Итоговая сводка
+            const summarySection = createSection(
+                `Итоги диагностики (${totalPassed}/${totalTests})`,
+                '📊',
+                totalPassed === totalTests ? 'success' : totalPassed > totalTests * 0.7 ? 'warning' : 'error'
+            );
+            
+            const summaryContent = summarySection.querySelector('.section-content');
+            const percentage = Math.round((totalPassed / totalTests) * 100);
+            
+            summaryContent.innerHTML = `
+                <div class="details">
+                Успешность: ${percentage}%
+                Пройдено тестов: ${totalPassed}
+                Всего тестов: ${totalTests}
+                Статус системы: ${percentage >= 90 ? 'Отлично' : percentage >= 70 ? 'Удовлетворительно' : 'Требует внимания'}
+                </div>
+            `;
+            
+            resultsContainer.appendChild(summarySection);
+            updateProgress(100);
+        }
+
+        async function quickSupabaseCheck() {
+            const resultsContainer = document.getElementById('diagnosticResults');
+            resultsContainer.innerHTML = '';
+            updateProgress(0);
+
+            updateProgress(33);
+            const loadingResult = await testSupabaseLoading();
+            resultsContainer.appendChild(loadingResult.section);
+
+            updateProgress(66);
+            const connectionResult = await testSupabaseConnection();
+            resultsContainer.appendChild(connectionResult.section);
+
+            updateProgress(100);
+        }
+
+        async function quickDatabaseCheck() {
+            const resultsContainer = document.getElementById('diagnosticResults');
+            resultsContainer.innerHTML = '';
+            updateProgress(0);
+
+            if (!supabaseClient) {
+                updateProgress(50);
+                await testSupabaseConnection();
+            }
+
+            updateProgress(75);
+            const dbResult = await testDatabaseOperations();
+            resultsContainer.appendChild(dbResult.section);
+
+            updateProgress(100);
+        }
+
+        function clearResults() {
+            document.getElementById('diagnosticResults').innerHTML = '';
+            updateProgress(0);
+        }
+
+        // Обработчики событий
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('runFullDiagnostic').addEventListener('click', runFullDiagnostic);
+            document.getElementById('checkSupabase').addEventListener('click', quickSupabaseCheck);
+            document.getElementById('testDatabase').addEventListener('click', quickDatabaseCheck);
+            document.getElementById('clearResults').addEventListener('click', clearResults);
+
+            // Автоматический запуск базовой диагностики
+            setTimeout(() => {
+                testBrowserEnvironment().then(result => {
+                    document.getElementById('diagnosticResults').appendChild(result.section);
+                });
+            }, 500);
         });
     </script>
 </body>
