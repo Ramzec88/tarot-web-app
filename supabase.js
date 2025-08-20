@@ -547,4 +547,17 @@ window.TarotDB = {
     getUserHistory
 };
 
+// Проверяем экспорт
 console.log('✅ Supabase интеграция загружена');
+console.log('🔧 TarotDB экспортирован:', typeof window.TarotDB);
+console.log('📋 Доступные методы:', Object.keys(window.TarotDB));
+
+// Уведомляем о готовности
+if (typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('TarotDB-ready', { 
+        detail: { 
+            timestamp: new Date().toISOString(),
+            methods: Object.keys(window.TarotDB)
+        }
+    }));
+}
