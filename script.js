@@ -488,9 +488,10 @@ async function handleAskQuestion() {
         loadingState?.classList.add('hidden');
         
         if (questionAnswerText) {
-            questionAnswerText.textContent = answer;
+            await typeText(questionAnswerText, answer);
         }
         questionAnswerContainer?.classList.remove('hidden');
+        questionAnswerContainer?.classList.add('show');
         
         // Обновляем счетчики
         if (!appState.isPremium) {
