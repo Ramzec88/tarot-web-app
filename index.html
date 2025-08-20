@@ -45,10 +45,9 @@
                 <div class="card-info-after-flip hidden" id="cardInfoAfterFlip">
                     <div class="card-name" id="flippedCardName"></div>
                 </div>
+                <!-- Добавлен недостающий элемент -->
+                <div class="card-intro-text hidden" id="cardIntroText"></div>
             </div>
-            
-            <div class="pre-interpretation-text hidden" id="preInterpretationText">
-                </div>
 
             <div class="ai-answer-container hidden" id="aiAnswerContainer">
                 <div class="ai-answer-box">
@@ -56,11 +55,11 @@
                         <h4 id="aiInterpretationTitle">ИИ-интерпретация</h4>
                     </div>
                     <div class="ai-answer-content" id="aiInterpretationText">
-                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="subscription-banner" id="afterDailyCardBanner">
+            <div class="subscription-banner hidden" id="afterDailyCardBanner">
                 <div class="banner-icon">✨</div>
                 <div class="banner-content">
                     <h4>Узнайте больше о своём будущем</h4>
@@ -87,7 +86,7 @@
                     <i class="fas fa-magic"></i> Получить ответ
                 </button>
             </div>
-            <div class="loading" id="loadingState">
+            <div class="loading hidden" id="loadingState">
                 <div class="magic-sparkles">✨</div>
                 <div class="magic-messages">
                     <p class="magic-message">Тайные силы собираются...</p>
@@ -95,7 +94,7 @@
                     <p class="magic-message">Предсказание рождается...</p>
                 </div>
             </div>
-            <div class="ai-answer-container" id="questionAnswerContainer">
+            <div class="ai-answer-container hidden" id="questionAnswerContainer">
                 <div class="ai-answer-header">
                     <h4>Ваш ответ:</h4>
                 </div>
@@ -173,7 +172,7 @@
                     <h3>Отзывы пользователей</h3>
                 </div>
                 <div class="reviews-list" id="reviewsList">
-                    </div>
+                </div>
             </div>
         </div>
 
@@ -227,7 +226,163 @@
                             <li class="price-benefit">✅ Приватная история</li>
                             <li class="price-benefit">✅ Приоритетная поддержка</li>
                         </ul>
-                        <button class="premium-buy-btn">Купить Premium</button>
+                        <button class="premium-buy-btn" id="premiumBuyBtn">Купить Premium</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="question" class="tab-content">
+            <div class="questions-left" id="questionsLeft">Осталось бесплатных вопросов: 3</div>
+            <div class="question-form">
+                <h3>Задайте свой вопрос</h3>
+                <textarea id="questionTextarea" class="question-textarea" placeholder="Напишите свой вопрос здесь..."></textarea>
+                <div class="char-counter" id="charCounter">0/200</div>
+                <button class="question-btn" id="submitQuestionBtn" disabled>
+                    <i class="fas fa-magic"></i> Получить ответ
+                </button>
+            </div>
+            <div class="loading hidden" id="loadingState">
+                <div class="magic-sparkles">✨</div>
+                <div class="magic-messages">
+                    <p class="magic-message">Тайные силы собираются...</p>
+                    <p class="magic-message">Звезды выстраиваются...</p>
+                    <p class="magic-message">Предсказание рождается...</p>
+                </div>
+            </div>
+            <div class="ai-answer-container hidden" id="questionAnswerContainer">
+                <div class="ai-answer-header">
+                    <h4>Ваш ответ:</h4>
+                </div>
+                <div class="ai-answer-box" id="questionAnswerText"></div>
+            </div>
+        </div>
+
+        <div id="spreads" class="tab-content">
+            <div class="spreads-grid">
+                <div class="spread-card">
+                    <span class="premium-badge">PREMIUM</span>
+                    <div class="spread-icon">🌟</div>
+                    <div class="spread-name">Расклад "Путь к успеху"</div>
+                    <div class="spread-description">Анализ препятствий и возможностей</div>
+                </div>
+                <div class="spread-card">
+                    <span class="premium-badge">PREMIUM</span>
+                    <div class="spread-icon">💖</div>
+                    <div class="spread-name">Расклад "Отношения"</div>
+                    <div class="spread-description">Понимание связи с партнером</div>
+                </div>
+                <div class="spread-card">
+                    <span class="premium-badge">PREMIUM</span>
+                    <div class="spread-icon">💸</div>
+                    <div class="spread-name">Расклад "Финансы"</div>
+                    <div class="spread-description">Перспективы денежного потока</div>
+                </div>
+                <div class="spread-card">
+                    <span class="premium-badge">PREMIUM</span>
+                    <div class="spread-icon">🔮</div>
+                    <div class="spread-name">Расклад "Личный рост"</div>
+                    <div class="spread-description">Развитие внутреннего потенциала</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="history" class="tab-content">
+            <div class="history-container">
+                <div class="history-header">
+                    <h3>История Предсказаний</h3>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty" id="historyEmptyState">
+                        <span class="empty-icon">📂</span>
+                        <p>Ваша история предсказаний пока пуста.</p>
+                        <p>Начните с "Карты дня" или "Вопроса"!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="reviews" class="tab-content">
+            <div class="reviews-container">
+                <div class="reviews-header">
+                    <h3>Оставьте свой отзыв</h3>
+                </div>
+                <div class="review-form">
+                    <h4>Ваша оценка:</h4>
+                    <div class="rating-input">
+                        <div class="stars" id="starRating">
+                            <span class="star" data-value="1">★</span>
+                            <span class="star" data-value="2">★</span>
+                            <span class="star" data-value="3">★</span>
+                            <span class="star" data-value="4">★</span>
+                            <span class="star" data-value="5">★</span>
+                        </div>
+                    </div>
+                    <textarea class="review-textarea" id="reviewText" placeholder="Напишите свой отзыв здесь..."></textarea>
+                    <button class="submit-review-btn" id="submitReviewBtn">
+                        <i class="fas fa-paper-plane"></i> Отправить отзыв
+                    </button>
+                </div>
+
+                <div class="reviews-header">
+                    <h3>Отзывы пользователей</h3>
+                </div>
+                <div class="reviews-list" id="reviewsList">
+                </div>
+            </div>
+        </div>
+
+        <div id="premium" class="tab-content">
+            <div class="premium-container">
+                <div class="premium-header">
+                    <div class="premium-icon">👑</div>
+                    <h2>Получите максимум от Таро!</h2>
+                    <p>Приобретите Premium-подписку и откройте все возможности.</p>
+                </div>
+
+                <div class="premium-features">
+                    <div class="feature-item">
+                        <div class="feature-icon">✨</div>
+                        <div class="feature-text">
+                            <strong>Безлимитные вопросы ИИ</strong>
+                            <p>Задавайте любое количество вопросов и получайте подробные интерпретации.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🌟</div>
+                        <div class="feature-text">
+                            <strong>Эксклюзивные расклады</strong>
+                            <p>Доступ к уникальным раскладам Таро для глубокого анализа вашей жизни.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔒</div>
+                        <div class="feature-text">
+                            <strong>Приватная история</strong>
+                            <p>Вся ваша история вопросов и раскладов надежно хранится только для вас.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-text">
+                            <strong>Приоритетная поддержка</strong>
+                            <p>Получайте быстрые ответы на все ваши вопросы.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="premium-pricing">
+                    <div class="price-card">
+                        <div class="price-label">Лучшая цена</div>
+                        <div class="price-value">₽499</div>
+                        <div class="price-period">в месяц</div>
+                        <ul class="price-benefits">
+                            <li class="price-benefit">✅ Безлимитные вопросы</li>
+                            <li class="price-benefit">✅ Эксклюзивные расклады</li>
+                            <li class="price-benefit">✅ Приватная история</li>
+                            <li class="price-benefit">✅ Приоритетная поддержка</li>
+                        </ul>
+                        <button class="premium-buy-btn" id="premiumBuyBtn">Купить Premium</button>
                     </div>
                 </div>
             </div>
@@ -235,6 +390,10 @@
 
     </div>
 
+    <!-- Добавляем toast для уведомлений -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
