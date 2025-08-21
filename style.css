@@ -15,7 +15,6 @@ body {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
-    overflow-y: hidden; 
 
     display: flex;
     flex-direction: column;
