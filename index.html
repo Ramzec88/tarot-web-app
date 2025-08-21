@@ -100,7 +100,16 @@
                     <h4>Ваш ответ:</h4>
                 </div>
                 <div class="ai-answer-box">
+                    <img id="questionCardImage" src="" alt="Карта ответа" class="card-image hidden" style="max-width: 120px; margin: 0 auto 15px; border-radius: 10px; box-shadow: var(--shadow);">
                     <div class="ai-answer-content" id="questionAnswerText"></div>
+                </div>
+                <div id="clarifyingQuestionContainer" class="hidden" style="margin-top: 20px;">
+                    <h4>Задать уточняющий вопрос:</h4>
+                    <textarea id="clarifyingQuestionTextarea" class="question-textarea" placeholder="Напишите ваш уточняющий вопрос..."></textarea>
+                    <button class="question-btn" id="submitClarifyingQuestionBtn">Получить уточнение</button>
+                    <p id="clarifyingQuestionWarning" class="hidden" style="font-size: 0.8rem; color: var(--secondary-text); margin-top: 10px;">
+                        Это действие потратит одну из ваших бесплатных попыток.
+                    </p>
                 </div>
             </div>
         </div>
