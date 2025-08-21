@@ -100,7 +100,14 @@
                     <h4>Ваш ответ:</h4>
                 </div>
                 <div class="ai-answer-box">
-                    <img id="questionCardImage" src="" alt="Карта ответа" class="card-image hidden" style="max-width: 120px; margin: 0 auto 15px; border-radius: 10px; box-shadow: var(--shadow);">
+                    <div class="tarot-card hidden" id="questionTarotCard" style="width: 120px; height: 180px; margin: 0 auto 15px;">
+                        <div class="card-back">
+                            <span class="card-symbol">🔮</span>
+                        </div>
+                        <div class="card-front hidden">
+                            <img id="questionCardImage" src="" alt="Карта ответа" class="card-image">
+                        </div>
+                    </div>
                     <div class="ai-answer-content" id="questionAnswerText"></div>
                 </div>
                 <div id="clarifyingQuestionContainer" class="hidden" style="margin-top: 20px;">
