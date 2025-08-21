@@ -93,6 +93,24 @@ function showMessage(message, type = 'info', duration = 3000) {
 // 🃏 ЗАГРУЗКА ДАННЫХ КАРТ (ИСПРАВЛЕНО)
 // ========================================================================
 
+async function fetchCardsData() {
+    console.log('🃏 Загрузка сырых данных карт...');
+    const possiblePaths = ['./cards.json', '/cards.json', 'cards.json'];
+    for (const path of possiblePaths) {
+        try {
+            const response = await fetch(path);
+            if (response.ok) {
+                console.log(`✅ Сырые данные загружены из ${path}`);
+                return await response.json();
+            }
+        } catch (error) {
+            console.warn(`Не удалось загрузить из ${path}:`, error.message);
+        }
+    }
+    console.error('❌ Не удалось загрузить cards.json со всех путей.');
+    return null;
+}
+
 async function loadCards() {
     try {
         console.log('🃏 Загрузка карт...');
@@ -410,26 +428,25 @@ async function preloadCriticalBegetImages(cards, count = 5) {
 // Обновляем основную функцию загрузки карт
 async function loadCardsWithBegetS3() {
     try {
-        console.log('🃏 Загрузка карт с Beget S3 обработкой...');
+        console.log('🃏 Загрузка и обработка карт для S3...');
+        const cardsData = await fetchCardsData();
         
-        // Загружаем карты как обычно
-        await loadCards();
-        
-        // Если карты загружены, обрабатываем изображения
-        if (allCards && allCards.length > 0) {
+        if (cardsData && cardsData.length > 0) {
             console.log('🖼️ Начинаем обработку изображений для Beget S3...');
-            allCards = await processCardsImagesBeget(allCards);
+            allCards = await processCardsImagesBeget(cardsData);
             
             // Предзагружаем критические изображения
             await preloadCriticalBegetImages(allCards, 3);
             
             console.log('✅ Карты с Beget S3 изображениями готовы');
+        } else {
+            throw new Error('Данные карт не найдены или пусты.');
         }
         
     } catch (error) {
-        console.error('❌ Ошибка загрузки карт с Beget S3:', error);
-        // Fallback на обычную загрузку
-        await loadCards();
+        console.error('❌ Ошибка в loadCardsWithBegetS3:', error);
+        console.warn('⚠️ Используем встроенные карты как fallback.');
+        allCards = getBuiltInCards();
     }
 }
 
@@ -1239,7 +1256,7 @@ async function initApp() {
         loadAppState();
         
         // 4. Загружаем карты
-        await loadCards();
+        await loadCardsWithBegetS3();
         
         // 5. Настраиваем обработчики
         setupEventListeners();
@@ -1354,18 +1371,10 @@ function testCardImage() {
 // 🏁 ЗАПУСК ПРИЛОЖЕНИЯ
 // ========================================================================
 
-// Запускаем приложение после загрузки DOM
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🏁 DOM готов, запускаем приложение...');
-    await initApp();
-});
-
-// Запасной вариант инициализации
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
-}
+// Так как скрипт загружается динамически после того, как DOM уже готов,
+// мы можем вызывать initApp() напрямую.
+console.log('🏁 Скрипт загружен, запускаем приложение...');
+initApp();
 
 // Экспорт для отладки
 window.TarotApp = {
