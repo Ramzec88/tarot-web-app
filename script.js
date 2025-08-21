@@ -790,13 +790,21 @@ async function handleDailyCardClick() {
 
 function updateQuestionsCounter() {
     if (!questionsLeftElement) return;
+
+    if (appState.isPremium) {
+        questionsLeftElement.textContent = 'Вопросы: неограниченно';
+        questionsLeftElement.style.color = 'var(--accent-gold)';
+        return;
+    }
     
     const remaining = Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed);
     questionsLeftElement.textContent = `Осталось бесплатных вопросов: ${remaining}`;
     
-    if (remaining === 0 && !appState.isPremium) {
+    if (remaining === 0) {
         questionsLeftElement.textContent = 'Бесплатные вопросы закончились. Получите Premium!';
         questionsLeftElement.style.color = '#ff6b6b';
+    } else {
+        questionsLeftElement.style.color = 'var(--primary-text)';
     }
 }
 
