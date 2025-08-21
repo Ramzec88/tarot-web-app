@@ -25,8 +25,9 @@ let aiAnswerContainer, aiInterpretationTitle, aiInterpretationTextElement;
 let afterDailyCardBanner, askMoreQuestionsBtn, premiumBannerBtn;
 let starAnimationContainer, questionsLeftElement;
 let questionTextarea, submitQuestionBtn, charCounter;
-let loadingState, questionAnswerContainer, questionAnswerText;
+let loadingState, questionAnswerContainer, questionAnswerText, questionCardImage;
 let premiumTestToggle, premiumTestLabel;
+let clarifyingQuestionContainer, clarifyingQuestionTextarea, submitClarifyingQuestionBtn, clarifyingQuestionWarning;
 
 // 🔮 ВРЕМЕННАЯ СИМУЛЯЦИЯ ИИ-ОТВЕТА
 const simulatedAiText = "Глубокое погружение в энергии дня показывает, что перед вами открываются новые возможности для творчества и самовыражения. Используйте этот период для развития своих скрытых талантов и проявления уникальности. Избегайте сомнений и смело идите вперед, доверяя своей интуиции. Сегодняшний день благоприятен для начала новых проектов и установления гармоничных отношений с окружающими. Помните, что истинная сила исходит изнутри, и, проявляя ее, вы сможете преодолеть любые препятствия.";
@@ -860,12 +861,24 @@ async function handleAskQuestion() {
         // Показываем ответ
         loadingState?.classList.add('hidden');
         
+        if (questionCardImage) {
+            questionCardImage.src = randomCard.image;
+            questionCardImage.classList.remove('hidden');
+        }
+
         if (questionAnswerText) {
             await typeText(questionAnswerText, answer);
         }
         questionAnswerContainer?.classList.remove('hidden');
         questionAnswerContainer?.classList.add('show');
         
+        clarifyingQuestionContainer?.classList.remove('hidden');
+        if (!appState.isPremium) {
+            clarifyingQuestionWarning?.classList.remove('hidden');
+        } else {
+            clarifyingQuestionWarning?.classList.add('hidden');
+        }
+
         // Обновляем счетчики
         if (!appState.isPremium) {
             appState.questionsUsed++;
@@ -1159,7 +1172,14 @@ function initializeDOMElements() {
     loadingState = document.getElementById('loadingState');
     questionAnswerContainer = document.getElementById('questionAnswerContainer');
     questionAnswerText = document.getElementById('questionAnswerText');
+    questionCardImage = document.getElementById('questionCardImage');
     
+    // Уточняющий вопрос
+    clarifyingQuestionContainer = document.getElementById('clarifyingQuestionContainer');
+    clarifyingQuestionTextarea = document.getElementById('clarifyingQuestionTextarea');
+    submitClarifyingQuestionBtn = document.getElementById('submitClarifyingQuestionBtn');
+    clarifyingQuestionWarning = document.getElementById('clarifyingQuestionWarning');
+
     // Test Toggle
     premiumTestToggle = document.getElementById('premiumTestToggle');
     premiumTestLabel = document.getElementById('premiumTestLabel');
@@ -1197,6 +1217,7 @@ function setupEventListeners() {
     // Вопросы
     questionTextarea?.addEventListener('input', handleQuestionInput);
     submitQuestionBtn?.addEventListener('click', handleAskQuestion);
+    submitClarifyingQuestionBtn?.addEventListener('click', handleClarifyingQuestion);
     
     // Отзывы
     setupStarRating();
@@ -1211,6 +1232,67 @@ function setupEventListeners() {
     premiumTestToggle?.addEventListener('change', handlePremiumTestToggle);
     
     console.log('✅ Обработчики событий настроены');
+}
+
+async function handleClarifyingQuestion() {
+    if (!clarifyingQuestionTextarea) return;
+
+    const question = clarifyingQuestionTextarea.value.trim();
+    if (!question) {
+        showMessage('Пожалуйста, введите ваш уточняющий вопрос', 'error');
+        return;
+    }
+
+    if (!appState.isPremium && appState.questionsUsed >= appState.freeQuestionsLimit) {
+        showMessage('Бесплатные вопросы закончились. Получите Premium для безлимитных вопросов!', 'error');
+        return;
+    }
+
+    // Показываем загрузку
+    loadingState?.classList.remove('hidden');
+    submitClarifyingQuestionBtn.disabled = true;
+
+    try {
+        // Симулируем обработку вопроса
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const randomCard = getRandomCard();
+        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}:\n\n${randomCard.description || simulatedAiText}`;
+
+        // Показываем ответ
+        loadingState?.classList.add('hidden');
+
+        if (questionCardImage) {
+            questionCardImage.src = randomCard.image;
+            questionCardImage.classList.remove('hidden');
+        }
+
+        if (questionAnswerText) {
+            await typeText(questionAnswerText, answer);
+        }
+
+        // Обновляем счетчики
+        if (!appState.isPremium) {
+            appState.questionsUsed++;
+            saveAppState();
+            updateQuestionsCounter();
+        }
+
+        // Сохраняем в историю
+        await addToHistory('clarifying-question', question, answer);
+
+        // Очищаем форму
+        clarifyingQuestionTextarea.value = '';
+
+        showMessage('Уточнение получено!', 'success');
+
+    } catch (error) {
+        console.error('❌ Ошибка при обработке уточняющего вопроса:', error);
+        loadingState?.classList.add('hidden');
+        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
+    } finally {
+        submitClarifyingQuestionBtn.disabled = false;
+    }
 }
 
 // ========================================================================
