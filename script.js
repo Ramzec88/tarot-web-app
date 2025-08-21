@@ -70,6 +70,222 @@ h2, h3, h4 {
     text-shadow: 0 0 10px var(--accent-gold);
 }
 
+
+// Получение рабочего URL изображения
+async function getWorkingBegetImageUrl(cardId, isReversed = false) {
+    const possibleUrls = generateBegetImageUrl(cardId, isReversed);
+    
+    // Проверяем каждый URL
+    for (const url of possibleUrls) {
+        const isAvailable = await checkBegetImageAvailability(url);
+        if (isAvailable) {
+            console.log(`✅ Найдено изображение: ${url}`);
+            return url;
+        }
+    }
+    
+    console.warn(`⚠️ Изображение не найдено для ${cardId}, используем fallback`);
+    return null;
+}
+
+// Обновленная функция обработки изображений карт для Beget S3
+async function processCardsImagesBeget(cards) {
+    console.log(`🖼️ Обработка ${cards.length} изображений карт для Beget S3...`);
+    
+    const processedCards = [];
+    
+    for (const card of cards) {
+        const processedCard = { ...card };
+        
+        try {
+            // Пытаемся найти рабочее изображение в S3
+            const uprightUrl = await getWorkingBegetImageUrl(card.id, false);
+            const reversedUrl = await getWorkingBegetImageUrl(card.id, true);
+            
+            if (uprightUrl) {
+                processedCard.image = uprightUrl;
+                processedCard.imageUpright = uprightUrl;
+                processedCard.imageSource = 'beget-s3';
+            } else {
+                // Fallback на красивый placeholder
+                processedCard.image = createCardPlaceholder(card);
+                processedCard.imageUpright = createCardPlaceholder(card);
+                processedCard.imageSource = 'placeholder';
+            }
+            
+            if (reversedUrl) {
+                processedCard.imageReversed = reversedUrl;
+            } else {
+                processedCard.imageReversed = createCardPlaceholder(card, true);
+            }
+            
+        } catch (error) {
+            console.error(`❌ Ошибка обработки изображения для ${card.id}:`, error);
+            processedCard.image = createCardPlaceholder(card);
+            processedCard.imageUpright = createCardPlaceholder(card);
+            processedCard.imageReversed = createCardPlaceholder(card, true);
+            processedCard.imageSource = 'placeholder';
+        }
+        
+        processedCards.push(processedCard);
+        
+        // Небольшая задержка между запросами, чтобы не перегружать S3
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    const s3Count = processedCards.filter(c => c.imageSource === 'beget-s3').length;
+    const placeholderCount = processedCards.filter(c => c.imageSource === 'placeholder').length;
+    
+    console.log(`✅ Обработка изображений завершена. Beget S3: ${s3Count}, Placeholder: ${placeholderCount}`);
+    
+    return processedCards;
+}
+
+// Улучшенная функция создания placeholder с поддержкой перевернутых карт
+function createCardPlaceholder(card, isReversed = false) {
+    const symbol = card.symbol || '🔮';
+    const name = encodeURIComponent(card.name || 'Карта');
+    const status = isReversed ? 'перев.' : 'прям.';
+    
+    const colors = [
+        '4B0082/FFD700', // Фиолетовый/Золотой
+        '663399/FF69B4', // Пурпурный/Розовый  
+        '2E8B57/98FB98', // Зеленый/Светло-зеленый
+        '8B0000/FFA500', // Темно-красный/Оранжевый
+        '191970/87CEEB', // Темно-синий/Голубой
+        '800080/DDA0DD'  // Пурпурный/Сливовый
+    ];
+    
+    // Используем хэш от ID карты для стабильного выбора цвета
+    const colorIndex = card.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    const colorPair = colors[colorIndex];
+    
+    return `https://via.placeholder.com/180x270/${colorPair}?text=${symbol}+${name}+${status}&fontSize=14`;
+}
+
+// Функция для проверки всех изображений в S3
+async function checkAllBegetImages(cards) {
+    console.log('🔍 Проверка всех изображений в Beget S3...');
+    
+    const results = [];
+    
+    for (const card of cards) {
+        const uprightUrls = generateBegetImageUrl(card.id, false);
+        const reversedUrls = generateBegetImageUrl(card.id, true);
+        
+        let uprightAvailable = false;
+        let reversedAvailable = false;
+        let workingUprightUrl = null;
+        let workingReversedUrl = null;
+        
+        // Проверяем прямые изображения
+        for (const url of uprightUrls) {
+            if (await checkBegetImageAvailability(url)) {
+                uprightAvailable = true;
+                workingUprightUrl = url;
+                break;
+            }
+        }
+        
+        // Проверяем перевернутые изображения
+        for (const url of reversedUrls) {
+            if (await checkBegetImageAvailability(url)) {
+                reversedAvailable = true;
+                workingReversedUrl = url;
+                break;
+            }
+        }
+        
+        results.push({
+            id: card.id,
+            name: card.name,
+            upright: uprightAvailable,
+            reversed: reversedAvailable,
+            uprightUrl: workingUprightUrl,
+            reversedUrl: workingReversedUrl
+        });
+        
+        const uprightStatus = uprightAvailable ? '✅' : '❌';
+        const reversedStatus = reversedAvailable ? '✅' : '❌';
+        
+        console.log(`${uprightStatus}/${reversedStatus} ${card.name} (${card.id})`);
+        
+        // Задержка между проверками
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    const uprightCount = results.filter(r => r.upright).length;
+    const reversedCount = results.filter(r => r.reversed).length;
+    const total = results.length;
+    
+    console.log(`\n📊 Результат проверки:`);
+    console.log(`   Прямые изображения: ${uprightCount}/${total}`);
+    console.log(`   Перевернутые изображения: ${reversedCount}/${total}`);
+    console.log(`   Полные комплекты: ${results.filter(r => r.upright && r.reversed).length}/${total}`);
+    
+    return results;
+}
+
+// Функция для предзагрузки критических изображений
+async function preloadCriticalBegetImages(cards, count = 5) {
+    console.log(`🔄 Предзагрузка ${count} критических изображений...`);
+    
+    const criticalCards = cards.slice(0, count);
+    const promises = criticalCards.map(async (card) => {
+        try {
+            const url = await getWorkingBegetImageUrl(card.id, false);
+            if (url) {
+                const img = new Image();
+                img.src = url;
+                return new Promise((resolve) => {
+                    img.onload = () => {
+                        console.log(`✅ Предзагружено: ${card.name}`);
+                        resolve(true);
+                    };
+                    img.onerror = () => {
+                        console.warn(`⚠️ Ошибка предзагрузки: ${card.name}`);
+                        resolve(false);
+                    };
+                });
+            }
+        } catch (error) {
+            console.error(`❌ Ошибка предзагрузки ${card.name}:`, error);
+            return false;
+        }
+    });
+    
+    const results = await Promise.all(promises);
+    const successCount = results.filter(Boolean).length;
+    
+    console.log(`✅ Предзагружено ${successCount}/${count} изображений`);
+    return successCount;
+}
+
+// Обновляем основную функцию загрузки карт
+async function loadCardsWithBegetS3() {
+    try {
+        console.log('🃏 Загрузка карт с Beget S3 обработкой...');
+
+        // Загружаем карты как обычно
+        await loadCards();
+        
+        // Если карты загружены, обрабатываем изображения
+        if (allCards && allCards.length > 0) {
+            console.log('🖼️ Начинаем обработку изображений для Beget S3...');
+            allCards = await processCardsImagesBeget(allCards);
+            
+            // Предзагружаем критические изображения
+            await preloadCriticalBegetImages(allCards, 3);
+            
+            console.log('✅ Карты с Beget S3 изображениями готовы');
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки карт с Beget S3:', error);
+        // Fallback на обычную загрузку
+        await loadCards();
+    }
+
 .subtitle {
     font-family: var(--font-special);
     font-size: 1.5rem;
@@ -746,11 +962,52 @@ input:checked + .slider:before {
     .container {
         padding: 10px;
     }
+
+    
+    const randomCard = getRandomCard();
+    console.log('🧪 Тестирование изображения карты:', randomCard);
+    
+    // Создаем тестовое изображение
+    const testImg = new Image();
+    testImg.onload = () => {
+        console.log('✅ Изображение загружается успешно:', randomCard.image);
+    };
+    testImg.onerror = () => {
+        console.error('❌ Ошибка загрузки изображения:', randomCard.image);
+    };
+    testImg.src = randomCard.image;
+}
+
+// ========================================================================
+// 🏁 ЗАПУСК ПРИЛОЖЕНИЯ
+// ========================================================================
+
+// Поскольку скрипт загружается динамически после готовности DOM,
+// мы можем вызывать initApp напрямую.
+console.log('🏁 Скрипт загружен, запускаем приложение...');
+initApp();
+
+// Экспорт для отладки
+window.TarotApp = {
+    appState,
+    allCards,
+    switchTab,
+    showMessage,
+    getRandomCard,
+    debugApp,
+    resetApp,
+    testNotification,
+    testCardImage,
+    updateHistoryDisplay,
+    currentRating,
+    createCardPlaceholder,
+    processCardsImages
+};
+
     .nav-tab {
         font-size: 0.85rem;
         padding: 8px 5px;
     }
     .spreads-grid {
         grid-template-columns: 1fr;
-    }
-}
+    }}

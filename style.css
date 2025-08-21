@@ -1156,6 +1156,10 @@ input:checked + .slider:before {
     .spreads-grid {
         grid-template-columns: 1fr;
     }
+
+    .card-front {
+        padding: 8px;
+
     
     .tarot-card {
         width: 160px;
