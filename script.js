@@ -91,14 +91,13 @@ function showMessage(message, type = 'info', duration = 3000) {
 }
 
 // ========================================================================
-// 🃏 ЗАГРУЗКА ДАННЫХ КАРТ (ИСПРАВЛЕНО)
+// 🃏 ЗАГРУЗКА ДАННЫХ КАРТ
 // ========================================================================
 
 async function loadCards() {
     try {
         console.log('🃏 Загрузка карт...');
         
-        // Пытаемся загрузить из разных источников
         const possiblePaths = [
             './cards.json',
             '/cards.json',
@@ -115,7 +114,18 @@ async function loadCards() {
                 if (response.ok) {
                     const cards = await response.json();
                     if (cards && Array.isArray(cards) && cards.length > 0) {
-                        allCards = processCardsImages(cards);
+                        allCards = cards.map(card => {
+                            if (card.image) {
+                                card.image = encodeURI(card.image);
+                            }
+                            if (card.imageUpright) {
+                                card.imageUpright = encodeURI(card.imageUpright);
+                            }
+                            if (card.imageReversed) {
+                                card.imageReversed = encodeURI(card.imageReversed);
+                            }
+                            return card;
+                        });
                         console.log(`✅ Карты загружены из ${path}:`, allCards.length);
                         cardsLoaded = true;
                         break;
@@ -137,28 +147,6 @@ async function loadCards() {
     }
 }
 
-// Обработка изображений карт
-function processCardsImages(cards) {
-    return cards.map(card => {
-        // Исправляем Google Drive ссылки
-        if (card.image && card.image.includes('drive.google.com')) {
-            // Извлекаем ID из ссылки и создаем прямую ссылку
-            const fileIdMatch = card.image.match(/[?&]id=([^&]+)/);
-            if (fileIdMatch) {
-                const fileId = fileIdMatch[1];
-                card.image = `https://drive.google.com/uc?export=view&id=${fileId}`;
-            }
-        }
-        
-        // Если изображение недоступно, создаем красивый placeholder
-        if (!card.image || card.image.includes('placeholder')) {
-            card.image = createCardPlaceholder(card);
-        }
-        
-        return card;
-    });
-}
-
 // Создание красивого placeholder для карты
 function createCardPlaceholder(card) {
     const symbol = card.symbol || '🔮';
@@ -176,291 +164,6 @@ function createCardPlaceholder(card) {
     
     return `https://via.placeholder.com/180x270/${colorPair}?text=${symbol}+${name}&fontSize=16`;
 }
-
-// ========================================================================
-// 🖼️ ОБРАБОТЧИК ИЗОБРАЖЕНИЙ BEGET S3
-// ========================================================================
-
-// Добавьте эти функции в ваш script.js
-
-// Конфигурация S3 Beget
-const BEGET_S3_CONFIG = {
-    baseUrl: 'https://750740e55ba3-diskn8n.s3.ru1.storage.beget.cloud',
-    paths: {
-        upright: '/tarot_cards/pr',
-        reversed: '/tarot_cards/unpr'
-    },
-    extensions: ['jpg', 'jpeg', 'png', 'webp'],
-    fallbackEnabled: true
-};
-
-// Генерация URL для изображения карты
-function generateBegetImageUrl(cardId, isReversed = false) {
-    const basePath = isReversed ? BEGET_S3_CONFIG.paths.reversed : BEGET_S3_CONFIG.paths.upright;
-    
-    // Пробуем разные расширения
-    return BEGET_S3_CONFIG.extensions.map(ext => 
-        `${BEGET_S3_CONFIG.baseUrl}${basePath}/${cardId}.${ext}`
-    );
-}
-
-// Проверка доступности изображения
-async function checkBegetImageAvailability(url) {
-    try {
-        const response = await fetch(url, { 
-            method: 'HEAD',
-            cache: 'no-cache'
-        });
-        return response.ok;
-    } catch (error) {
-        console.warn(`Проверка изображения не удалась: ${url}`, error);
-        return false;
-    }
-}
-
-// Получение рабочего URL изображения
-async function getWorkingBegetImageUrl(cardId, isReversed = false) {
-    const possibleUrls = generateBegetImageUrl(cardId, isReversed);
-    
-    // Проверяем каждый URL
-    for (const url of possibleUrls) {
-        const isAvailable = await checkBegetImageAvailability(url);
-        if (isAvailable) {
-            console.log(`✅ Найдено изображение: ${url}`);
-            return url;
-        }
-    }
-    
-    console.warn(`⚠️ Изображение не найдено для ${cardId}, используем fallback`);
-    return null;
-}
-
-// Обновленная функция обработки изображений карт для Beget S3
-async function processCardsImagesBeget(cards) {
-    console.log(`🖼️ Обработка ${cards.length} изображений карт для Beget S3...`);
-    
-    const processedCards = [];
-    
-    for (const card of cards) {
-        const processedCard = { ...card };
-        
-        try {
-            // Пытаемся найти рабочее изображение в S3
-            const uprightUrl = await getWorkingBegetImageUrl(card.id, false);
-            const reversedUrl = await getWorkingBegetImageUrl(card.id, true);
-            
-            if (uprightUrl) {
-                processedCard.image = uprightUrl;
-                processedCard.imageUpright = uprightUrl;
-                processedCard.imageSource = 'beget-s3';
-            } else {
-                // Fallback на красивый placeholder
-                processedCard.image = createCardPlaceholder(card);
-                processedCard.imageUpright = createCardPlaceholder(card);
-                processedCard.imageSource = 'placeholder';
-            }
-            
-            if (reversedUrl) {
-                processedCard.imageReversed = reversedUrl;
-            } else {
-                processedCard.imageReversed = createCardPlaceholder(card, true);
-            }
-            
-        } catch (error) {
-            console.error(`❌ Ошибка обработки изображения для ${card.id}:`, error);
-            processedCard.image = createCardPlaceholder(card);
-            processedCard.imageUpright = createCardPlaceholder(card);
-            processedCard.imageReversed = createCardPlaceholder(card, true);
-            processedCard.imageSource = 'placeholder';
-        }
-        
-        processedCards.push(processedCard);
-        
-        // Небольшая задержка между запросами, чтобы не перегружать S3
-        await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    
-    const s3Count = processedCards.filter(c => c.imageSource === 'beget-s3').length;
-    const placeholderCount = processedCards.filter(c => c.imageSource === 'placeholder').length;
-    
-    console.log(`✅ Обработка изображений завершена. Beget S3: ${s3Count}, Placeholder: ${placeholderCount}`);
-    
-    return processedCards;
-}
-
-// Улучшенная функция создания placeholder с поддержкой перевернутых карт
-function createCardPlaceholder(card, isReversed = false) {
-    const symbol = card.symbol || '🔮';
-    const name = encodeURIComponent(card.name || 'Карта');
-    const status = isReversed ? 'перев.' : 'прям.';
-    
-    const colors = [
-        '4B0082/FFD700', // Фиолетовый/Золотой
-        '663399/FF69B4', // Пурпурный/Розовый  
-        '2E8B57/98FB98', // Зеленый/Светло-зеленый
-        '8B0000/FFA500', // Темно-красный/Оранжевый
-        '191970/87CEEB', // Темно-синий/Голубой
-        '800080/DDA0DD'  // Пурпурный/Сливовый
-    ];
-    
-    // Используем хэш от ID карты для стабильного выбора цвета
-    const colorIndex = card.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
-    const colorPair = colors[colorIndex];
-    
-    return `https://via.placeholder.com/180x270/${colorPair}?text=${symbol}+${name}+${status}&fontSize=14`;
-}
-
-// Функция для проверки всех изображений в S3
-async function checkAllBegetImages(cards) {
-    console.log('🔍 Проверка всех изображений в Beget S3...');
-    
-    const results = [];
-    
-    for (const card of cards) {
-        const uprightUrls = generateBegetImageUrl(card.id, false);
-        const reversedUrls = generateBegetImageUrl(card.id, true);
-        
-        let uprightAvailable = false;
-        let reversedAvailable = false;
-        let workingUprightUrl = null;
-        let workingReversedUrl = null;
-        
-        // Проверяем прямые изображения
-        for (const url of uprightUrls) {
-            if (await checkBegetImageAvailability(url)) {
-                uprightAvailable = true;
-                workingUprightUrl = url;
-                break;
-            }
-        }
-        
-        // Проверяем перевернутые изображения
-        for (const url of reversedUrls) {
-            if (await checkBegetImageAvailability(url)) {
-                reversedAvailable = true;
-                workingReversedUrl = url;
-                break;
-            }
-        }
-        
-        results.push({
-            id: card.id,
-            name: card.name,
-            upright: uprightAvailable,
-            reversed: reversedAvailable,
-            uprightUrl: workingUprightUrl,
-            reversedUrl: workingReversedUrl
-        });
-        
-        const uprightStatus = uprightAvailable ? '✅' : '❌';
-        const reversedStatus = reversedAvailable ? '✅' : '❌';
-        
-        console.log(`${uprightStatus}/${reversedStatus} ${card.name} (${card.id})`);
-        
-        // Задержка между проверками
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    const uprightCount = results.filter(r => r.upright).length;
-    const reversedCount = results.filter(r => r.reversed).length;
-    const total = results.length;
-    
-    console.log(`\n📊 Результат проверки:`);
-    console.log(`   Прямые изображения: ${uprightCount}/${total}`);
-    console.log(`   Перевернутые изображения: ${reversedCount}/${total}`);
-    console.log(`   Полные комплекты: ${results.filter(r => r.upright && r.reversed).length}/${total}`);
-    
-    return results;
-}
-
-// Функция для предзагрузки критических изображений
-async function preloadCriticalBegetImages(cards, count = 5) {
-    console.log(`🔄 Предзагрузка ${count} критических изображений...`);
-    
-    const criticalCards = cards.slice(0, count);
-    const promises = criticalCards.map(async (card) => {
-        try {
-            const url = await getWorkingBegetImageUrl(card.id, false);
-            if (url) {
-                const img = new Image();
-                img.src = url;
-                return new Promise((resolve) => {
-                    img.onload = () => {
-                        console.log(`✅ Предзагружено: ${card.name}`);
-                        resolve(true);
-                    };
-                    img.onerror = () => {
-                        console.warn(`⚠️ Ошибка предзагрузки: ${card.name}`);
-                        resolve(false);
-                    };
-                });
-            }
-        } catch (error) {
-            console.error(`❌ Ошибка предзагрузки ${card.name}:`, error);
-            return false;
-        }
-    });
-    
-    const results = await Promise.all(promises);
-    const successCount = results.filter(Boolean).length;
-    
-    console.log(`✅ Предзагружено ${successCount}/${count} изображений`);
-    return successCount;
-}
-
-// Обновляем основную функцию загрузки карт
-async function loadCardsWithBegetS3() {
-    try {
-        console.log('🃏 Загрузка карт с Beget S3 обработкой...');
-        
-        // Загружаем карты как обычно
-        await loadCards();
-        
-        // Если карты загружены, обрабатываем изображения
-        if (allCards && allCards.length > 0) {
-            console.log('🖼️ Начинаем обработку изображений для Beget S3...');
-            allCards = await processCardsImagesBeget(allCards);
-            
-            // Предзагружаем критические изображения
-            await preloadCriticalBegetImages(allCards, 3);
-            
-            console.log('✅ Карты с Beget S3 изображениями готовы');
-        }
-        
-    } catch (error) {
-        console.error('❌ Ошибка загрузки карт с Beget S3:', error);
-        // Fallback на обычную загрузку
-        await loadCards();
-    }
-}
-
-// Экспорт функций для отладки
-window.BegetS3Tools = {
-    checkAllBegetImages,
-    processCardsImagesBeget,
-    generateBegetImageUrl,
-    getWorkingBegetImageUrl,
-    preloadCriticalBegetImages,
-    loadCardsWithBegetS3,
-    BEGET_S3_CONFIG
-};
-
-// Команды для консоли:
-console.log(`
-🔧 BEGET S3 КОМАНДЫ:
-
-1. Проверить все изображения:
-   BegetS3Tools.checkAllBegetImages(window.TarotApp.allCards)
-
-2. Обработать карты для S3:
-   BegetS3Tools.processCardsImagesBeget(window.TarotApp.allCards)
-
-3. Загрузить карты с S3 обработкой:
-   BegetS3Tools.loadCardsWithBegetS3()
-
-4. Предзагрузить изображения:
-   BegetS3Tools.preloadCriticalBegetImages(window.TarotApp.allCards, 5)
-`);
 
 // Встроенные карты с правильными изображениями
 function getBuiltInCards() {
@@ -551,14 +254,26 @@ function getRandomCard() {
         allCards = getBuiltInCards();
     }
     
-    const randomCard = allCards[Math.floor(Math.random() * allCards.length)];
-    
-    // Проверяем, что у карты есть изображение
-    if (!randomCard.image) {
-        randomCard.image = createCardPlaceholder(randomCard);
+    // Get a copy of the card object to avoid modifying the original in the array
+    const baseCard = allCards[Math.floor(Math.random() * allCards.length)];
+    const randomCard = { ...baseCard };
+
+    // Determine orientation
+    randomCard.isReversed = Math.random() < 0.5;
+
+    // Set the image to display, fallback to upright if reversed is missing
+    if (randomCard.isReversed) {
+        randomCard.displayImage = randomCard.imageReversed || randomCard.imageUpright || randomCard.image;
+    } else {
+        randomCard.displayImage = randomCard.imageUpright || randomCard.image;
+    }
+
+    // Final fallback to placeholder if no image is found
+    if (!randomCard.displayImage) {
+        randomCard.displayImage = createCardPlaceholder(randomCard);
     }
     
-    console.log('🎯 Выбранная карта:', randomCard.name, 'Изображение:', randomCard.image);
+    console.log(`🎯 Выбранная карта: ${randomCard.name} (${randomCard.isReversed ? 'Перевернутая' : 'Прямая'})`, 'Изображение:', randomCard.displayImage);
     return randomCard;
 }
 
@@ -715,16 +430,15 @@ async function handleDailyCardClick() {
 
     // Выбираем случайную карту
     const randomCard = getRandomCard();
-    console.log('🎯 Выбранная карта:', randomCard.name, 'URL изображения:', randomCard.image);
 
     // Обновляем содержимое карты через половину анимации
     setTimeout(() => {
         starAnimationContainer.innerHTML = '';
         
-        if (cardImage && randomCard.image) {
+        if (cardImage && randomCard.displayImage) {
             // Добавляем обработку ошибок загрузки изображения
             cardImage.onerror = function() {
-                console.warn('❌ Ошибка загрузки изображения:', randomCard.image);
+                console.warn('❌ Ошибка загрузки изображения:', randomCard.displayImage);
                 // Создаем fallback изображение
                 this.src = createCardPlaceholder(randomCard);
             };
@@ -733,7 +447,7 @@ async function handleDailyCardClick() {
                 console.log('✅ Изображение загружено успешно');
             };
             
-            cardImage.src = randomCard.image;
+            cardImage.src = randomCard.displayImage;
             cardImage.alt = randomCard.name;
         }
         
@@ -745,7 +459,8 @@ async function handleDailyCardClick() {
     setTimeout(async () => {
         // Показываем имя карты
         if (flippedCardName) {
-            flippedCardName.textContent = `${randomCard.name} ${randomCard.symbol || ''}`;
+            const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+            flippedCardName.textContent = `${randomCard.name}${orientationText} ${randomCard.symbol || ''}`;
         }
         cardInfoAfterFlip?.classList.remove('hidden');
 
@@ -856,13 +571,14 @@ async function handleAskQuestion() {
         
         // Выбираем случайную карту для ответа
         const randomCard = getRandomCard();
-        const answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}:\n\n${randomCard.description || simulatedAiText}`;
+        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+        const answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
         
         // Показываем ответ
         loadingState?.classList.add('hidden');
         
         if (questionCardImage) {
-            questionCardImage.src = randomCard.image;
+            questionCardImage.src = randomCard.displayImage;
             questionCardImage.classList.remove('hidden');
         }
 
@@ -1257,13 +973,14 @@ async function handleClarifyingQuestion() {
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         const randomCard = getRandomCard();
-        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}:\n\n${randomCard.description || simulatedAiText}`;
+        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
 
         // Показываем ответ
         loadingState?.classList.add('hidden');
 
         if (questionCardImage) {
-            questionCardImage.src = randomCard.image;
+            questionCardImage.src = randomCard.displayImage;
             questionCardImage.classList.remove('hidden');
         }
 
@@ -1470,6 +1187,5 @@ window.TarotApp = {
     testCardImage,
     updateHistoryDisplay,
     currentRating,
-    createCardPlaceholder,
-    processCardsImages
+    createCardPlaceholder
 };
