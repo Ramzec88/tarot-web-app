@@ -9,7 +9,8 @@ let appState = {
     questionsUsed: 0,
     isPremium: false,
     freeQuestionsLimit: 3,
-    history: []
+    history: [],
+    reviews: []
 };
 
 // 📦 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
@@ -28,6 +29,11 @@ let questionTextarea, submitQuestionBtn, charCounter;
 let loadingState, questionAnswerContainer, questionAnswerText, questionCardImage;
 let premiumTestToggle, premiumTestLabel;
 let clarifyingQuestionContainer, clarifyingQuestionTextarea, submitClarifyingQuestionBtn, clarifyingQuestionWarning;
+let questionAnimationContainer, questionStarAnimationContainer, questionIntroText;
+let questionCardContainer, questionTarotCard, questionCardInfoAfterFlip, questionFlippedCardName;
+let spreadsGrid, spreadResult, spreadResultTitle, backToSpreadsBtn;
+let spreadAnimationContainer, spreadIntroText, spreadCardsContainer, spreadCardsLayout;
+let spreadAnswerContainer, spreadAnswerText;
 
 // 🔮 ВРЕМЕННАЯ СИМУЛЯЦИЯ ИИ-ОТВЕТА
 const simulatedAiText = "Глубокое погружение в энергии дня показывает, что перед вами открываются новые возможности для творчества и самовыражения. Используйте этот период для развития своих скрытых талантов и проявления уникальности. Избегайте сомнений и смело идите вперед, доверяя своей интуиции. Сегодняшний день благоприятен для начала новых проектов и установления гармоничных отношений с окружающими. Помните, что истинная сила исходит изнутри, и, проявляя ее, вы сможете преодолеть любые препятствия.";
@@ -40,6 +46,73 @@ const preInterpretationPhrases = [
     "Готовы к предсказанию, которое раскроет ваш потенциал?",
     "Погружаемся в глубины мудрости Таро, чтобы узнать ваше будущее..."
 ];
+
+// 🔮 РАНДОМНЫЕ ТЕКСТЫ ДЛЯ ВОПРОСОВ
+const questionPreInterpretationPhrases = [
+    "Сейчас почувствуем, что скажут карты...",
+    "Карты готовятся дать вам ответ...",
+    "Тайные силы собираются воедино...",
+    "Вселенная приготовила для вас послание...",
+    "Энергии карт концентрируются на вашем вопросе...",
+    "Мистические символы раскрывают свои секреты..."
+];
+
+// 👤 МИСТИЧЕСКИЕ ИМЕНА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ
+const mysticalNames = [
+    "Странник", "Путник", "Искатель", "Таинственный гость", "Звездный путешественник",
+    "Мистический странник", "Ищущий истину", "Странствующий мудрец", "Тайный искатель",
+    "Лунный путник", "Звездочет", "Хранитель тайн", "Мудрый странник", "Искатель света",
+    "Ночной путешественник", "Следопыт судьбы", "Странник миров", "Мистик",
+    "Душа-скиталец", "Познающий", "Вечный странник", "Искатель знаний"
+];
+
+// 🎴 КОНФИГУРАЦИЯ РАСКЛАДОВ
+const SPREAD_CONFIGS = {
+    success: {
+        name: "Расклад «Путь к успеху»",
+        description: "Показывает препятствия и возможности на пути к цели",
+        cards: [
+            { position: "top", label: "Цель", description: "Чего вы хотите достичь" },
+            { position: "left", label: "Препятствие", description: "Что мешает вам" },
+            { position: "center", label: "Настоящее", description: "Ваше текущее положение" },
+            { position: "right", label: "Помощь", description: "Что поможет вам" },
+            { position: "bottom", label: "Результат", description: "К чему это приведет" }
+        ],
+        layout: "success-layout"
+    },
+    love: {
+        name: "Расклад «Отношения»",
+        description: "Раскрывает динамику отношений между партнерами",
+        cards: [
+            { position: "me", label: "Вы", description: "Ваши чувства и состояние" },
+            { position: "partner", label: "Партнер", description: "Чувства и состояние партнера" },
+            { position: "relationship", label: "Отношения", description: "Общая динамика и перспективы" }
+        ],
+        layout: "love-layout"
+    },
+    money: {
+        name: "Расклад «Финансы»",
+        description: "Анализирует финансовые перспективы и денежные потоки",
+        cards: [
+            { position: "current", label: "Текущие финансы", description: "Ваше финансовое положение сейчас" },
+            { position: "opportunities", label: "Возможности", description: "Способы улучшить финансы" },
+            { position: "advice", label: "Совет", description: "Как управлять деньгами" },
+            { position: "future", label: "Будущее", description: "Финансовые перспективы" }
+        ],
+        layout: "money-layout"
+    },
+    growth: {
+        name: "Расклад «Личный рост»", 
+        description: "Помогает в развитии личности и раскрытии потенциала",
+        cards: [
+            { position: "past", label: "Прошлое", description: "Что сформировало вас" },
+            { position: "present", label: "Настоящее", description: "Ваше текущее состояние" },
+            { position: "potential", label: "Потенциал", description: "Ваши скрытые возможности" },
+            { position: "future", label: "Будущее", description: "Куда ведет ваш путь развития" }
+        ],
+        layout: "growth-layout"
+    }
+};
 
 // ========================================================================
 // 💾 УПРАВЛЕНИЕ СОСТОЯНИЕМ
@@ -60,11 +133,41 @@ function loadAppState() {
         if (saved) {
             const parsedState = JSON.parse(saved);
             appState = { ...appState, ...parsedState };
+            
+            // Очищаем старые записи истории при загрузке
+            cleanOldHistoryItems();
+            
             console.log('✅ Состояние загружено:', appState);
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки состояния:', error);
         appState = { ...appState };
+    }
+}
+
+function cleanOldHistoryItems() {
+    if (!appState.history || appState.history.length === 0) {
+        return;
+    }
+    
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000); // 30 дней в миллисекундах
+    const initialCount = appState.history.length;
+    
+    // Фильтруем записи новее 30 дней
+    appState.history = appState.history.filter(item => {
+        // Если нет timestamp (старые записи), сохраняем их пока что
+        if (!item.timestamp) {
+            return true;
+        }
+        
+        return item.timestamp > thirtyDaysAgo;
+    });
+    
+    const removedCount = initialCount - appState.history.length;
+    
+    if (removedCount > 0) {
+        console.log(`🗑️ Удалено ${removedCount} записей истории старше 30 дней`);
+        saveAppState(); // Сохраняем обновленное состояние
     }
 }
 
@@ -283,7 +386,7 @@ function getBuiltInCards() {
     }));
 }
 // Функция проверки доступности изображения
-asynchronous function checkImageAvailability(imagePath) {
+async function checkImageAvailability(imagePath) {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => resolve(true);
@@ -331,10 +434,10 @@ function getRandomCard() {
 // 🎨 АНИМАЦИИ И ЭФФЕКТЫ
 // ========================================================================
 
-function animateStars(count = 3) {
-    if (!starAnimationContainer) return;
+function animateStars(count = 3, container = starAnimationContainer) {
+    if (!container) return;
     
-    starAnimationContainer.innerHTML = '';
+    container.innerHTML = '';
     const stars = ['✨', '🌟', '💫'];
     const positions = [
         { x: '10%', y: '20%' },
@@ -352,7 +455,7 @@ function animateStars(count = 3) {
         star.style.animationDelay = `${i * 0.1}s`;
         star.style.animationDuration = `${0.8 + Math.random() * 0.4}s`;
         
-        starAnimationContainer.appendChild(star);
+        container.appendChild(star);
     }
 }
 
@@ -384,6 +487,8 @@ function typeText(element, text, speed = 15) {
 
 function switchTab(tabId) {
     console.log('🔄 Переключение на вкладку:', tabId);
+    console.log('🔧 tabContents:', tabContents);
+    console.log('🔧 document.getElementById(tabId):', document.getElementById(tabId));
     
     // Скрываем все вкладки
     tabContents.forEach(content => {
@@ -412,6 +517,16 @@ function switchTab(tabId) {
         resetDailyCardState();
     }
     
+    // Сбрасываем состояние вопросов при переходе на другие вкладки
+    if (tabId !== 'question') {
+        resetQuestionState();
+    }
+    
+    // Сбрасываем состояние раскладов при переходе на другие вкладки
+    if (tabId !== 'spreads') {
+        resetSpreadState();
+    }
+    
     // Обновляем счетчик вопросов при переходе на вкладку вопросов
     if (tabId === 'question') {
         updateQuestionsCounter();
@@ -420,6 +535,11 @@ function switchTab(tabId) {
     // Обновляем историю при переходе на вкладку истории
     if (tabId === 'history') {
         updateHistoryDisplay();
+    }
+    
+    // Обновляем отзывы при переходе на вкладку отзывов
+    if (tabId === 'reviews') {
+        updateReviewsDisplay();
     }
 }
 
@@ -457,6 +577,70 @@ function resetDailyCardState() {
     }
 }
 
+function resetQuestionState() {
+    console.log('🔄 Сброс состояния вопросов');
+    
+    // Скрываем анимацию
+    questionAnimationContainer?.classList.add('hidden');
+    
+    // Скрываем карту
+    questionCardContainer?.classList.add('hidden');
+    
+    // Сбрасываем карту
+    if (questionTarotCard) {
+        questionTarotCard.classList.remove('flipped');
+        questionTarotCard.querySelector('.card-front')?.classList.add('hidden');
+        questionTarotCard.querySelector('.card-back')?.classList.remove('hidden');
+    }
+    
+    // Скрываем информацию о карте
+    questionCardInfoAfterFlip?.classList.add('hidden');
+    
+    // Скрываем ответ
+    questionAnswerContainer?.classList.remove('show');
+    questionAnswerContainer?.classList.add('hidden');
+    
+    // Скрываем уточняющий вопрос
+    clarifyingQuestionContainer?.classList.add('hidden');
+    clarifyingQuestionWarning?.classList.add('hidden');
+    
+    // Очищаем тексты
+    if (questionIntroText) questionIntroText.textContent = '';
+    if (questionFlippedCardName) questionFlippedCardName.textContent = '';
+    if (questionAnswerText) {
+        questionAnswerText.textContent = '';
+        questionAnswerText.classList.remove('finished-typing');
+    }
+    
+    // Очищаем анимации
+    if (questionStarAnimationContainer) {
+        questionStarAnimationContainer.innerHTML = '';
+    }
+    
+    // Скрываем старую загрузку
+    loadingState?.classList.add('hidden');
+}
+
+function resetQuestionAnswerOnly() {
+    console.log('🔄 Сброс только ответа на вопрос');
+    
+    // Скрываем ответ
+    questionAnswerContainer?.classList.remove('show');
+    questionAnswerContainer?.classList.add('hidden');
+    
+    // Очищаем текст ответа
+    if (questionAnswerText) {
+        questionAnswerText.textContent = '';
+        questionAnswerText.classList.remove('finished-typing');
+    }
+    
+    // Скрываем информацию о карте (но оставляем саму карту видимой)
+    questionCardInfoAfterFlip?.classList.add('hidden');
+    
+    // Очищаем названия карт
+    if (questionFlippedCardName) questionFlippedCardName.textContent = '';
+}
+
 // ========================================================================
 // 🃏 ОБРАБОТКА КАРТЫ ДНЯ (ИСПРАВЛЕНО С УЛУЧШЕННОЙ ЗАГРУЗКОЙ ИЗОБРАЖЕНИЙ)
 // ========================================================================
@@ -472,11 +656,13 @@ async function handleDailyCardClick() {
     // Сбрасываем состояние для нового переворота
     resetDailyCardState();
     
-    // Показываем звездочки
-    animateStars(3);
+    // Показываем звездочки прямо на рубашке карты
+    animateStars(3, starAnimationContainer);
 
-    // Переворачиваем карту
-    tarotCard.classList.add('flipped');
+    // Ждем анимацию звездочек, потом переворачиваем карту
+    setTimeout(() => {
+        tarotCard.classList.add('flipped');
+    }, 1000);
 
     // Выбираем случайную карту
     const randomCard = getRandomCard();
@@ -619,71 +805,126 @@ async function handleAskQuestion() {
         return;
     }
     
-    // Показываем загрузку
-    loadingState?.classList.remove('hidden');
-    questionAnswerContainer?.classList.add('hidden');
+    console.log('🔮 Обработка вопроса:', question);
+    
+    // Скрываем предыдущие результаты
+    resetQuestionState();
+    
+    // Отключаем кнопку
     submitQuestionBtn.disabled = true;
     
+    // Выбираем случайную карту для ответа
+    const randomCard = getRandomCard();
+    
+    // 1. Показываем вводный текст
+    questionAnimationContainer?.classList.remove('hidden');
+    const randomPrePhrase = questionPreInterpretationPhrases[Math.floor(Math.random() * questionPreInterpretationPhrases.length)];
+    if (questionIntroText) {
+        questionIntroText.textContent = randomPrePhrase;
+        questionIntroText.classList.remove('hidden');
+    }
+    
+    // Ждем немного для показа текста
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     try {
-        // Симулируем обработку вопроса
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // 2. Скрываем текст и показываем карту рубашкой с звездочками
+        questionAnimationContainer?.classList.add('hidden');
+        questionCardContainer?.classList.remove('hidden');
         
-        // Выбираем случайную карту для ответа
-        const randomCard = getRandomCard();
-        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-        const answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+        // Показываем звездочки на рубашке карты
+        animateStars(3, questionStarAnimationContainer);
         
-        // Показываем ответ
-        loadingState?.classList.add('hidden');
-        
-        if (questionCardImage) {
-            // Проверяем доступность изображения
-            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+        // 3. Переворачиваем карту через 1200ms (время для звездочек)
+        setTimeout(async () => {
+            // Переворачиваем карту
+            questionTarotCard?.classList.add('flipped');
             
-            if (imageAvailable) {
-                questionCardImage.src = randomCard.displayImage;
-            } else {
-                questionCardImage.src = createCardPlaceholder(randomCard);
+            // Подготавливаем изображение
+            if (questionCardImage) {
+                const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+                
+                if (imageAvailable) {
+                    questionCardImage.src = randomCard.displayImage;
+                } else {
+                    questionCardImage.src = createCardPlaceholder(randomCard);
+                }
+                
+                questionCardImage.alt = randomCard.name;
+                
+                // Обработчики загрузки изображения
+                questionCardImage.onload = () => console.log('✅ Изображение карты для вопроса загружено');
+                questionCardImage.onerror = () => {
+                    console.warn('❌ Ошибка загрузки, используем placeholder');
+                    questionCardImage.src = createCardPlaceholder(randomCard);
+                };
             }
             
-            questionCardImage.classList.remove('hidden');
-        }
+            // Обновляем лицевую сторону карты
+            setTimeout(() => {
+                questionTarotCard?.querySelector('.card-front')?.classList.remove('hidden');
+                questionTarotCard?.querySelector('.card-back')?.classList.add('hidden');
+                
+                // Показываем название карты
+                if (questionFlippedCardName) {
+                    const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                    questionFlippedCardName.textContent = `${randomCard.name}${orientationText} ${randomCard.symbol || ''}`;
+                }
+                questionCardInfoAfterFlip?.classList.remove('hidden');
+            }, 400);
+            
+        }, 800);
+        
+        // 4. Через 2 секунды после переворота показываем ответ и начинаем печать
+        setTimeout(async () => {
+            questionAnswerContainer?.classList.remove('hidden');
+            questionAnswerContainer?.classList.add('show');
+            
+            // Формируем ответ
+            const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+            const answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+            
+            // Печатаем текст
+            if (questionAnswerText) {
+                await typeText(questionAnswerText, answer);
+            }
+            
+            // 5. После завершения печати показываем уточняющий вопрос
+            setTimeout(() => {
+                clarifyingQuestionContainer?.classList.remove('hidden');
+                if (!appState.isPremium) {
+                    clarifyingQuestionWarning?.classList.remove('hidden');
+                } else {
+                    clarifyingQuestionWarning?.classList.add('hidden');
+                }
+            }, 500);
 
-        if (questionAnswerText) {
-            await typeText(questionAnswerText, answer);
-        }
-        questionAnswerContainer?.classList.remove('hidden');
-        questionAnswerContainer?.classList.add('show');
-        
-        clarifyingQuestionContainer?.classList.remove('hidden');
-        if (!appState.isPremium) {
-            clarifyingQuestionWarning?.classList.remove('hidden');
-        } else {
-            clarifyingQuestionWarning?.classList.add('hidden');
-        }
-
-        // Обновляем счетчики
-        if (!appState.isPremium) {
-            appState.questionsUsed++;
-            saveAppState();
-            updateQuestionsCounter();
-        }
-        
-        // Сохраняем в историю
-        await addToHistory('question', question, answer);
-        
-        // Очищаем форму
-        questionTextarea.value = '';
-        handleQuestionInput();
-        
-        showMessage('Ответ получен!', 'success');
+            // Обновляем счетчики
+            if (!appState.isPremium) {
+                appState.questionsUsed++;
+                saveAppState();
+                updateQuestionsCounter();
+            }
+            
+            // Сохраняем в историю
+            await addToHistory('question', question, answer);
+            
+            // Очищаем форму
+            questionTextarea.value = '';
+            handleQuestionInput();
+            
+            showMessage('Ответ получен!', 'success');
+            
+        }, 3200); // 1200ms для карты + 2000ms
         
     } catch (error) {
         console.error('❌ Ошибка при обработке вопроса:', error);
-        loadingState?.classList.add('hidden');
+        resetQuestionState();
         showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
     } finally {
-        submitQuestionBtn.disabled = false;
+        setTimeout(() => {
+            submitQuestionBtn.disabled = false;
+        }, 3000);
     }
 }
 
@@ -701,61 +942,383 @@ async function handleClarifyingQuestion() {
         return;
     }
 
-    // Показываем загрузку
-    loadingState?.classList.remove('hidden');
+    console.log('🔮 Обработка уточняющего вопроса:', question);
+    
+    // Скрываем уточняющий вопрос и сбрасываем состояние для новой анимации
+    clarifyingQuestionContainer?.classList.add('hidden');
+    resetQuestionAnswerOnly(); // Сбрасываем только ответ, оставляя форму
+    
+    // Отключаем кнопку
     submitClarifyingQuestionBtn.disabled = true;
-
+    
+    // Выбираем случайную карту для ответа
+    const randomCard = getRandomCard();
+    
+    // 1. Показываем вводный текст
+    questionAnimationContainer?.classList.remove('hidden');
+    const randomPrePhrase = questionPreInterpretationPhrases[Math.floor(Math.random() * questionPreInterpretationPhrases.length)];
+    if (questionIntroText) {
+        questionIntroText.textContent = randomPrePhrase;
+        questionIntroText.classList.remove('hidden');
+    }
+    
+    // Ждем немного для показа текста
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     try {
-        // Симулируем обработку вопроса
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        const randomCard = getRandomCard();
-        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
-
-        // Показываем ответ
-        loadingState?.classList.add('hidden');
-
-        if (questionCardImage) {
-            // Проверяем доступность изображения
-            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+        // 2. Скрываем текст и показываем карту рубашкой с звездочками
+        questionAnimationContainer?.classList.add('hidden');
+        questionCardContainer?.classList.remove('hidden');
+        
+        // Сбрасываем состояние карты перед анимацией
+        if (questionTarotCard) {
+            questionTarotCard.classList.remove('flipped');
+            questionTarotCard.querySelector('.card-front')?.classList.add('hidden');
+            questionTarotCard.querySelector('.card-back')?.classList.remove('hidden');
+        }
+        
+        // Показываем звездочки на рубашке карты
+        animateStars(3, questionStarAnimationContainer);
+        
+        // 3. Переворачиваем карту через 1200ms (время для звездочек)
+        setTimeout(async () => {
+            // Переворачиваем карту
+            questionTarotCard?.classList.add('flipped');
             
-            if (imageAvailable) {
-                questionCardImage.src = randomCard.displayImage;
-            } else {
-                questionCardImage.src = createCardPlaceholder(randomCard);
+            // Подготавливаем изображение
+            if (questionCardImage) {
+                const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+                
+                if (imageAvailable) {
+                    questionCardImage.src = randomCard.displayImage;
+                } else {
+                    questionCardImage.src = createCardPlaceholder(randomCard);
+                }
+                
+                questionCardImage.alt = randomCard.name;
+                
+                // Обработчики загрузки изображения
+                questionCardImage.onload = () => console.log('✅ Изображение карты для уточняющего вопроса загружено');
+                questionCardImage.onerror = () => {
+                    console.warn('❌ Ошибка загрузки, используем placeholder');
+                    questionCardImage.src = createCardPlaceholder(randomCard);
+                };
             }
             
-            questionCardImage.classList.remove('hidden');
-        }
+            // Обновляем лицевую сторону карты
+            setTimeout(() => {
+                questionTarotCard?.querySelector('.card-front')?.classList.remove('hidden');
+                questionTarotCard?.querySelector('.card-back')?.classList.add('hidden');
+                
+                // Показываем название карты
+                if (questionFlippedCardName) {
+                    const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                    questionFlippedCardName.textContent = `${randomCard.name}${orientationText} ${randomCard.symbol || ''}`;
+                }
+                questionCardInfoAfterFlip?.classList.remove('hidden');
+            }, 400);
+            
+        }, 800);
+        
+        // 4. Через 2 секунды после переворота показываем ответ и начинаем печать
+        setTimeout(async () => {
+            questionAnswerContainer?.classList.remove('hidden');
+            questionAnswerContainer?.classList.add('show');
+            
+            // Формируем ответ
+            const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+            const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+            
+            // Печатаем текст
+            if (questionAnswerText) {
+                await typeText(questionAnswerText, answer);
+            }
+            
+            // 5. После завершения печати показываем уточняющий вопрос снова
+            setTimeout(() => {
+                clarifyingQuestionContainer?.classList.remove('hidden');
+                if (!appState.isPremium) {
+                    clarifyingQuestionWarning?.classList.remove('hidden');
+                } else {
+                    clarifyingQuestionWarning?.classList.add('hidden');
+                }
+            }, 500);
 
-        if (questionAnswerText) {
-            await typeText(questionAnswerText, answer);
-        }
-
-        // Обновляем счетчики
-        if (!appState.isPremium) {
-            appState.questionsUsed++;
-            saveAppState();
-            updateQuestionsCounter();
-        }
-
-        // Сохраняем в историю
-        await addToHistory('clarifying-question', question, answer);
-
-        // Очищаем форму
-        clarifyingQuestionTextarea.value = '';
-
-        showMessage('Уточнение получено!', 'success');
-
+            // Обновляем счетчики
+            if (!appState.isPremium) {
+                appState.questionsUsed++;
+                saveAppState();
+                updateQuestionsCounter();
+            }
+            
+            // Сохраняем в историю
+            await addToHistory('clarifying-question', question, answer);
+            
+            // Очищаем форму
+            clarifyingQuestionTextarea.value = '';
+            
+            showMessage('Уточнение получено!', 'success');
+            
+        }, 3200); // 1200ms для карты + 2000ms
+        
     } catch (error) {
         console.error('❌ Ошибка при обработке уточняющего вопроса:', error);
-        loadingState?.classList.add('hidden');
+        resetQuestionState();
         showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
     } finally {
-        submitClarifyingQuestionBtn.disabled = false;
+        setTimeout(() => {
+            submitClarifyingQuestionBtn.disabled = false;
+        }, 3000);
     }
 }
+
+// ========================================================================
+// 🎴 ОБРАБОТКА РАСКЛАДОВ
+// ========================================================================
+
+async function handleSpreadClick(spreadType) {
+    console.log('🎴 Начинаем расклад:', spreadType);
+    
+    // Проверяем Premium доступ
+    if (!appState.isPremium) {
+        showMessage('Расклады доступны только в Premium версии!', 'error');
+        return;
+    }
+    
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    if (!spreadConfig) {
+        showMessage('Неизвестный тип расклада', 'error');
+        return;
+    }
+    
+    // Переходим к результатам расклада
+    showSpreadResult(spreadType);
+}
+
+function showSpreadResult(spreadType) {
+    // Скрываем сетку раскладов и показываем результат
+    spreadsGrid?.classList.add('hidden');
+    spreadResult?.classList.remove('hidden');
+    
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    
+    // Обновляем заголовок
+    if (spreadResultTitle) {
+        spreadResultTitle.textContent = spreadConfig.name;
+    }
+    
+    // Запускаем анимацию расклада
+    performSpread(spreadType);
+}
+
+async function performSpread(spreadType) {
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    
+    try {
+        // 1. Показываем вводный текст
+        spreadAnimationContainer?.classList.remove('hidden');
+        
+        const spreadPhrase = `Раскладываем карты для "${spreadConfig.name.replace('Расклад «', '').replace('»', '')}"...`;
+        if (spreadIntroText) {
+            spreadIntroText.textContent = spreadPhrase;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 2. Скрываем текст и показываем карты
+        spreadAnimationContainer?.classList.add('hidden');
+        spreadCardsContainer?.classList.remove('hidden');
+        
+        // 3. Создаем макет карт
+        createSpreadLayout(spreadType);
+        
+        // 4. Анимированно показываем карты одну за другой
+        await animateSpreadCards();
+        
+        // 5. Показываем интерпретацию
+        await showSpreadInterpretation(spreadType);
+        
+    } catch (error) {
+        console.error('❌ Ошибка выполнения расклада:', error);
+        showMessage('Произошла ошибка при выполнении расклада', 'error');
+    }
+}
+
+function createSpreadLayout(spreadType) {
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    
+    if (!spreadCardsLayout) return;
+    
+    // Очищаем предыдущий макет
+    spreadCardsLayout.innerHTML = '';
+    spreadCardsLayout.className = `spread-cards-layout ${spreadConfig.layout}`;
+    
+    // Создаем позиции для карт в зависимости от типа расклада
+    if (spreadType === 'love') {
+        // Расклад "Отношения" - специальная структура
+        const topRow = document.createElement('div');
+        topRow.className = 'spread-row';
+        topRow.appendChild(createSpreadCardPosition(spreadConfig.cards[0], 0));
+        
+        const bottomRow = document.createElement('div'); 
+        bottomRow.className = 'spread-row';
+        bottomRow.appendChild(createSpreadCardPosition(spreadConfig.cards[1], 1));
+        bottomRow.appendChild(createSpreadCardPosition(spreadConfig.cards[2], 2));
+        
+        spreadCardsLayout.appendChild(topRow);
+        spreadCardsLayout.appendChild(bottomRow);
+    } else {
+        // Остальные расклады - простая структура
+        spreadConfig.cards.forEach((cardConfig, index) => {
+            const cardPosition = createSpreadCardPosition(cardConfig, index);
+            spreadCardsLayout.appendChild(cardPosition);
+        });
+    }
+}
+
+function createSpreadCardPosition(cardConfig, index) {
+    const position = document.createElement('div');
+    position.className = 'spread-card-position';
+    position.style.opacity = '0'; // Скрываем для анимации
+    
+    const tarotCard = document.createElement('div');
+    tarotCard.className = 'tarot-card';
+    
+    const cardBack = document.createElement('div');
+    cardBack.className = 'card-back';
+    cardBack.innerHTML = `
+        <span class="card-symbol">🔮</span>
+        <div id="spreadStars${index}"></div>
+    `;
+    
+    const cardFront = document.createElement('div');
+    cardFront.className = 'card-front hidden';
+    
+    const cardImage = document.createElement('img');
+    cardImage.className = 'card-image';
+    cardImage.alt = 'Карта расклада';
+    
+    const cardLabel = document.createElement('div');
+    cardLabel.className = 'card-label';
+    cardLabel.textContent = cardConfig.label;
+    
+    cardFront.appendChild(cardImage);
+    tarotCard.appendChild(cardBack);
+    tarotCard.appendChild(cardFront);
+    position.appendChild(tarotCard);
+    position.appendChild(cardLabel);
+    
+    // Сохраняем конфигурацию карты
+    position.cardConfig = cardConfig;
+    position.cardIndex = index;
+    
+    return position;
+}
+
+async function animateSpreadCards() {
+    const cardPositions = spreadCardsLayout?.querySelectorAll('.spread-card-position');
+    if (!cardPositions) return;
+    
+    // Показываем карты по очереди с задержкой
+    for (let i = 0; i < cardPositions.length; i++) {
+        const cardPosition = cardPositions[i];
+        
+        // 1. Показываем позицию
+        cardPosition.style.opacity = '1';
+        
+        // 2. Показываем звездочки на рубашке
+        const starsContainer = cardPosition.querySelector(`#spreadStars${i}`);
+        if (starsContainer) {
+            animateStars(2, starsContainer);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // 3. Переворачиваем карту
+        const tarotCard = cardPosition.querySelector('.tarot-card');
+        const randomCard = getRandomCard();
+        
+        // Устанавливаем изображение
+        const cardImage = cardPosition.querySelector('.card-image');
+        const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+        
+        if (imageAvailable) {
+            cardImage.src = randomCard.displayImage;
+        } else {
+            cardImage.src = createCardPlaceholder(randomCard);
+        }
+        
+        // Переворачиваем карту
+        tarotCard?.classList.add('flipped');
+        
+        setTimeout(() => {
+            cardPosition.querySelector('.card-front')?.classList.remove('hidden');
+            cardPosition.querySelector('.card-back')?.classList.add('hidden');
+        }, 400);
+        
+        // Сохраняем выбранную карту для интерпретации
+        cardPosition.selectedCard = randomCard;
+        
+        await new Promise(resolve => setTimeout(resolve, 600));
+    }
+}
+
+async function showSpreadInterpretation(spreadType) {
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    const cardPositions = spreadCardsLayout?.querySelectorAll('.spread-card-position');
+    
+    spreadAnswerContainer?.classList.remove('hidden');
+    spreadAnswerContainer?.classList.add('show');
+    
+    // Формируем интерпретацию расклада
+    let interpretation = `${spreadConfig.description}\n\n`;
+    
+    cardPositions?.forEach((cardPosition) => {
+        const cardConfig = cardPosition.cardConfig;
+        const selectedCard = cardPosition.selectedCard;
+        
+        if (selectedCard) {
+            const orientationText = selectedCard.isReversed ? ' (перевернутая)' : '';
+            interpretation += `**${cardConfig.label}${orientationText}**: ${selectedCard.name}\n`;
+            interpretation += `${cardConfig.description}: ${selectedCard.description || selectedCard.meaningUpright}\n\n`;
+        }
+    });
+    
+    interpretation += "Это ваш персональный расклад. Прислушайтесь к своей интуиции при интерпретации символов.";
+    
+    // Печатаем интерпретацию
+    if (spreadAnswerText) {
+        await typeText(spreadAnswerText, interpretation);
+    }
+    
+    // Сохраняем в историю
+    await addToHistory('spread', spreadConfig.name, interpretation);
+    
+    showMessage('Расклад выполнен!', 'success');
+}
+
+function resetSpreadState() {
+    console.log('🔄 Сброс состояния раскладов');
+    
+    // Скрываем результат и показываем сетку
+    spreadResult?.classList.add('hidden');
+    spreadsGrid?.classList.remove('hidden');
+    
+    // Очищаем контейнеры
+    if (spreadCardsLayout) spreadCardsLayout.innerHTML = '';
+    if (spreadIntroText) spreadIntroText.textContent = '';
+    if (spreadAnswerText) {
+        spreadAnswerText.textContent = '';
+        spreadAnswerText.classList.remove('finished-typing');
+    }
+    
+    // Скрываем все контейнеры анимации
+    spreadAnimationContainer?.classList.add('hidden');
+    spreadCardsContainer?.classList.add('hidden');
+    spreadAnswerContainer?.classList.remove('show');
+    spreadAnswerContainer?.classList.add('hidden');
+}
+
 // ========================================================================
 // 📚 ИСТОРИЯ
 // ========================================================================
@@ -787,15 +1350,20 @@ async function addToHistory(type, title, content) {
     }
     
     // Локальное сохранение как fallback
+    const now = new Date();
     const historyItem = {
         id: Date.now(),
         type: type,
         title: title,
         content: content,
-        date: new Date().toLocaleString('ru-RU')
+        date: now.toLocaleString('ru-RU'),
+        timestamp: now.getTime() // Добавляем timestamp для проверки возраста
     };
     
     appState.history.unshift(historyItem);
+    
+    // Очищаем старые записи
+    cleanOldHistoryItems();
     
     // Ограничиваем количество записей
     if (appState.history.length > 50) {
@@ -831,17 +1399,34 @@ function updateHistoryDisplay() {
     appState.history.forEach(item => {
         const historyItemElement = document.createElement('div');
         historyItemElement.className = 'history-item';
+        
+        // Определяем тип для отображения
+        let typeDisplay = '❓ Вопрос';
+        if (item.type === 'daily-card') {
+            typeDisplay = '🃏 Карта дня';
+        } else if (item.type === 'spread') {
+            typeDisplay = '🎴 Расклад';
+        }
+        
         historyItemElement.innerHTML = `
             <div class="history-header">
-                <div class="history-type">${item.type === 'daily-card' ? '🃏 Карта дня' : '❓ Вопрос'}</div>
-                <div class="history-date">${item.date}</div>
+                <div class="history-type">${typeDisplay}</div>
+                <div class="history-actions">
+                    <div class="history-date">${item.date}</div>
+                    <button class="delete-history-item" data-id="${item.id}" title="Удалить">🗑️</button>
+                </div>
             </div>
             <div class="history-title">${item.title}</div>
             <div class="history-content">${item.content.length > 100 ? item.content.substring(0, 100) + '...' : item.content}</div>
         `;
         
         // Добавляем обработчик клика для раскрытия полного содержимого
-        historyItemElement.addEventListener('click', () => {
+        historyItemElement.addEventListener('click', (e) => {
+            // Не раскрываем содержимое если кликнули по кнопке удаления
+            if (e.target.classList.contains('delete-history-item')) {
+                return;
+            }
+            
             const content = historyItemElement.querySelector('.history-content');
             if (content.textContent.endsWith('...')) {
                 content.textContent = item.content;
@@ -850,13 +1435,120 @@ function updateHistoryDisplay() {
             }
         });
         
+        // Добавляем обработчик для кнопки удаления
+        const deleteBtn = historyItemElement.querySelector('.delete-history-item');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Предотвращаем всплытие события
+            deleteHistoryItem(item.id);
+        });
+        
         historyList.appendChild(historyItemElement);
     });
+}
+
+function deleteHistoryItem(itemId) {
+    // Ищем элемент в истории
+    const itemIndex = appState.history.findIndex(item => item.id === itemId);
+    
+    if (itemIndex === -1) {
+        console.warn('Элемент истории не найден:', itemId);
+        return;
+    }
+    
+    // Удаляем элемент из массива
+    appState.history.splice(itemIndex, 1);
+    
+    // Сохраняем состояние
+    saveAppState();
+    
+    // Обновляем отображение
+    updateHistoryDisplay();
+    
+    showMessage('Запись удалена из истории', 'success');
 }
 
 // ========================================================================
 // ⭐ ОТЗЫВЫ
 // ========================================================================
+
+function updateReviewsDisplay() {
+    const reviewsList = document.getElementById('reviewsList');
+    
+    if (!reviewsList) return;
+    
+    // Очищаем текущий список отзывов
+    reviewsList.innerHTML = '';
+    
+    if (appState.reviews.length === 0) {
+        reviewsList.innerHTML = `
+            <div class="reviews-empty">
+                <span class="empty-icon">💬</span>
+                <p>Отзывы пока отсутствуют.</p>
+                <p>Станьте первым, кто оставит отзыв!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Создаем элементы отзывов (показываем последние 10)
+    const recentReviews = appState.reviews.slice(0, 10);
+    
+    recentReviews.forEach(review => {
+        const reviewElement = document.createElement('div');
+        reviewElement.className = 'review-item';
+        
+        // Создаем звездочки для отображения рейтинга
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            starsHtml += `<span class="review-star ${i <= review.rating ? 'filled' : ''}">★</span>`;
+        }
+        
+        // Ограничиваем длину текста для превью
+        const maxLength = 120;
+        const isLongText = review.text.length > maxLength;
+        const truncatedText = isLongText ? review.text.substring(0, maxLength) + '...' : review.text;
+        
+        reviewElement.innerHTML = `
+            <div class="review-header">
+                <div class="review-user-info">
+                    <div class="review-username">${review.username || 'Анонимный пользователь'}</div>
+                    <div class="review-rating">${starsHtml}</div>
+                </div>
+                <div class="review-date">${review.date}</div>
+            </div>
+            <div class="review-text" data-full-text="${encodeURIComponent(review.text)}" data-truncated-text="${encodeURIComponent(truncatedText)}" data-expanded="false">${truncatedText}</div>
+            ${isLongText ? '<div class="review-expand-hint">Нажмите для раскрытия</div>' : ''}
+        `;
+        
+        // Добавляем обработчик клика для раскрытия/скрытия длинного текста
+        if (isLongText) {
+            reviewElement.addEventListener('click', () => {
+                const textElement = reviewElement.querySelector('.review-text');
+                const expandHint = reviewElement.querySelector('.review-expand-hint');
+                const isExpanded = textElement.getAttribute('data-expanded') === 'true';
+                
+                if (isExpanded) {
+                    // Скрываем полный текст
+                    textElement.textContent = decodeURIComponent(textElement.getAttribute('data-truncated-text'));
+                    textElement.setAttribute('data-expanded', 'false');
+                    expandHint.textContent = 'Нажмите для раскрытия';
+                    reviewElement.classList.remove('expanded');
+                } else {
+                    // Показываем полный текст
+                    textElement.textContent = decodeURIComponent(textElement.getAttribute('data-full-text'));
+                    textElement.setAttribute('data-expanded', 'true');
+                    expandHint.textContent = 'Нажмите для скрытия';
+                    reviewElement.classList.add('expanded');
+                }
+            });
+            
+            // Добавляем курсор pointer для интерактивности
+            reviewElement.style.cursor = 'pointer';
+        }
+        
+        reviewsList.appendChild(reviewElement);
+    });
+}
 
 function setupStarRating() {
     const stars = document.querySelectorAll('.star');
@@ -905,8 +1597,31 @@ function handleSubmitReview() {
         return;
     }
     
-    // Здесь можно отправить отзыв на сервер
-    console.log('📝 Отзыв отправлен:', { rating, text });
+    // Создаем объект отзыва
+    const review = {
+        id: Date.now(),
+        rating: rating,
+        text: text,
+        username: getTelegramUserName(),
+        date: new Date().toLocaleString('ru-RU'),
+        timestamp: Date.now()
+    };
+    
+    // Добавляем отзыв в начало массива
+    appState.reviews.unshift(review);
+    
+    // Ограничиваем количество отзывов (храним максимум 50)
+    if (appState.reviews.length > 50) {
+        appState.reviews = appState.reviews.slice(0, 50);
+    }
+    
+    // Сохраняем состояние
+    saveAppState();
+    
+    // Обновляем отображение отзывов
+    updateReviewsDisplay();
+    
+    console.log('📝 Отзыв сохранен:', review);
     
     showMessage('Спасибо за ваш отзыв!', 'success');
     
@@ -972,13 +1687,96 @@ function handlePremiumPurchase() {
 // ========================================================================
 
 function getTelegramUserId() {
-    // Пытаемся получить ID пользователя из Telegram WebApp
+    // Пытаемся получить ID пользователя из проверенных данных
+    if (window.validatedTelegramUser && window.validatedTelegramUser.id) {
+        return window.validatedTelegramUser.id;
+    }
+    
+    // Для разработки используем initDataUnsafe
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+        console.warn('⚠️ Используются непроверенные данные Telegram (только для разработки)');
         return window.Telegram.WebApp.initDataUnsafe.user.id;
     }
     
     // Fallback для тестирования
     return 'test_user_' + Date.now();
+}
+
+function getTelegramUserName() {
+    // Пытаемся получить имя пользователя из проверенных данных
+    if (window.validatedTelegramUser) {
+        const user = window.validatedTelegramUser;
+        
+        // Пробуем получить имя в порядке приоритета
+        if (user.first_name && user.last_name) {
+            return `${user.first_name} ${user.last_name}`;
+        } else if (user.first_name) {
+            return user.first_name;
+        } else if (user.username) {
+            return `@${user.username}`;
+        }
+    }
+    
+    // Для разработки используем initDataUnsafe
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+        console.warn('⚠️ Используются непроверенные данные Telegram (только для разработки)');
+        const user = window.Telegram.WebApp.initDataUnsafe.user;
+        
+        // Пробуем получить имя в порядке приоритета
+        if (user.first_name && user.last_name) {
+            return `${user.first_name} ${user.last_name}`;
+        } else if (user.first_name) {
+            return user.first_name;
+        } else if (user.username) {
+            return `@${user.username}`;
+        }
+    }
+    
+    // Fallback - случайное мистическое имя
+    const userId = getTelegramUserId();
+    // Используем ID для генерации стабильного случайного имени
+    const hash = userId.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+    const index = Math.abs(hash) % mysticalNames.length;
+    return mysticalNames[index];
+}
+
+async function validateTelegramData() {
+    // Проверяем, есть ли Telegram WebApp initData
+    if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
+        console.log('📱 Telegram WebApp данные недоступны (вероятно, запуск вне Telegram)');
+        return false;
+    }
+    
+    try {
+        const response = await fetch('/api/validate-telegram', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                initData: window.Telegram.WebApp.initData
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+                window.validatedTelegramUser = data.user;
+                console.log('✅ Telegram данные успешно проверены');
+                return true;
+            }
+        }
+        
+        console.warn('⚠️ Не удалось проверить Telegram данные');
+        return false;
+        
+    } catch (error) {
+        console.warn('⚠️ Ошибка валидации Telegram данных:', error);
+        return false;
+    }
 }
 
 // ========================================================================
@@ -1025,6 +1823,15 @@ function initializeDOMElements() {
     questionAnswerText = document.getElementById('questionAnswerText');
     questionCardImage = document.getElementById('questionCardImage');
     
+    // Новые элементы для анимации вопросов
+    questionAnimationContainer = document.getElementById('questionAnimationContainer');
+    questionStarAnimationContainer = document.getElementById('questionStarAnimationContainer');
+    questionIntroText = document.getElementById('questionIntroText');
+    questionCardContainer = document.getElementById('questionCardContainer');
+    questionTarotCard = document.getElementById('questionTarotCard');
+    questionCardInfoAfterFlip = document.getElementById('questionCardInfoAfterFlip');
+    questionFlippedCardName = document.getElementById('questionFlippedCardName');
+    
     // Уточняющий вопрос
     clarifyingQuestionContainer = document.getElementById('clarifyingQuestionContainer');
     clarifyingQuestionTextarea = document.getElementById('clarifyingQuestionTextarea');
@@ -1034,6 +1841,18 @@ function initializeDOMElements() {
     // Test Toggle
     premiumTestToggle = document.getElementById('premiumTestToggle');
     premiumTestLabel = document.getElementById('premiumTestLabel');
+    
+    // Расклады
+    spreadsGrid = document.getElementById('spreadsGrid');
+    spreadResult = document.getElementById('spreadResult');
+    spreadResultTitle = document.getElementById('spreadResultTitle');
+    backToSpreadsBtn = document.getElementById('backToSpreadsBtn');
+    spreadAnimationContainer = document.getElementById('spreadAnimationContainer');
+    spreadIntroText = document.getElementById('spreadIntroText');
+    spreadCardsContainer = document.getElementById('spreadCardsContainer');
+    spreadCardsLayout = document.getElementById('spreadCardsLayout');
+    spreadAnswerContainer = document.getElementById('spreadAnswerContainer');
+    spreadAnswerText = document.getElementById('spreadAnswerText');
 
     console.log('✅ DOM элементы инициализированы');
 }
@@ -1044,10 +1863,14 @@ function initializeDOMElements() {
 
 function setupEventListeners() {
     console.log('🎮 Настройка обработчиков событий...');
+    console.log('🔧 mainNav:', mainNav);
+    console.log('🔧 secondaryNav:', secondaryNav);
     
     // Навигация
     mainNav?.addEventListener('click', (e) => {
+        console.log('🖱️ Клик по mainNav:', e.target);
         if (e.target.classList.contains('nav-tab')) {
+            console.log('🎯 Найдена nav-tab:', e.target.dataset.tab);
             switchTab(e.target.dataset.tab);
         }
     });
@@ -1082,6 +1905,17 @@ function setupEventListeners() {
     // Test Toggle
     premiumTestToggle?.addEventListener('change', handlePremiumTestToggle);
     
+    // Расклады
+    spreadsGrid?.addEventListener('click', (e) => {
+        const spreadCard = e.target.closest('.spread-card');
+        if (spreadCard && spreadCard.dataset.spread) {
+            console.log('🎴 Клик по раскладу:', spreadCard.dataset.spread);
+            handleSpreadClick(spreadCard.dataset.spread);
+        }
+    });
+    
+    backToSpreadsBtn?.addEventListener('click', resetSpreadState);
+    
     console.log('✅ Обработчики событий настроены');
 }
 
@@ -1093,6 +1927,12 @@ async function initApp() {
     console.log('🚀 Инициализация приложения...');
     
     try {
+        // 0. Валидируем Telegram данные (только в продакшене)
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            console.log('🔐 Валидация Telegram данных...');
+            await validateTelegramData();
+        }
+        
         // 1. Ждем готовности конфигурации
         if (typeof window.isConfigReady === 'function') {
             let configReady = false;
