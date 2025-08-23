@@ -199,8 +199,54 @@ function showMessage(message, type = 'info', duration = 3000) {
 
 async function loadCards() {
     try {
-        console.log('🃏 Загрузка карт из cards.json...');
+        console.log('🃏 Загрузка карт через API...');
         
+        // 1. Пытаемся загрузить через наш API
+        try {
+            const response = await fetch('/api/cards', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const apiData = await response.json();
+                
+                if (apiData.success && apiData.cards && Array.isArray(apiData.cards) && apiData.cards.length > 0) {
+                    // Обрабатываем карты из API
+                    allCards = apiData.cards.map(card => {
+                        const processedCard = { ...card };
+                        
+                        // Нормализуем пути к изображениям
+                        if (card.image) {
+                            processedCard.image = normalizeImagePath(card.image);
+                        }
+                        if (card.imageUpright) {
+                            processedCard.imageUpright = normalizeImagePath(card.imageUpright);
+                        }
+                        if (card.imageReversed) {
+                            processedCard.imageReversed = normalizeImagePath(card.imageReversed);
+                        }
+                        
+                        return processedCard;
+                    });
+                    
+                    console.log(`✅ Карты загружены через API (${apiData.source}):`, allCards.length);
+                    console.log('📊 Статус кэша:', apiData.cached ? 'HIT' : 'MISS');
+                    if (apiData.stale) {
+                        console.warn('⚠️ Использованы устаревшие кэшированные данные');
+                    }
+                    
+                    return; // Успешно загружены через API
+                }
+            }
+            
+            console.warn('⚠️ API карт недоступен, пробуем прямую загрузку');
+        } catch (apiError) {
+            console.warn('⚠️ Ошибка API карт:', apiError.message);
+        }
+        
+        // 2. Fallback - прямая загрузка из файла
         const possiblePaths = [
             './cards.json',
             '/cards.json',
@@ -211,7 +257,7 @@ async function loadCards() {
         
         for (const path of possiblePaths) {
             try {
-                console.log(`Попытка загрузки из: ${path}`);
+                console.log(`Fallback загрузка из: ${path}`);
                 const response = await fetch(path);
                 
                 if (response.ok) {
@@ -237,12 +283,6 @@ async function loadCards() {
                         });
                         
                         console.log(`✅ Карты загружены из ${path}:`, allCards.length);
-                        console.log('🖼️ Примеры изображений:', allCards.slice(0, 3).map(c => ({ 
-                            name: c.name, 
-                            image: c.image,
-                            imageUpright: c.imageUpright,
-                            imageReversed: c.imageReversed
-                        })));
                         
                         cardsLoaded = true;
                         break;
