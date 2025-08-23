@@ -10,10 +10,24 @@ async function initializeSupabase() {
     try {
         console.log('🔗 Инициализация Supabase...');
         
-        const config = window.getSupabaseConfig();
+        // Ждем готовности конфигурации
+        let config = null;
+        let attempts = 0;
+        const maxAttempts = 30; // 3 секунды
+        
+        while (!config && attempts < maxAttempts) {
+            if (typeof window.getSupabaseConfig === 'function') {
+                config = window.getSupabaseConfig();
+            }
+            
+            if (!config) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+        }
         
         if (!config || !config.url || !config.anonKey) {
-            console.warn('⚠️ Supabase конфигурация не найдена, работаем в автономном режиме');
+            console.warn('⚠️ Supabase конфигурация недоступна, работаем в автономном режиме');
             return false;
         }
 
@@ -23,59 +37,98 @@ async function initializeSupabase() {
             return false;
         }
 
-        // Инициализируем клиент Supabase
-        if (typeof window.supabase !== 'undefined') {
+        // Ждем загрузки Supabase библиотеки
+        if (typeof window.supabase === 'undefined') {
+            console.log('📚 Ожидание загрузки Supabase библиотеки...');
+            
+            // Проверяем, загружена ли библиотека в HTML
+            const supabaseScript = document.querySelector('script[src*="supabase"]');
+            if (!supabaseScript) {
+                console.warn('⚠️ Supabase скрипт не найден в HTML');
+                return false;
+            }
+            
+            // Ждем загрузки библиотеки
+            let libAttempts = 0;
+            const maxLibAttempts = 50; // 5 секунд
+            
+            while (typeof window.supabase === 'undefined' && libAttempts < maxLibAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                libAttempts++;
+            }
+            
+            if (typeof window.supabase === 'undefined') {
+                console.warn('⚠️ Supabase библиотека не загрузилась, работаем в автономном режиме');
+                return false;
+            }
+        }
+
+        // Инициализируем клиент Supabase с правильными настройками
+        try {
             supabaseClient = window.supabase.createClient(config.url, config.anonKey, {
                 auth: {
-                    persistSession: false, // Не сохраняем сессию для анонимного использования
-                    autoRefreshToken: false
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
                 },
                 db: {
                     schema: 'public'
                 },
                 global: {
                     headers: {
-                        'x-application': 'tarot-web-app'
+                        'x-application': 'tarot-web-app',
+                        'apikey': config.anonKey
                     }
+                },
+                realtime: {
+                    disabled: true // Отключаем realtime для лучшей производительности
                 }
             });
             
-            console.log('✅ Supabase клиент инициализирован:', config.url);
+            console.log('✅ Supabase клиент инициализирован:', config.url.replace(/\/\/.*@/, '//***@'));
             
-            // Проверяем подключение
-            const { data, error } = await supabaseClient
+        } catch (clientError) {
+            console.error('❌ Ошибка создания Supabase клиента:', clientError);
+            return false;
+        }
+
+        // Проверяем подключение с таймаутом
+        try {
+            console.log('🔍 Проверка подключения к Supabase...');
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 секунд таймаут
+            
+            const { error } = await supabaseClient
                 .from('tarot_user_profiles')
-                .select('count', { count: 'exact', head: true });
+                .select('count', { count: 'exact', head: true })
+                .abortSignal(controller.signal);
+                
+            clearTimeout(timeoutId);
                 
             if (error) {
-                console.warn('⚠️ Ошибка подключения к Supabase:', error.message);
+                if (error.name === 'AbortError') {
+                    console.warn('⚠️ Таймаут подключения к Supabase, работаем в автономном режиме');
+                } else {
+                    console.warn('⚠️ Ошибка подключения к Supabase:', error.message);
+                }
                 return false;
             }
             
             console.log('✅ Подключение к Supabase проверено успешно');
             return true;
             
-        } else {
-            console.warn('⚠️ Библиотека Supabase не найдена, загружаем...');
-            
-            // Пытаемся загрузить библиотеку динамически
-            try {
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-                script.onload = () => {
-                    console.log('✅ Supabase библиотека загружена');
-                    // Повторная попытка инициализации
-                    setTimeout(() => initializeSupabase(), 100);
-                };
-                document.head.appendChild(script);
-                return false;
-            } catch (loadError) {
-                console.error('❌ Ошибка загрузки Supabase библиотеки:', loadError);
-                return false;
+        } catch (connectionError) {
+            if (connectionError.name === 'AbortError') {
+                console.warn('⚠️ Таймаут проверки подключения к Supabase');
+            } else {
+                console.warn('⚠️ Ошибка проверки подключения:', connectionError.message);
             }
+            return false;
         }
+            
     } catch (error) {
-        console.error('❌ Ошибка инициализации Supabase:', error);
+        console.error('❌ Критическая ошибка инициализации Supabase:', error);
         return false;
     }
 }
@@ -88,6 +141,9 @@ async function createUserProfile(telegramId, username = null) {
     }
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
+        
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .insert([
@@ -100,35 +156,66 @@ async function createUserProfile(telegramId, username = null) {
                 }
             ])
             .select()
-            .single();
+            .single()
+            .abortSignal(controller.signal);
 
-        if (error) throw error;
+        clearTimeout(timeoutId);
+
+        if (error) {
+            console.warn('⚠️ Ошибка Supabase при создании профиля:', error.message);
+            return saveUserProfileLocally(telegramId, username);
+        }
         
-        console.log('✅ Профиль пользователя создан:', data);
+        console.log('✅ Профиль пользователя создан в Supabase:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка создания профиля:', error);
+        if (error.name === 'AbortError') {
+            console.warn('⚠️ Таймаут создания профиля в Supabase');
+        } else {
+            console.error('❌ Критическая ошибка создания профиля:', error.message);
+        }
         return saveUserProfileLocally(telegramId, username);
     }
 }
 
 async function getUserProfile(telegramId) {
     if (!supabaseClient) {
+        console.log('📱 Supabase недоступен, используем локальный профиль');
         return getUserProfileLocally(telegramId);
     }
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 секунд
+        
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .select('*')
             .eq('telegram_id', telegramId)
-            .single();
+            .single()
+            .abortSignal(controller.signal);
 
-        if (error && error.code !== 'PGRST116') throw error;
+        clearTimeout(timeoutId);
+
+        // Если пользователь не найден, создаем новый профиль
+        if (error && error.code === 'PGRST116') {
+            console.log('👤 Пользователь не найден, создаем новый профиль');
+            return await createUserProfile(telegramId);
+        }
         
-        return data || await createUserProfile(telegramId);
+        if (error) {
+            console.warn('⚠️ Ошибка Supabase при получении профиля:', error.message);
+            return getUserProfileLocally(telegramId);
+        }
+        
+        console.log('✅ Профиль пользователя получен из Supabase');
+        return data;
     } catch (error) {
-        console.error('❌ Ошибка получения профиля:', error);
+        if (error.name === 'AbortError') {
+            console.warn('⚠️ Таймаут получения профиля из Supabase');
+        } else {
+            console.error('❌ Критическая ошибка получения профиля:', error.message);
+        }
         return getUserProfileLocally(telegramId);
     }
 }
