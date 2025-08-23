@@ -736,8 +736,15 @@ async function handleDailyCardClick() {
             };
         }
         
+        console.log('🔄 Показываем переднюю сторону карты');
+        console.log('📍 cardFront element:', cardFront);
+        console.log('📍 cardBack element:', cardBack);
+        
         cardFront?.classList.remove('hidden');
         cardBack?.classList.add('hidden');
+        
+        console.log('✅ Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
+        console.log('✅ Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
     }, 400);
 
     // После полной анимации показываем информацию
