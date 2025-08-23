@@ -909,8 +909,20 @@ async function handleAskQuestion() {
             
             // Обновляем лицевую сторону карты
             setTimeout(() => {
-                questionTarotCard?.querySelector('.card-front')?.classList.remove('hidden');
-                questionTarotCard?.querySelector('.card-back')?.classList.add('hidden');
+                console.log('🔄 [ВОПРОС] Показываем переднюю сторону карты');
+                console.log('📍 questionTarotCard element:', questionTarotCard);
+                
+                const cardFront = questionTarotCard?.querySelector('.card-front');
+                const cardBack = questionTarotCard?.querySelector('.card-back');
+                
+                console.log('📍 cardFront element:', cardFront);
+                console.log('📍 cardBack element:', cardBack);
+                
+                cardFront?.classList.remove('hidden');
+                cardBack?.classList.add('hidden');
+                
+                console.log('✅ [ВОПРОС] Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
+                console.log('✅ [ВОПРОС] Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
                 
                 // Показываем название карты
                 if (questionFlippedCardName) {
