@@ -212,7 +212,7 @@ function getDefaultCards() {
             id: "MA_0",
             name: "Дурак",
             symbol: "🔮",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=🔮",
+            image: null,
             meaningUpright: "Начало, невинность, спонтанность, свободный дух",
             meaningReversed: "Безрассудство, наивность, риск",
             description: "Карта новых начинаний и свободы выбора. Сегодня звезды благоволят вашим смелым решениям и спонтанным поступкам."
@@ -221,7 +221,7 @@ function getDefaultCards() {
             id: "MA_1",
             name: "Маг",
             symbol: "🔮",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=🔮",
+            image: null,
             meaningUpright: "Сила воли, проявление, вдохновение",
             meaningReversed: "Манипуляция, обман, неиспользованные таланты",
             description: "Карта силы воли и творческих способностей. У вас есть все инструменты для достижения цели."
@@ -230,7 +230,7 @@ function getDefaultCards() {
             id: "MA_2",
             name: "Верховная Жрица",
             symbol: "🌙",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=🌙",
+            image: null,
             meaningUpright: "Интуиция, тайны, внутренний голос",
             meaningReversed: "Потаённость, отстранённость, иллюзии",
             description: "Карта интуиции и скрытых знаний. Прислушайтесь к своему внутреннему голосу."
@@ -239,7 +239,7 @@ function getDefaultCards() {
             id: "MA_3",
             name: "Императрица",
             symbol: "👑",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=👑",
+            image: null,
             meaningUpright: "Изобилие, материнство, природа",
             meaningReversed: "Излишества, зависимость, застой",
             description: "Карта творческой энергии и изобилия. Время расцвета и плодородных идей."
@@ -248,7 +248,7 @@ function getDefaultCards() {
             id: "MA_4",
             name: "Император",
             symbol: "⚔️",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=⚔️",
+            image: null,
             meaningUpright: "Структура, стабильность, авторитет",
             meaningReversed: "Жесткость, контроль, деспотизм",
             description: "Карта стабильности и порядка. Время укрепить свои позиции и проявить лидерство."
@@ -257,7 +257,7 @@ function getDefaultCards() {
             id: "MA_17",
             name: "Звезда",
             symbol: "⭐",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=⭐",
+            image: null,
             meaningUpright: "Надежда, вдохновение, исцеление",
             meaningReversed: "Пессимизм, разочарование",
             description: "Карта надежды и вдохновения. Впереди вас ждут светлые перспективы и новые возможности."
@@ -266,7 +266,7 @@ function getDefaultCards() {
             id: "MA_19",
             name: "Солнце",
             symbol: "☀️",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=☀️",
+            image: null,
             meaningUpright: "Радость, успех, жизненная сила",
             meaningReversed: "Сомнение, эго",
             description: "Карта радости и успеха. Сегодня день полон позитивной энергии и благоприятных возможностей."
@@ -275,7 +275,7 @@ function getDefaultCards() {
             id: "MA_18",
             name: "Луна",
             symbol: "🌙",
-            image: "https://via.placeholder.com/180x270/8A2BE2/FFFFFF?text=🌙",
+            image: null,
             meaningUpright: "Иллюзии, интуиция, страхи",
             meaningReversed: "Ясность, прозрение",
             description: "Карта тайн и интуиции. Доверьтесь внутреннему голосу, но будьте осторожны с иллюзиями."
