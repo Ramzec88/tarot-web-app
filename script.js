@@ -282,9 +282,8 @@ function getBuiltInCards() {
         image: createCardPlaceholder(card)
     }));
 }
-
 // Функция проверки доступности изображения
-async function checkImageAvailability(imagePath) {
+asynchronous function checkImageAvailability(imagePath) {
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => resolve(true);
@@ -653,6 +652,86 @@ async function handleAskQuestion() {
         if (questionAnswerText) {
             await typeText(questionAnswerText, answer);
         }
+        questionAnswerContainer?.classList.remove('hidden');
+        questionAnswerContainer?.classList.add('show');
+        
+        clarifyingQuestionContainer?.classList.remove('hidden');
+        if (!appState.isPremium) {
+            clarifyingQuestionWarning?.classList.remove('hidden');
+        } else {
+            clarifyingQuestionWarning?.classList.add('hidden');
+        }
+
+        // Обновляем счетчики
+        if (!appState.isPremium) {
+            appState.questionsUsed++;
+            saveAppState();
+            updateQuestionsCounter();
+        }
+        
+        // Сохраняем в историю
+        await addToHistory('question', question, answer);
+        
+        // Очищаем форму
+        questionTextarea.value = '';
+        handleQuestionInput();
+        
+        showMessage('Ответ получен!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Ошибка при обработке вопроса:', error);
+        loadingState?.classList.add('hidden');
+        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
+    } finally {
+        submitQuestionBtn.disabled = false;
+    }
+}
+
+async function handleClarifyingQuestion() {
+    if (!clarifyingQuestionTextarea) return;
+
+    const question = clarifyingQuestionTextarea.value.trim();
+    if (!question) {
+        showMessage('Пожалуйста, введите ваш уточняющий вопрос', 'error');
+        return;
+    }
+
+    if (!appState.isPremium && appState.questionsUsed >= appState.freeQuestionsLimit) {
+        showMessage('Бесплатные вопросы закончились. Получите Premium для безлимитных вопросов!', 'error');
+        return;
+    }
+
+    // Показываем загрузку
+    loadingState?.classList.remove('hidden');
+    submitClarifyingQuestionBtn.disabled = true;
+
+    try {
+        // Симулируем обработку вопроса
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const randomCard = getRandomCard();
+        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+
+        // Показываем ответ
+        loadingState?.classList.add('hidden');
+
+        if (questionCardImage) {
+            // Проверяем доступность изображения
+            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+            
+            if (imageAvailable) {
+                questionCardImage.src = randomCard.displayImage;
+            } else {
+                questionCardImage.src = createCardPlaceholder(randomCard);
+            }
+            
+            questionCardImage.classList.remove('hidden');
+        }
+
+        if (questionAnswerText) {
+            await typeText(questionAnswerText, answer);
+        }
 
         // Обновляем счетчики
         if (!appState.isPremium) {
@@ -677,7 +756,6 @@ async function handleAskQuestion() {
         submitClarifyingQuestionBtn.disabled = false;
     }
 }
-
 // ========================================================================
 // 📚 ИСТОРИЯ
 // ========================================================================
@@ -889,7 +967,6 @@ function handlePremiumPurchase() {
     
     showMessage('Premium активирован! Теперь у вас безлимитные возможности!', 'success');
 }
-
 // ========================================================================
 // 🛠️ УТИЛИТЫ
 // ========================================================================
@@ -1228,84 +1305,4 @@ window.TarotApp = {
     createCardPlaceholder,
     checkImageAvailability,
     normalizeImagePath
-};Card.displayImage;
-            } else {
-                questionCardImage.src = createCardPlaceholder(randomCard);
-            }
-            
-            questionCardImage.classList.remove('hidden');
-        }
-
-        if (questionAnswerText) {
-            await typeText(questionAnswerText, answer);
-        }
-        questionAnswerContainer?.classList.remove('hidden');
-        questionAnswerContainer?.classList.add('show');
-        
-        clarifyingQuestionContainer?.classList.remove('hidden');
-        if (!appState.isPremium) {
-            clarifyingQuestionWarning?.classList.remove('hidden');
-        } else {
-            clarifyingQuestionWarning?.classList.add('hidden');
-        }
-
-        // Обновляем счетчики
-        if (!appState.isPremium) {
-            appState.questionsUsed++;
-            saveAppState();
-            updateQuestionsCounter();
-        }
-        
-        // Сохраняем в историю
-        await addToHistory('question', question, answer);
-        
-        // Очищаем форму
-        questionTextarea.value = '';
-        handleQuestionInput();
-        
-        showMessage('Ответ получен!', 'success');
-        
-    } catch (error) {
-        console.error('❌ Ошибка при обработке вопроса:', error);
-        loadingState?.classList.add('hidden');
-        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
-    } finally {
-        submitQuestionBtn.disabled = false;
-    }
-}
-
-async function handleClarifyingQuestion() {
-    if (!clarifyingQuestionTextarea) return;
-
-    const question = clarifyingQuestionTextarea.value.trim();
-    if (!question) {
-        showMessage('Пожалуйста, введите ваш уточняющий вопрос', 'error');
-        return;
-    }
-
-    if (!appState.isPremium && appState.questionsUsed >= appState.freeQuestionsLimit) {
-        showMessage('Бесплатные вопросы закончились. Получите Premium для безлимитных вопросов!', 'error');
-        return;
-    }
-
-    // Показываем загрузку
-    loadingState?.classList.remove('hidden');
-    submitClarifyingQuestionBtn.disabled = true;
-
-    try {
-        // Симулируем обработку вопроса
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        const randomCard = getRandomCard();
-        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
-
-        // Показываем ответ
-        loadingState?.classList.add('hidden');
-
-        if (questionCardImage) {
-            // Проверяем доступность изображения
-            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
-            
-            if (imageAvailable) {
-                questionCardImage.src = random
+};
