@@ -29,7 +29,7 @@ export default function handler(req, res) {
             },
             api: {
                 n8nWebhookUrl: process.env.N8N_WEBHOOK_URL || 'https://volshebstvo.app.n8n.cloud/webhook/shepot-kart',
-                cardsUrl: process.env.GITHUB_CARDS_URL || '',
+                cardsUrl: process.env.CARDS_URL || '',
                 paymentUrl: process.env.PAYMENT_URL || 'https://www.wildberries.ru/catalog/199937445/detail.aspx'
             },
             app: {
