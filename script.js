@@ -1,5 +1,5 @@
 // ========================================================================
-// ИСПРАВЛЕННЫЙ SCRIPT.JS - Шёпот карт (с рабочими изображениями)
+// ИСПРАВЛЕННЫЙ SCRIPT.JS - Шёпот карт (с корректной загрузкой изображений)
 // ========================================================================
 
 // 🌟 СОСТОЯНИЕ ПРИЛОЖЕНИЯ
@@ -91,12 +91,12 @@ function showMessage(message, type = 'info', duration = 3000) {
 }
 
 // ========================================================================
-// 🃏 ЗАГРУЗКА ДАННЫХ КАРТ
+// 🃏 ЗАГРУЗКА ДАННЫХ КАРТ (ИСПРАВЛЕНО)
 // ========================================================================
 
 async function loadCards() {
     try {
-        console.log('🃏 Загрузка карт...');
+        console.log('🃏 Загрузка карт из cards.json...');
         
         const possiblePaths = [
             './cards.json',
@@ -112,21 +112,35 @@ async function loadCards() {
                 const response = await fetch(path);
                 
                 if (response.ok) {
-                    const cards = await response.json();
-                    if (cards && Array.isArray(cards) && cards.length > 0) {
-                        allCards = cards.map(card => {
+                    const cardsData = await response.json();
+                    
+                    if (cardsData && Array.isArray(cardsData) && cardsData.length > 0) {
+                        // Обрабатываем загруженные карты
+                        allCards = cardsData.map(card => {
+                            const processedCard = { ...card };
+                            
+                            // Нормализуем пути к изображениям
                             if (card.image) {
-                                card.image = encodeURI(card.image);
+                                processedCard.image = normalizeImagePath(card.image);
                             }
                             if (card.imageUpright) {
-                                card.imageUpright = encodeURI(card.imageUpright);
+                                processedCard.imageUpright = normalizeImagePath(card.imageUpright);
                             }
                             if (card.imageReversed) {
-                                card.imageReversed = encodeURI(card.imageReversed);
+                                processedCard.imageReversed = normalizeImagePath(card.imageReversed);
                             }
-                            return card;
+                            
+                            return processedCard;
                         });
+                        
                         console.log(`✅ Карты загружены из ${path}:`, allCards.length);
+                        console.log('🖼️ Примеры изображений:', allCards.slice(0, 3).map(c => ({ 
+                            name: c.name, 
+                            image: c.image,
+                            imageUpright: c.imageUpright,
+                            imageReversed: c.imageReversed
+                        })));
+                        
                         cardsLoaded = true;
                         break;
                     }
@@ -145,6 +159,28 @@ async function loadCards() {
         allCards = getBuiltInCards();
         console.log('✅ Встроенные карты загружены:', allCards.length);
     }
+}
+
+// Нормализация путей к изображениям
+function normalizeImagePath(imagePath) {
+    if (!imagePath) return null;
+    
+    // Если путь уже полный URL, возвращаем как есть
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+    }
+    
+    // Если путь начинается с /, убираем его для относительных путей
+    if (imagePath.startsWith('/')) {
+        imagePath = imagePath.substring(1);
+    }
+    
+    // Добавляем ./ для относительных путей если нужно
+    if (!imagePath.startsWith('./')) {
+        imagePath = './' + imagePath;
+    }
+    
+    return imagePath;
 }
 
 // Создание красивого placeholder для карты
@@ -247,6 +283,19 @@ function getBuiltInCards() {
     }));
 }
 
+// Функция проверки доступности изображения
+async function checkImageAvailability(imagePath) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = imagePath;
+        
+        // Таймаут для медленных соединений
+        setTimeout(() => resolve(false), 3000);
+    });
+}
+
 // Получение случайной карты (исправлено)
 function getRandomCard() {
     if (!allCards || allCards.length === 0) {
@@ -254,26 +303,28 @@ function getRandomCard() {
         allCards = getBuiltInCards();
     }
     
-    // Get a copy of the card object to avoid modifying the original in the array
+    // Получаем копию карты, чтобы не изменять оригинал
     const baseCard = allCards[Math.floor(Math.random() * allCards.length)];
     const randomCard = { ...baseCard };
 
-    // Determine orientation
+    // Определяем ориентацию
     randomCard.isReversed = Math.random() < 0.5;
 
-    // Set the image to display, fallback to upright if reversed is missing
-    if (randomCard.isReversed) {
-        randomCard.displayImage = randomCard.imageReversed || randomCard.imageUpright || randomCard.image;
+    // Выбираем изображение для отображения
+    if (randomCard.isReversed && randomCard.imageReversed) {
+        randomCard.displayImage = randomCard.imageReversed;
+    } else if (!randomCard.isReversed && randomCard.imageUpright) {
+        randomCard.displayImage = randomCard.imageUpright;
+    } else if (randomCard.image) {
+        randomCard.displayImage = randomCard.image;
     } else {
-        randomCard.displayImage = randomCard.imageUpright || randomCard.image;
-    }
-
-    // Final fallback to placeholder if no image is found
-    if (!randomCard.displayImage) {
+        // Fallback к placeholder
         randomCard.displayImage = createCardPlaceholder(randomCard);
     }
     
-    console.log(`🎯 Выбранная карта: ${randomCard.name} (${randomCard.isReversed ? 'Перевернутая' : 'Прямая'})`, 'Изображение:', randomCard.displayImage);
+    console.log(`🎯 Выбранная карта: ${randomCard.name} (${randomCard.isReversed ? 'Перевернутая' : 'Прямая'})`);
+    console.log(`🖼️ Изображение: ${randomCard.displayImage}`);
+    
     return randomCard;
 }
 
@@ -408,7 +459,7 @@ function resetDailyCardState() {
 }
 
 // ========================================================================
-// 🃏 ОБРАБОТКА КАРТЫ ДНЯ (ИСПРАВЛЕНО)
+// 🃏 ОБРАБОТКА КАРТЫ ДНЯ (ИСПРАВЛЕНО С УЛУЧШЕННОЙ ЗАГРУЗКОЙ ИЗОБРАЖЕНИЙ)
 // ========================================================================
 
 async function handleDailyCardClick() {
@@ -432,23 +483,32 @@ async function handleDailyCardClick() {
     const randomCard = getRandomCard();
 
     // Обновляем содержимое карты через половину анимации
-    setTimeout(() => {
+    setTimeout(async () => {
         starAnimationContainer.innerHTML = '';
         
         if (cardImage && randomCard.displayImage) {
-            // Добавляем обработку ошибок загрузки изображения
+            // Проверяем доступность изображения
+            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+            
+            if (imageAvailable) {
+                console.log('✅ Изображение доступно:', randomCard.displayImage);
+                cardImage.src = randomCard.displayImage;
+            } else {
+                console.warn('⚠️ Изображение недоступно, используем placeholder:', randomCard.displayImage);
+                cardImage.src = createCardPlaceholder(randomCard);
+            }
+            
+            cardImage.alt = randomCard.name;
+            
+            // Добавляем обработчики для отслеживания загрузки
+            cardImage.onload = function() {
+                console.log('✅ Изображение карты успешно загружено');
+            };
+            
             cardImage.onerror = function() {
-                console.warn('❌ Ошибка загрузки изображения:', randomCard.displayImage);
-                // Создаем fallback изображение
+                console.warn('❌ Ошибка загрузки изображения, устанавливаем placeholder');
                 this.src = createCardPlaceholder(randomCard);
             };
-            
-            cardImage.onload = function() {
-                console.log('✅ Изображение загружено успешно');
-            };
-            
-            cardImage.src = randomCard.displayImage;
-            cardImage.alt = randomCard.name;
         }
         
         cardFront?.classList.remove('hidden');
@@ -578,21 +638,20 @@ async function handleAskQuestion() {
         loadingState?.classList.add('hidden');
         
         if (questionCardImage) {
-            questionCardImage.src = randomCard.displayImage;
+            // Проверяем доступность изображения
+            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+            
+            if (imageAvailable) {
+                questionCardImage.src = randomCard.displayImage;
+            } else {
+                questionCardImage.src = createCardPlaceholder(randomCard);
+            }
+            
             questionCardImage.classList.remove('hidden');
         }
 
         if (questionAnswerText) {
             await typeText(questionAnswerText, answer);
-        }
-        questionAnswerContainer?.classList.remove('hidden');
-        questionAnswerContainer?.classList.add('show');
-        
-        clarifyingQuestionContainer?.classList.remove('hidden');
-        if (!appState.isPremium) {
-            clarifyingQuestionWarning?.classList.remove('hidden');
-        } else {
-            clarifyingQuestionWarning?.classList.add('hidden');
         }
 
         // Обновляем счетчики
@@ -601,22 +660,21 @@ async function handleAskQuestion() {
             saveAppState();
             updateQuestionsCounter();
         }
-        
+
         // Сохраняем в историю
-        await addToHistory('question', question, answer);
-        
+        await addToHistory('clarifying-question', question, answer);
+
         // Очищаем форму
-        questionTextarea.value = '';
-        handleQuestionInput();
-        
-        showMessage('Ответ получен!', 'success');
-        
+        clarifyingQuestionTextarea.value = '';
+
+        showMessage('Уточнение получено!', 'success');
+
     } catch (error) {
-        console.error('❌ Ошибка при обработке вопроса:', error);
+        console.error('❌ Ошибка при обработке уточняющего вопроса:', error);
         loadingState?.classList.add('hidden');
         showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
     } finally {
-        submitQuestionBtn.disabled = false;
+        submitClarifyingQuestionBtn.disabled = false;
     }
 }
 
@@ -950,68 +1008,6 @@ function setupEventListeners() {
     console.log('✅ Обработчики событий настроены');
 }
 
-async function handleClarifyingQuestion() {
-    if (!clarifyingQuestionTextarea) return;
-
-    const question = clarifyingQuestionTextarea.value.trim();
-    if (!question) {
-        showMessage('Пожалуйста, введите ваш уточняющий вопрос', 'error');
-        return;
-    }
-
-    if (!appState.isPremium && appState.questionsUsed >= appState.freeQuestionsLimit) {
-        showMessage('Бесплатные вопросы закончились. Получите Premium для безлимитных вопросов!', 'error');
-        return;
-    }
-
-    // Показываем загрузку
-    loadingState?.classList.remove('hidden');
-    submitClarifyingQuestionBtn.disabled = true;
-
-    try {
-        // Симулируем обработку вопроса
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        const randomCard = getRandomCard();
-        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
-
-        // Показываем ответ
-        loadingState?.classList.add('hidden');
-
-        if (questionCardImage) {
-            questionCardImage.src = randomCard.displayImage;
-            questionCardImage.classList.remove('hidden');
-        }
-
-        if (questionAnswerText) {
-            await typeText(questionAnswerText, answer);
-        }
-
-        // Обновляем счетчики
-        if (!appState.isPremium) {
-            appState.questionsUsed++;
-            saveAppState();
-            updateQuestionsCounter();
-        }
-
-        // Сохраняем в историю
-        await addToHistory('clarifying-question', question, answer);
-
-        // Очищаем форму
-        clarifyingQuestionTextarea.value = '';
-
-        showMessage('Уточнение получено!', 'success');
-
-    } catch (error) {
-        console.error('❌ Ошибка при обработке уточняющего вопроса:', error);
-        loadingState?.classList.add('hidden');
-        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
-    } finally {
-        submitClarifyingQuestionBtn.disabled = false;
-    }
-}
-
 // ========================================================================
 // 🚀 ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
 // ========================================================================
@@ -1065,7 +1061,13 @@ async function initApp() {
         // 8. Показываем информацию о загруженных картах
         if (allCards && allCards.length > 0) {
             console.log(`🃏 Всего карт загружено: ${allCards.length}`);
-            console.log('🖼️ Примеры изображений карт:', allCards.slice(0, 3).map(c => ({ name: c.name, image: c.image })));
+            console.log('🖼️ Примеры изображений карт:', allCards.slice(0, 3).map(c => ({ 
+                name: c.name, 
+                image: c.image,
+                imageUpright: c.imageUpright,
+                imageReversed: c.imageReversed,
+                displayImage: c.displayImage
+            })));
         }
         
     } catch (error) {
@@ -1122,7 +1124,10 @@ function debugApp() {
     if (allCards.length > 0) {
         console.log('🃏 Примеры карт:');
         allCards.slice(0, 3).forEach(card => {
-            console.log(`- ${card.name}: ${card.image}`);
+            console.log(`- ${card.name}:`);
+            console.log(`  Основное изображение: ${card.image}`);
+            console.log(`  Прямое изображение: ${card.imageUpright}`);
+            console.log(`  Перевернутое изображение: ${card.imageReversed}`);
         });
     }
 }
@@ -1149,12 +1154,44 @@ function testCardImage() {
     // Создаем тестовое изображение
     const testImg = new Image();
     testImg.onload = () => {
-        console.log('✅ Изображение загружается успешно:', randomCard.image);
+        console.log('✅ Изображение загружается успешно:', randomCard.displayImage);
     };
     testImg.onerror = () => {
-        console.error('❌ Ошибка загрузки изображения:', randomCard.image);
+        console.error('❌ Ошибка загрузки изображения:', randomCard.displayImage);
+        console.log('🔄 Попробуем placeholder:', createCardPlaceholder(randomCard));
     };
-    testImg.src = randomCard.image;
+    testImg.src = randomCard.displayImage;
+}
+
+function testAllCardImages() {
+    console.log('🧪 Тестирование всех изображений карт...');
+    
+    if (allCards.length === 0) {
+        console.warn('⚠️ Карты не загружены');
+        return;
+    }
+    
+    allCards.forEach(async (card, index) => {
+        console.log(`Тестирование карты ${index + 1}/${allCards.length}: ${card.name}`);
+        
+        // Тестируем основное изображение
+        if (card.image) {
+            const available = await checkImageAvailability(card.image);
+            console.log(`  Основное изображение: ${available ? '✅' : '❌'} ${card.image}`);
+        }
+        
+        // Тестируем прямое изображение
+        if (card.imageUpright) {
+            const available = await checkImageAvailability(card.imageUpright);
+            console.log(`  Прямое изображение: ${available ? '✅' : '❌'} ${card.imageUpright}`);
+        }
+        
+        // Тестируем перевернутое изображение
+        if (card.imageReversed) {
+            const available = await checkImageAvailability(card.imageReversed);
+            console.log(`  Перевернутое изображение: ${available ? '✅' : '❌'} ${card.imageReversed}`);
+        }
+    });
 }
 
 // ========================================================================
@@ -1185,7 +1222,90 @@ window.TarotApp = {
     resetApp,
     testNotification,
     testCardImage,
+    testAllCardImages,
     updateHistoryDisplay,
     currentRating,
-    createCardPlaceholder
-};
+    createCardPlaceholder,
+    checkImageAvailability,
+    normalizeImagePath
+};Card.displayImage;
+            } else {
+                questionCardImage.src = createCardPlaceholder(randomCard);
+            }
+            
+            questionCardImage.classList.remove('hidden');
+        }
+
+        if (questionAnswerText) {
+            await typeText(questionAnswerText, answer);
+        }
+        questionAnswerContainer?.classList.remove('hidden');
+        questionAnswerContainer?.classList.add('show');
+        
+        clarifyingQuestionContainer?.classList.remove('hidden');
+        if (!appState.isPremium) {
+            clarifyingQuestionWarning?.classList.remove('hidden');
+        } else {
+            clarifyingQuestionWarning?.classList.add('hidden');
+        }
+
+        // Обновляем счетчики
+        if (!appState.isPremium) {
+            appState.questionsUsed++;
+            saveAppState();
+            updateQuestionsCounter();
+        }
+        
+        // Сохраняем в историю
+        await addToHistory('question', question, answer);
+        
+        // Очищаем форму
+        questionTextarea.value = '';
+        handleQuestionInput();
+        
+        showMessage('Ответ получен!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Ошибка при обработке вопроса:', error);
+        loadingState?.classList.add('hidden');
+        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
+    } finally {
+        submitQuestionBtn.disabled = false;
+    }
+}
+
+async function handleClarifyingQuestion() {
+    if (!clarifyingQuestionTextarea) return;
+
+    const question = clarifyingQuestionTextarea.value.trim();
+    if (!question) {
+        showMessage('Пожалуйста, введите ваш уточняющий вопрос', 'error');
+        return;
+    }
+
+    if (!appState.isPremium && appState.questionsUsed >= appState.freeQuestionsLimit) {
+        showMessage('Бесплатные вопросы закончились. Получите Premium для безлимитных вопросов!', 'error');
+        return;
+    }
+
+    // Показываем загрузку
+    loadingState?.classList.remove('hidden');
+    submitClarifyingQuestionBtn.disabled = true;
+
+    try {
+        // Симулируем обработку вопроса
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const randomCard = getRandomCard();
+        const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+        const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+
+        // Показываем ответ
+        loadingState?.classList.add('hidden');
+
+        if (questionCardImage) {
+            // Проверяем доступность изображения
+            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+            
+            if (imageAvailable) {
+                questionCardImage.src = random
