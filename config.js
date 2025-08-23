@@ -425,18 +425,11 @@ window.getSpreadsConfig = getSpreadsConfig;
 window.isConfigReady = isConfigReady;
 window.debugConfig = debugConfig;
 
-// 🏁 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🏁 DOM готов, инициализирую конфигурацию...');
+// 🏁 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ - запускаем немедленно
+(async () => {
+    console.log('🏁 Инициализирую конфигурацию...');
     await initializeConfig();
     console.log('✅ Конфигурация готова');
-});
-
-// Запасная инициализация для случаев, когда DOMContentLoaded уже прошел
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeConfig);
-} else {
-    initializeConfig();
-}
+})();
 
 console.log('✅ Config.js загружен');
