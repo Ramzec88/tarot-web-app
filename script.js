@@ -341,7 +341,7 @@ function createCardPlaceholder(card) {
     
     const colorPair = colors[Math.floor(Math.random() * colors.length)];
     
-    return `https://via.placeholder.com/180x270/${colorPair}?text=${symbol}+${name}&fontSize=16`;
+    return `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='270' viewBox='0 0 180 270'><rect width='180' height='270' fill='%238A2BE2'/><text x='90' y='120' text-anchor='middle' fill='white' font-size='32'>${symbol}</text><text x='90' y='160' text-anchor='middle' fill='white' font-size='14' font-family='Arial'>${card.name || 'Карта'}</text></svg>`;
 }
 
 // Встроенные карты с правильными изображениями
