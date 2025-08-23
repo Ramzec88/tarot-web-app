@@ -38,12 +38,12 @@
                     <div class="card-back">
                         <span class="card-symbol">🔮</span>
                         <div class="card-text">Нажми на карту, чтобы узнать предсказание дня</div>
+                        <div id="starAnimationContainer"></div>
                     </div>
                     <div class="card-front hidden">
                         <img id="cardImage" src="" alt="Таро карта" class="card-image">
                     </div>
                 </div>
-                <div id="starAnimationContainer"></div>
                 <div class="card-info-after-flip hidden" id="cardInfoAfterFlip">
                     <div class="card-name" id="flippedCardName"></div>
                 </div>
@@ -87,6 +87,28 @@
                     <i class="fas fa-magic"></i> Получить ответ
                 </button>
             </div>
+            <!-- Контейнер для анимации вопросов -->
+            <div id="questionAnimationContainer" class="hidden">
+                <div class="question-intro-text" id="questionIntroText"></div>
+            </div>
+            
+            <!-- Карта для ответа на вопрос -->
+            <div class="question-card-container hidden" id="questionCardContainer">
+                <div class="tarot-card" id="questionTarotCard">
+                    <div class="card-back">
+                        <span class="card-symbol">🔮</span>
+                        <div class="card-text">Карты готовят ответ...</div>
+                        <div id="questionStarAnimationContainer"></div>
+                    </div>
+                    <div class="card-front hidden">
+                        <img id="questionCardImage" src="" alt="Карта ответа" class="card-image">
+                    </div>
+                </div>
+                <div class="card-info-after-flip hidden" id="questionCardInfoAfterFlip">
+                    <div class="card-name" id="questionFlippedCardName"></div>
+                </div>
+            </div>
+            
             <div class="loading hidden" id="loadingState">
                 <div class="magic-sparkles">✨</div>
                 <div class="magic-messages">
@@ -96,17 +118,9 @@
                 </div>
             </div>
             <div class="ai-answer-container hidden" id="questionAnswerContainer">
-                <div class="ai-answer-header">
-                    <h4>Ваш ответ:</h4>
-                </div>
                 <div class="ai-answer-box">
-                    <div class="tarot-card hidden" id="questionTarotCard" style="width: 120px; height: 180px; margin: 0 auto 15px;">
-                        <div class="card-back">
-                            <span class="card-symbol">🔮</span>
-                        </div>
-                        <div class="card-front hidden">
-                            <img id="questionCardImage" src="" alt="Карта ответа" class="card-image">
-                        </div>
+                    <div class="ai-answer-header">
+                        <h4 id="questionAiInterpretationTitle">ИИ-интерпретация 🔮</h4>
                     </div>
                     <div class="ai-answer-content" id="questionAnswerText"></div>
                 </div>
@@ -123,30 +137,62 @@
 
         <!-- Расклады -->
         <div id="spreads" class="tab-content">
-            <div class="spreads-grid">
-                <div class="spread-card">
+            <div class="spreads-grid" id="spreadsGrid">
+                <div class="spread-card" data-spread="success">
                     <span class="premium-badge">PREMIUM</span>
                     <div class="spread-icon">🌟</div>
                     <div class="spread-name">Расклад "Путь к успеху"</div>
                     <div class="spread-description">Анализ препятствий и возможностей</div>
                 </div>
-                <div class="spread-card">
+                <div class="spread-card" data-spread="love">
                     <span class="premium-badge">PREMIUM</span>
                     <div class="spread-icon">💖</div>
                     <div class="spread-name">Расклад "Отношения"</div>
                     <div class="spread-description">Понимание связи с партнером</div>
                 </div>
-                <div class="spread-card">
+                <div class="spread-card" data-spread="money">
                     <span class="premium-badge">PREMIUM</span>
                     <div class="spread-icon">💸</div>
                     <div class="spread-name">Расклад "Финансы"</div>
                     <div class="spread-description">Перспективы денежного потока</div>
                 </div>
-                <div class="spread-card">
+                <div class="spread-card" data-spread="growth">
                     <span class="premium-badge">PREMIUM</span>
                     <div class="spread-icon">🔮</div>
                     <div class="spread-name">Расклад "Личный рост"</div>
                     <div class="spread-description">Развитие внутреннего потенциала</div>
+                </div>
+            </div>
+            
+            <!-- Контейнер для результатов расклада -->
+            <div id="spreadResult" class="spread-result-container hidden">
+                <div class="spread-back-button">
+                    <button class="back-to-spreads-btn" id="backToSpreadsBtn">← Назад</button>
+                </div>
+                <div class="spread-result-header">
+                    <h3 id="spreadResultTitle">Результаты расклада</h3>
+                </div>
+                
+                <!-- Анимация для расклада -->
+                <div id="spreadAnimationContainer" class="hidden">
+                    <div class="spread-intro-text" id="spreadIntroText"></div>
+                </div>
+                
+                <!-- Карты расклада -->
+                <div id="spreadCardsContainer" class="spread-cards-container hidden">
+                    <div class="spread-cards-layout" id="spreadCardsLayout">
+                        <!-- Карты будут добавлены динамически -->
+                    </div>
+                </div>
+                
+                <!-- Интерпретация расклада -->
+                <div class="ai-answer-container hidden" id="spreadAnswerContainer">
+                    <div class="ai-answer-box">
+                        <div class="ai-answer-header">
+                            <h4 id="spreadAiInterpretationTitle">ИИ-интерпретация расклада 🔮</h4>
+                        </div>
+                        <div class="ai-answer-content" id="spreadAnswerText"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -154,9 +200,10 @@
         <!-- История -->
         <div id="history" class="tab-content">
             <div class="history-container">
-                <div class="history-header">
+                <div class="history-section-header">
                     <h3>История Предсказаний</h3>
                 </div>
+                <p class="history-notice">История хранится 30 дней</p>
                 <div class="history-list" id="historyList">
                     <div class="history-empty" id="historyEmptyState">
                         <span class="empty-icon">📂</span>
@@ -273,43 +320,8 @@
 
     <!-- Подключаем скрипты в правильном порядке -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        // Ждем загрузки Supabase и загружаем остальные скрипты
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🔄 Загружаем скрипты приложения...');
-            
-            // Проверяем загрузку Supabase
-            if (typeof window.supabase === 'undefined') {
-                console.warn('⚠️ Supabase библиотека не загружена, продолжаем без неё');
-            }
-            
-            // Загружаем скрипты последовательно
-            try {
-                await loadScript('config.js');
-                await loadScript('supabase.js');
-                await loadScript('script.js');
-                console.log('✅ Все скрипты загружены успешно');
-            } catch (error) {
-                console.error('❌ Ошибка загрузки скриптов:', error);
-                // Продолжаем работу даже если есть ошибки загрузки
-            }
-        });
-        
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = () => {
-                    console.log(`✅ Загружен: ${src}`);
-                    resolve();
-                };
-                script.onerror = (error) => {
-                    console.warn(`⚠️ Ошибка загрузки: ${src}`, error);
-                    resolve(); // Продолжаем даже при ошибке
-                };
-                document.head.appendChild(script);
-            });
-        }
-    </script>
+    <script src="config.js"></script>
+    <script src="supabase.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
