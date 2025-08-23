@@ -242,6 +242,7 @@ body {
 }
 
 .tarot-card.flipped {
+    transform: rotateY(180deg);
     animation: cardFlip 0.8s ease-in-out forwards;
 }
 
@@ -261,6 +262,10 @@ body {
     align-items: center;
     justify-content: center;
     padding: 20px;
+}
+
+.card-back {
+    transform: rotateY(0deg);
 }
 
 .card-front {
