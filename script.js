@@ -740,8 +740,14 @@ async function handleDailyCardClick() {
         console.log('📍 cardFront element:', cardFront);
         console.log('📍 cardBack element:', cardBack);
         
-        cardFront?.classList.remove('hidden');
-        cardBack?.classList.add('hidden');
+        // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
+        if (cardFront) {
+            cardFront.classList.remove('hidden');
+            cardFront.style.display = ''; // убираем возможные inline стили
+        }
+        if (cardBack) {
+            cardBack.classList.add('hidden');
+        }
         
         console.log('✅ Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
         console.log('✅ Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
@@ -918,8 +924,14 @@ async function handleAskQuestion() {
                 console.log('📍 cardFront element:', cardFront);
                 console.log('📍 cardBack element:', cardBack);
                 
-                cardFront?.classList.remove('hidden');
-                cardBack?.classList.add('hidden');
+                // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
+                if (cardFront) {
+                    cardFront.classList.remove('hidden');
+                    cardFront.style.display = ''; // убираем возможные inline стили
+                }
+                if (cardBack) {
+                    cardBack.classList.add('hidden');
+                }
                 
                 console.log('✅ [ВОПРОС] Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
                 console.log('✅ [ВОПРОС] Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
@@ -1066,8 +1078,17 @@ async function handleClarifyingQuestion() {
             
             // Обновляем лицевую сторону карты
             setTimeout(() => {
-                questionTarotCard?.querySelector('.card-front')?.classList.remove('hidden');
-                questionTarotCard?.querySelector('.card-back')?.classList.add('hidden');
+                const cardFront = questionTarotCard?.querySelector('.card-front');
+                const cardBack = questionTarotCard?.querySelector('.card-back');
+                
+                // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
+                if (cardFront) {
+                    cardFront.classList.remove('hidden');
+                    cardFront.style.display = ''; // убираем возможные inline стили
+                }
+                if (cardBack) {
+                    cardBack.classList.add('hidden');
+                }
                 
                 // Показываем название карты
                 if (questionFlippedCardName) {
@@ -1311,8 +1332,17 @@ async function animateSpreadCards() {
         tarotCard?.classList.add('flipped');
         
         setTimeout(() => {
-            cardPosition.querySelector('.card-front')?.classList.remove('hidden');
-            cardPosition.querySelector('.card-back')?.classList.add('hidden');
+            const cardFront = cardPosition.querySelector('.card-front');
+            const cardBack = cardPosition.querySelector('.card-back');
+            
+            // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
+            if (cardFront) {
+                cardFront.classList.remove('hidden');
+                cardFront.style.display = ''; // убираем возможные inline стили
+            }
+            if (cardBack) {
+                cardBack.classList.add('hidden');
+            }
         }, 400);
         
         // Сохраняем выбранную карту для интерпретации
