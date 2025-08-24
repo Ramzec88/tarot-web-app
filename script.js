@@ -2100,7 +2100,7 @@ function getTelegramUserId() {
     
     // Fallback для тестирования - генерируем стабильный числовой ID
     const testId = localStorage.getItem('tarot_test_user_id');
-    if (testId) {
+    if (testId && !isNaN(parseInt(testId))) {
         console.log('🧪 Используем сохраненный тестовый ID:', testId);
         return testId;
     }
@@ -2108,7 +2108,7 @@ function getTelegramUserId() {
     // Генерируем числовой тестовый ID (отрицательный, чтобы не пересекаться с реальными Telegram ID)
     const newTestId = -Math.floor(Math.random() * 1000000000);
     localStorage.setItem('tarot_test_user_id', newTestId.toString());
-    console.warn('⚠️ Создан новый числовой тестовый ID:', newTestId);
+    console.warn('⚠️ Создан новый числовой тестовый ID (старый был текстовым):', newTestId);
     return newTestId.toString();
 }
 
