@@ -323,9 +323,10 @@ body {
     z-index: 2;
 }
 
-/* Универсальный класс для скрытия элементов карт */
+/* Универсальный класс для скрытия элементов карт - переопределяет общий .hidden */
 .card-back.hidden,
 .card-front.hidden {
+    display: block !important;
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
@@ -1618,4 +1619,13 @@ input:checked + .slider:before {
 
 .show {
     display: block !important;
+}
+
+/* Скрытие сторон карты гарантированно, поверх трансформаций */
+.card-back.hidden,
+.card-front.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
