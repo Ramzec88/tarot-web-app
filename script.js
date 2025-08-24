@@ -940,7 +940,26 @@ async function handleAskQuestion() {
                 questionCardImage.alt = randomCard.name;
                 
                 // Обработчики загрузки изображения
-                questionCardImage.onload = () => console.log('✅ Изображение карты для вопроса загружено');
+                questionCardImage.onload = () => {
+                    console.log('✅ Изображение карты для вопроса загружено');
+                    
+                    // КРИТИЧЕСКОЕ ДЕЙСТВИЕ: включаем "лицо" через переворот контейнера
+                    // (т.к. .card-front у нас повернут на 180°)
+                    const card = document.getElementById('questionTarotCard');
+                    const front = card?.querySelector('.card-front');
+                    const back = card?.querySelector('.card-back');
+                    
+                    if (card && front && back) {
+                        front.classList.remove('hidden');
+                        back.classList.add('hidden');
+                        
+                        requestAnimationFrame(() => {
+                            // форс-рефлоу для WebKit, потом переворот
+                            void front.offsetHeight;
+                            card.classList.add('flipped');
+                        });
+                    }
+                };
                 questionCardImage.onerror = () => {
                     console.warn('❌ Ошибка загрузки, используем placeholder');
                     questionCardImage.src = createCardPlaceholder(randomCard);
@@ -967,11 +986,8 @@ async function handleAskQuestion() {
                     cardBack.classList.add('hidden');
                 }
                 
-                // Снимаем класс flipped после завершения анимации
-                questionTarotCard?.classList.remove('flipped');
-                requestAnimationFrame(() => {
-                    questionTarotCard?.classList.remove('flipped');
-                });
+                // ОСТАВЛЯЕМ класс flipped для корректного показа лицевой стороны
+                // (НЕ снимаем flipped, т.к. .card-front повернут на 180°)
                 
                 console.log('✅ [ВОПРОС] Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
                 console.log('✅ [ВОПРОС] Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
@@ -1109,7 +1125,26 @@ async function handleClarifyingQuestion() {
                 questionCardImage.alt = randomCard.name;
                 
                 // Обработчики загрузки изображения
-                questionCardImage.onload = () => console.log('✅ Изображение карты для уточняющего вопроса загружено');
+                questionCardImage.onload = () => {
+                    console.log('✅ Изображение карты для уточняющего вопроса загружено');
+                    
+                    // КРИТИЧЕСКОЕ ДЕЙСТВИЕ: включаем "лицо" через переворот контейнера
+                    // (т.к. .card-front у нас повернут на 180°)
+                    const card = document.getElementById('questionTarotCard');
+                    const front = card?.querySelector('.card-front');
+                    const back = card?.querySelector('.card-back');
+                    
+                    if (card && front && back) {
+                        front.classList.remove('hidden');
+                        back.classList.add('hidden');
+                        
+                        requestAnimationFrame(() => {
+                            // форс-рефлоу для WebKit, потом переворот
+                            void front.offsetHeight;
+                            card.classList.add('flipped');
+                        });
+                    }
+                };
                 questionCardImage.onerror = () => {
                     console.warn('❌ Ошибка загрузки, используем placeholder');
                     questionCardImage.src = createCardPlaceholder(randomCard);
@@ -1130,11 +1165,8 @@ async function handleClarifyingQuestion() {
                     cardBack.classList.add('hidden');
                 }
                 
-                // Снимаем класс flipped после завершения анимации
-                questionTarotCard?.classList.remove('flipped');
-                requestAnimationFrame(() => {
-                    questionTarotCard?.classList.remove('flipped');
-                });
+                // ОСТАВЛЯЕМ класс flipped для корректного показа лицевой стороны
+                // (НЕ снимаем flipped, т.к. .card-front повернут на 180°)
                 
                 // Показываем название карты
                 if (questionFlippedCardName) {
