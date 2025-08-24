@@ -154,10 +154,10 @@ async function createUserProfile(telegramId, username = null) {
                     user_id: userId,
                     chat_id: parseInt(telegramId),
                     username: username,
-                    is_premium: false,
-                    questions_used: 0,
-                    last_card_day: null,
-                    created_at: new Date().toISOString()
+                    is_subscribed: false,
+                    total_questions: 0,
+                    free_predictions_left: 3,
+                    last_card_day: null
                 }
             ])
             .select()
@@ -193,31 +193,13 @@ async function getUserProfile(telegramId) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 секунд
         
-        // Ищем пользователя сначала по telegram_id, затем по chat_id для совместимости
-        let data, error;
-        
-        // Попробуем найти по telegram_id (новый подход)
-        try {
-            const result = await supabaseClient
-                .from('tarot_user_profiles')
-                .select('*')
-                .eq('telegram_id', telegramId.toString())
-                .single()
-                .abortSignal(controller.signal);
-            data = result.data;
-            error = result.error;
-        } catch (e) {
-            // Если поле telegram_id не существует, попробуем chat_id (старый подход)
-            console.log('📄 Пробуем поиск по chat_id для совместимости');
-            const result = await supabaseClient
-                .from('tarot_user_profiles')
-                .select('*')
-                .eq('chat_id', parseInt(telegramId))
-                .single()
-                .abortSignal(controller.signal);
-            data = result.data;
-            error = result.error;
-        }
+        // Ищем пользователя по chat_id
+        const { data, error } = await supabaseClient
+            .from('tarot_user_profiles')
+            .select('*')
+            .eq('chat_id', parseInt(telegramId))
+            .single()
+            .abortSignal(controller.signal);
 
         clearTimeout(timeoutId);
 
@@ -261,30 +243,13 @@ async function updateUserProfile(telegramId, updates) {
     }
 
     try {
-        // Пытаемся обновить по telegram_id, затем по chat_id для совместимости
-        let data, error;
-        
-        try {
-            const result = await supabaseClient
-                .from('tarot_user_profiles')
-                .update(updates)
-                .eq('telegram_id', telegramId.toString())
-                .select()
-                .single();
-            data = result.data;
-            error = result.error;
-        } catch (e) {
-            // Fallback к chat_id если telegram_id не работает
-            console.log('📄 Обновление по chat_id для совместимости');
-            const result = await supabaseClient
-                .from('tarot_user_profiles')
-                .update(updates)
-                .eq('chat_id', parseInt(telegramId))
-                .select()
-                .single();
-            data = result.data;
-            error = result.error;
-        }
+        // Обновляем пользователя по chat_id
+        const { data, error } = await supabaseClient
+            .from('tarot_user_profiles')
+            .update(updates)
+            .eq('chat_id', parseInt(telegramId))
+            .select()
+            .single();
 
         if (error) throw error;
         
@@ -315,11 +280,14 @@ async function saveDailyCard(telegramId, cardData) {
             .insert([
                 {
                     user_id: userProfile.user_id,
-                    card_id: cardData.id,
-                    card_name: cardData.name,
-                    interpretation: cardData.interpretation,
-                    date: new Date().toISOString().split('T')[0],
-                    created_at: new Date().toISOString()
+                    card_data: {
+                        id: cardData.id,
+                        name: cardData.name,
+                        image: cardData.image,
+                        description: cardData.description
+                    },
+                    card_date: new Date().toISOString().split('T')[0],
+                    ai_prediction: cardData.interpretation
                 }
             ])
             .select()
@@ -354,7 +322,7 @@ async function getDailyCard(telegramId, date = null) {
             .from('tarot_daily_cards')
             .select('*')
             .eq('user_id', userProfile.user_id)
-            .eq('date', targetDate)
+            .eq('card_date', targetDate)
             .single();
 
         if (error && error.code !== 'PGRST116') throw error;
@@ -712,12 +680,18 @@ async function syncUserDataToSupabase(telegramId, localData) {
         // Определяем, какие данные нужно обновить
         const updates = {};
         
-        if (localData.questionsUsed > (currentProfile.questions_used || 0)) {
-            updates.questions_used = localData.questionsUsed;
+        if (localData.questionsUsed > (currentProfile.total_questions || 0)) {
+            updates.total_questions = localData.questionsUsed;
         }
         
-        if (localData.isPremium !== currentProfile.is_premium) {
-            updates.is_premium = localData.isPremium;
+        if (localData.isPremium !== currentProfile.is_subscribed) {
+            updates.is_subscribed = localData.isPremium;
+        }
+        
+        // Обновляем количество оставшихся бесплатных предсказаний
+        const freeLeft = Math.max(0, 3 - localData.questionsUsed);
+        if (freeLeft !== currentProfile.free_predictions_left) {
+            updates.free_predictions_left = freeLeft;
         }
         
         if (localData.dailyCardUsed && localData.lastCardDay) {
@@ -754,10 +728,11 @@ async function syncUserDataFromSupabase(telegramId) {
 
         // Преобразуем данные из Supabase в формат приложения
         const syncedData = {
-            isPremium: profile.is_premium || false,
-            questionsUsed: profile.questions_used || 0,
+            isPremium: profile.is_subscribed || false,
+            questionsUsed: profile.total_questions || 0,
             dailyCardUsed: profile.last_card_day === new Date().toISOString().split('T')[0],
-            lastCardDay: profile.last_card_day
+            lastCardDay: profile.last_card_day,
+            freeQuestionsLeft: profile.free_predictions_left || 3
         };
 
         console.log('📥 Данные синхронизированы из Supabase:', syncedData);
