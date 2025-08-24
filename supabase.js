@@ -154,9 +154,9 @@ async function createUserProfile(telegramId, username = null) {
                     user_id: userId,
                     chat_id: parseInt(telegramId),
                     username: username,
-                    is_subscribed: false,
-                    free_predictions_left: 3,
-                    total_questions: 0,
+                    is_premium: false,
+                    questions_used: 0,
+                    last_card_day: null,
                     created_at: new Date().toISOString()
                 }
             ])
@@ -193,19 +193,49 @@ async function getUserProfile(telegramId) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 секунд
         
-        const { data, error } = await supabaseClient
-            .from('tarot_user_profiles')
-            .select('*')
-            .eq('chat_id', parseInt(telegramId))
-            .single()
-            .abortSignal(controller.signal);
+        // Ищем пользователя сначала по telegram_id, затем по chat_id для совместимости
+        let data, error;
+        
+        // Попробуем найти по telegram_id (новый подход)
+        try {
+            const result = await supabaseClient
+                .from('tarot_user_profiles')
+                .select('*')
+                .eq('telegram_id', telegramId.toString())
+                .single()
+                .abortSignal(controller.signal);
+            data = result.data;
+            error = result.error;
+        } catch (e) {
+            // Если поле telegram_id не существует, попробуем chat_id (старый подход)
+            console.log('📄 Пробуем поиск по chat_id для совместимости');
+            const result = await supabaseClient
+                .from('tarot_user_profiles')
+                .select('*')
+                .eq('chat_id', parseInt(telegramId))
+                .single()
+                .abortSignal(controller.signal);
+            data = result.data;
+            error = result.error;
+        }
 
         clearTimeout(timeoutId);
 
         // Если пользователь не найден, создаем новый профиль
         if (error && error.code === 'PGRST116') {
-            console.log('👤 Пользователь не найден, создаем новый профиль');
-            return await createUserProfile(telegramId);
+            console.log('👤 Пользователь не найден, создаем новый профиль для ID:', telegramId);
+            
+            // Получаем username из Telegram данных если доступно
+            let username = null;
+            if (typeof window !== 'undefined' && window.getTelegramUserName) {
+                try {
+                    username = window.getTelegramUserName();
+                } catch (e) {
+                    console.warn('⚠️ Не удалось получить username:', e);
+                }
+            }
+            
+            return await createUserProfile(telegramId, username);
         }
         
         if (error) {
@@ -213,7 +243,7 @@ async function getUserProfile(telegramId) {
             return getUserProfileLocally(telegramId);
         }
         
-        console.log('✅ Профиль пользователя получен из Supabase');
+        console.log('✅ Профиль пользователя получен из Supabase для ID:', telegramId);
         return data;
     } catch (error) {
         if (error.name === 'AbortError') {
@@ -231,12 +261,30 @@ async function updateUserProfile(telegramId, updates) {
     }
 
     try {
-        const { data, error } = await supabaseClient
-            .from('tarot_user_profiles')
-            .update(updates)
-            .eq('chat_id', parseInt(telegramId))
-            .select()
-            .single();
+        // Пытаемся обновить по telegram_id, затем по chat_id для совместимости
+        let data, error;
+        
+        try {
+            const result = await supabaseClient
+                .from('tarot_user_profiles')
+                .update(updates)
+                .eq('telegram_id', telegramId.toString())
+                .select()
+                .single();
+            data = result.data;
+            error = result.error;
+        } catch (e) {
+            // Fallback к chat_id если telegram_id не работает
+            console.log('📄 Обновление по chat_id для совместимости');
+            const result = await supabaseClient
+                .from('tarot_user_profiles')
+                .update(updates)
+                .eq('chat_id', parseInt(telegramId))
+                .select()
+                .single();
+            data = result.data;
+            error = result.error;
+        }
 
         if (error) throw error;
         
@@ -646,6 +694,112 @@ function getConnectionStatus() {
     };
 }
 
+// 🔄 ФУНКЦИИ СИНХРОНИЗАЦИИ
+async function syncUserDataToSupabase(telegramId, localData) {
+    if (!supabaseClient) {
+        console.warn('⚠️ Supabase недоступен, синхронизация невозможна');
+        return false;
+    }
+
+    try {
+        // Получаем текущий профиль из Supabase
+        const currentProfile = await getUserProfile(telegramId);
+        if (!currentProfile) {
+            console.warn('⚠️ Профиль пользователя не найден в Supabase');
+            return false;
+        }
+
+        // Определяем, какие данные нужно обновить
+        const updates = {};
+        
+        if (localData.questionsUsed > (currentProfile.questions_used || 0)) {
+            updates.questions_used = localData.questionsUsed;
+        }
+        
+        if (localData.isPremium !== currentProfile.is_premium) {
+            updates.is_premium = localData.isPremium;
+        }
+        
+        if (localData.dailyCardUsed && localData.lastCardDay) {
+            const currentDate = new Date().toISOString().split('T')[0];
+            if (localData.lastCardDay === currentDate && currentProfile.last_card_day !== currentDate) {
+                updates.last_card_day = currentDate;
+            }
+        }
+
+        // Если есть что обновить, отправляем в Supabase
+        if (Object.keys(updates).length > 0) {
+            console.log('🔄 Синхронизируем локальные изменения с Supabase:', updates);
+            await updateUserProfile(telegramId, updates);
+            return true;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('❌ Ошибка синхронизации данных с Supabase:', error);
+        return false;
+    }
+}
+
+async function syncUserDataFromSupabase(telegramId) {
+    if (!supabaseClient) {
+        return null;
+    }
+
+    try {
+        const profile = await getUserProfile(telegramId);
+        if (!profile) {
+            return null;
+        }
+
+        // Преобразуем данные из Supabase в формат приложения
+        const syncedData = {
+            isPremium: profile.is_premium || false,
+            questionsUsed: profile.questions_used || 0,
+            dailyCardUsed: profile.last_card_day === new Date().toISOString().split('T')[0],
+            lastCardDay: profile.last_card_day
+        };
+
+        console.log('📥 Данные синхронизированы из Supabase:', syncedData);
+        return syncedData;
+    } catch (error) {
+        console.error('❌ Ошибка получения данных из Supabase:', error);
+        return null;
+    }
+}
+
+async function performDataSync(telegramId, localAppState) {
+    try {
+        console.log('🔄 Начинаем синхронизацию данных...');
+        
+        // Сначала получаем актуальные данные из Supabase
+        const supabaseData = await syncUserDataFromSupabase(telegramId);
+        
+        if (supabaseData) {
+            // Объединяем данные, приоритет отдается более свежим изменениям
+            const mergedState = {
+                isPremium: supabaseData.isPremium || localAppState.isPremium,
+                questionsUsed: Math.max(supabaseData.questionsUsed, localAppState.questionsUsed || 0),
+                dailyCardUsed: supabaseData.dailyCardUsed || localAppState.dailyCardUsed,
+                lastCardDay: supabaseData.lastCardDay || localAppState.lastCardDay
+            };
+
+            // Синхронизируем обратно в Supabase если локальные данные новее
+            await syncUserDataToSupabase(telegramId, localAppState);
+            
+            console.log('✅ Синхронизация завершена успешно');
+            return mergedState;
+        } else {
+            // Если Supabase недоступен, используем локальные данные
+            console.log('📱 Используем локальные данные (Supabase недоступен)');
+            return localAppState;
+        }
+    } catch (error) {
+        console.error('❌ Ошибка синхронизации:', error);
+        return localAppState;
+    }
+}
+
 // 🌟 ЭКСПОРТ ФУНКЦИЙ
 window.TarotDB = {
     // Инициализация
@@ -674,7 +828,12 @@ window.TarotDB = {
     // История и чтения
     getUserHistory,
     getUserReadings: getUserHistory, // Алиас для совместимости
-    saveReading: saveQuestion // Алиас для saveQuestion
+    saveReading: saveQuestion, // Алиас для saveQuestion
+    
+    // Синхронизация
+    syncUserDataToSupabase,
+    syncUserDataFromSupabase,
+    performDataSync
 };
 
 // Проверяем экспорт
