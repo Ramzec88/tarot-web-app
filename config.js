@@ -143,7 +143,7 @@ function setupFallbackConfigs() {
     if (!window.SUPABASE_CONFIG) {
         window.SUPABASE_CONFIG = {
             url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
-            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
+            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFmbndjdXVsY2tua3hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3MDk4MzQsImV4cCI6MjA1OTI4NTgzNH0.Yzw4rjZh1KhKIKtzwAShYC-7nGjzp6aORTUaBtNxtVQ'
         };
     }
 
