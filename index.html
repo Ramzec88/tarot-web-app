@@ -314,6 +314,11 @@
                     <button id="testTarotDBBtn" class="test-button" onclick="if(window.TarotApp && window.TarotApp.testTarotDB) window.TarotApp.testTarotDB()">
                         🧪 Тест TarotDB
                     </button>
+                    
+                    <!-- Manual Supabase Init Button -->
+                    <button id="initSupabaseBtn" class="test-button" onclick="if(window.TarotDB && window.TarotDB.initialize) window.TarotDB.initialize().then(() => console.log('✅ Ручная инициализация завершена')).catch(err => console.error('❌ Ошибка ручной инициализации:', err))">
+                        🔄 Инициализация Supabase
+                    </button>
                 </div>
 
             </div>
