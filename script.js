@@ -729,6 +729,21 @@ async function handleDailyCardClick() {
             // Добавляем обработчики для отслеживания загрузки
             cardImage.onload = function() {
                 console.log('✅ Изображение карты успешно загружено');
+                // изображение точно есть; можно показать "лицо"
+                // (если показываешь front только после onload — это ещё надёжнее)
+                const card = tarotCard;
+                const front = card?.querySelector('.card-front');
+                if (card && front) {
+                    // дополнительная принудительная активация лицевой стороны
+                    front.style.zIndex = '2';
+                    front.style.display = '';
+                    front.classList.remove('hidden');
+                    void front.offsetHeight; // принудительный reflow
+                    requestAnimationFrame(() => {
+                        card.classList.add('flipped');
+                        front.style.transform = 'rotateY(180deg) translateZ(0)';
+                    });
+                }
             };
             
             cardImage.onerror = function() {
@@ -738,26 +753,38 @@ async function handleDailyCardClick() {
         }
         
         console.log('🔄 Показываем переднюю сторону карты');
-        console.log('📍 cardFront element:', cardFront);
-        console.log('📍 cardBack element:', cardBack);
         
-        // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
-        if (cardFront) {
-            cardFront.classList.remove('hidden');
-            cardFront.style.display = ''; // убираем возможные inline стили
-        }
-        if (cardBack) {
-            cardBack.classList.add('hidden');
-        }
-        
-        // Снимаем класс flipped после завершения анимации
-        tarotCard?.classList.remove('flipped');
+        // Берём контейнер и стороны
+        const card = tarotCard;                          // #tarotCard
+        const front = card?.querySelector('.card-front');
+        const back  = card?.querySelector('.card-back');
+
+        if (!card || !front || !back) return;
+
+        // 1) z-index'ы и снятие hidden — чтобы именно front был видим
+        front.style.zIndex = '2';
+        back.style.zIndex  = '1';
+
+        front.classList.remove('hidden');
+        front.style.display = '';        // на всякий случай
+        back.classList.add('hidden');
+        back.style.display  = 'none';    // iOS любит явный display
+
+        // 2) принудительный reflow перед финальным состоянием (Safari fix)
+        void front.offsetHeight;
+
+        // 3) если карта должна быть "лицом" (в твоей логике — да), следим за flip
+        //    В твоём сценарии daily: ты добавляешь .flipped через 1000ms — это ОК,
+        //    главное потом не снимать flipped до показа front.
+        //    На всякий случай ещё раз применим нужный класс чуть позже:
         requestAnimationFrame(() => {
-            tarotCard?.classList.remove('flipped');
+            card.classList.add('flipped');           // фронт смотрит на нас (т.к. front повернут на 180)
+            // микро-сдвиг, чтобы у WebKit не было "плоского" слоя
+            front.style.transform = 'rotateY(180deg) translateZ(0)';
         });
         
-        console.log('✅ Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
-        console.log('✅ Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
+        console.log('✅ Классы обновлены - cardFront hidden:', front?.classList.contains('hidden'));
+        console.log('✅ Классы обновлены - cardBack hidden:', back?.classList.contains('hidden'));
     }, 400);
 
     // После полной анимации показываем информацию
