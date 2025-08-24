@@ -319,6 +319,11 @@
                     <button id="initSupabaseBtn" class="test-button" onclick="if(window.TarotDB && window.TarotDB.initialize) window.TarotDB.initialize().then(() => console.log('✅ Ручная инициализация завершена')).catch(err => console.error('❌ Ошибка ручной инициализации:', err))">
                         🔄 Инициализация Supabase
                     </button>
+                    
+                    <!-- Database Schema Test Button -->
+                    <button id="testSchemaBtn" class="test-button" onclick="if(window.testDatabaseSchema) window.testDatabaseSchema()">
+                        🧪 Тест схемы БД
+                    </button>
                 </div>
 
             </div>
