@@ -648,3 +648,12 @@ if (typeof window.dispatchEvent === 'function') {
         }
     }));
 }
+
+// 🚀 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
+console.log('🚀 Запуск автоматической инициализации TarotDB...');
+initializeSupabase().then(() => {
+    console.log('✅ Автоматическая инициализация TarotDB завершена');
+    console.log('📊 Финальный статус:', window.TarotDB.getStatus());
+}).catch(error => {
+    console.error('❌ Ошибка автоматической инициализации TarotDB:', error);
+});
