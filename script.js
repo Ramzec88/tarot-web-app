@@ -957,6 +957,9 @@ async function handleAskQuestion() {
         
         // 3. Переворачиваем карту через 1200ms (время для звездочек)
         setTimeout(async () => {
+            // Переворачиваем карту
+            questionTarotCard?.classList.add('flipped');
+            
             // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
             const cardFront = questionTarotCard?.querySelector('.card-front');
             const cardBack = questionTarotCard?.querySelector('.card-back');
@@ -972,9 +975,6 @@ async function handleAskQuestion() {
                     
                     // Устанавливаем изображение как фон только после успешной загрузки
                     cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
-                    
-                    // Переворачиваем карту ПОСЛЕ загрузки изображения
-                    questionTarotCard?.classList.add('flipped');
                     cardFront.style.backgroundSize = 'cover';
                     cardFront.style.backgroundPosition = 'center';
                     cardFront.style.backgroundRepeat = 'no-repeat';
@@ -1149,6 +1149,9 @@ async function handleClarifyingQuestion() {
         
         // 3. Переворачиваем карту через 1200ms (время для звездочек)
         setTimeout(async () => {
+            // Переворачиваем карту
+            questionTarotCard?.classList.add('flipped');
+            
             // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
             const cardFront = questionTarotCard?.querySelector('.card-front');
             const cardBack = questionTarotCard?.querySelector('.card-back');
@@ -1159,9 +1162,6 @@ async function handleClarifyingQuestion() {
                     
                     // Асинхронно загружаем изображение перед показом
                     await loadImageAsync(randomCard.displayImage);
-                    
-                    // Переворачиваем карту ПОСЛЕ загрузки изображения
-                    questionTarotCard?.classList.add('flipped');
                     
                     console.log('✅ Изображение карты для уточняющего вопроса успешно загружено');
                     
@@ -1452,9 +1452,6 @@ async function animateSpreadCards() {
                 cardFront.style.backgroundRepeat = 'no-repeat';
                 cardFront.style.opacity = '1';
                 cardFront.style.visibility = 'visible';
-
-                // Переворачиваем карту ПОСЛЕ загрузки изображения
-                tarotCard?.classList.add('flipped');
                 
             } catch (error) {
                 console.warn('❌ Ошибка загрузки изображения для расклада, используем placeholder:', error);
@@ -1465,11 +1462,11 @@ async function animateSpreadCards() {
                 cardFront.style.backgroundRepeat = 'no-repeat';
                 cardFront.style.opacity = '1';
                 cardFront.style.visibility = 'visible';
-                
-                // Переворачиваем карту с placeholder'ом
-                tarotCard?.classList.add('flipped');
             }
         }
+        
+        // Переворачиваем карту
+        tarotCard?.classList.add('flipped');
         
         setTimeout(() => {
             // Показываем лицевую сторону с изображением
