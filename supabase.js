@@ -629,9 +629,12 @@ window.TarotDB = {
     // Отзывы
     saveReview,
     getReviews,
+    getUserReviews: getReviews, // Алиас для совместимости
     
-    // История
-    getUserHistory
+    // История и чтения
+    getUserHistory,
+    getUserReadings: getUserHistory, // Алиас для совместимости
+    saveReading: saveQuestion // Алиас для saveQuestion
 };
 
 // Проверяем экспорт
