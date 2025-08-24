@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supabase Debug Tool</title>
+    <title>Исправление URL Supabase</title>
     <style>
         * {
             margin: 0;
@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -43,55 +43,89 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .status-panel {
+        .problem {
+            background: rgba(255, 107, 107, 0.2);
+            border: 2px solid #ff6b6b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .solution {
+            background: rgba(81, 207, 102, 0.2);
+            border: 2px solid #51cf66;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .url-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .url-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .url-box.wrong {
+            border: 2px solid #ff6b6b;
+        }
+
+        .url-box.correct {
+            border: 2px solid #51cf66;
+        }
+
+        .file-updates {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 20px;
+        }
+
+        .file-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
             border-left: 4px solid #4ecdc4;
         }
 
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        .file-name {
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 10px;
         }
 
-        .status-label {
-            font-weight: 600;
-        }
-
-        .status-value {
-            font-family: monospace;
+        .code-block {
             background: rgba(0, 0, 0, 0.3);
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-
-        .status-success { color: #51cf66; }
-        .status-error { color: #ff6b6b; }
-        .status-warning { color: #ffd43b; }
-        .status-info { color: #74c0fc; }
-
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin: 10px 0;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: pre;
         }
 
         .btn {
             background: linear-gradient(135deg, #4ecdc4, #44a08d);
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 12px 25px;
             border-radius: 10px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+            margin: 10px 5px;
         }
 
         .btn:hover {
@@ -99,123 +133,38 @@
             box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
         }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        .btn.success {
+            background: linear-gradient(135deg, #51cf66, #40c057);
         }
 
-        .btn.danger {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-        }
-
-        .btn.warning {
-            background: linear-gradient(135deg, #ffd43b, #ffc107);
-        }
-
-        .tabs {
-            display: flex;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 4px;
-            margin-bottom: 20px;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 10px 15px;
-            text-align: center;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .tab.active {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
+        .test-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 20px;
-            margin-bottom: 20px;
+            margin-top: 20px;
         }
 
-        .tab-content.active {
-            display: block;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
+        .test-result {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
             margin-top: 15px;
+            border-left: 4px solid #4ecdc4;
         }
 
-        .data-table th,
-        .data-table td {
-            padding: 8px 12px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        .test-result.error {
+            border-left-color: #ff6b6b;
         }
 
-        .data-table th {
-            background: rgba(255, 255, 255, 0.1);
-            font-weight: 600;
-            color: #ffd700;
+        .test-result.success {
+            border-left-color: #51cf66;
         }
 
-        .data-table td {
-            font-family: monospace;
-            font-size: 0.9rem;
+        .hidden {
+            display: none;
         }
 
-        .query-input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #fff;
-            font-family: monospace;
-            margin-bottom: 15px;
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .query-input::placeholder {
-            color: #888;
-        }
-
-        .logs {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            max-height: 400px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-
-        .log-entry {
-            padding: 3px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            word-wrap: break-word;
-        }
-
-        .log-timestamp {
-            color: #868e96;
-            margin-right: 10px;
-        }
-
-        .log-success { color: #51cf66; }
-        .log-error { color: #ff6b6b; }
-        .log-warning { color: #ffd43b; }
-        .log-info { color: #74c0fc; }
-
-        .spinner {
+        .loading {
             display: inline-block;
             width: 20px;
             height: 20px;
@@ -231,742 +180,303 @@
             100% { transform: rotate(360deg); }
         }
 
-        .hidden { display: none; }
-
-        .json-viewer {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-            max-height: 300px;
-            overflow: auto;
-            font-family: monospace;
-            font-size: 0.85rem;
-            white-space: pre-wrap;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        @media (max-width: 768px) {
+            .url-comparison {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔧 Supabase Debug Tool</h1>
-            <p>Отладка и тестирование взаимодействия с базой данных</p>
+            <h1>🔧 Исправление URL Supabase</h1>
+            <p>Найдена проблема в конфигурации вашего проекта</p>
         </div>
 
-        <!-- Панель статуса -->
-        <div class="status-panel" id="statusPanel">
-            <div class="status-item">
-                <span class="status-label">Состояние подключения:</span>
-                <span class="status-value status-info" id="connectionStatus">Проверка...</span>
+        <div class="problem">
+            <h3 style="color: #ff6b6b; margin-bottom: 15px;">❌ Проблема обнаружена</h3>
+            <p>В ваших файлах используется <strong>неправильный URL</strong> для Supabase проекта.</p>
+        </div>
+
+        <div class="url-comparison">
+            <div class="url-box wrong">
+                <strong style="color: #ff6b6b;">❌ Неправильный URL (в файлах):</strong><br>
+                https://xqtokipsfzywippmvpgp.supabase.co
             </div>
-            <div class="status-item">
-                <span class="status-label">URL Supabase:</span>
-                <span class="status-value" id="supabaseUrl">Загрузка...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">SDK версия:</span>
-                <span class="status-value" id="sdkVersion">Не загружен</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Активный клиент:</span>
-                <span class="status-value" id="activeClient">Нет</span>
+            <div class="url-box correct">
+                <strong style="color: #51cf66;">✅ Правильный URL (ваш проект):</strong><br>
+                https://jjowuzqfnwcuulcknkxh.supabase.co
             </div>
         </div>
 
-        <!-- Элементы управления -->
-        <div class="controls">
-            <button class="btn" id="initSupabase">🔌 Подключиться</button>
-            <button class="btn" id="testConnection">🔍 Тест связи</button>
-            <button class="btn warning" id="checkTables">🗄️ Проверить таблицы</button>
-            <button class="btn" id="runDiagnostic">🩺 Диагностика</button>
-            <button class="btn" id="createTestUser">👤 Создать тест пользователя</button>
-            <button class="btn danger" id="clearLogs">🗑️ Очистить логи</button>
+        <div class="solution">
+            <h3 style="color: #51cf66; margin-bottom: 15px;">✅ Решение</h3>
+            <p>Замените URL во всех файлах вашего проекта с неправильного на правильный.</p>
         </div>
 
-        <!-- Вкладки -->
-        <div class="tabs">
-            <div class="tab active" data-tab="queries">SQL Запросы</div>
-            <div class="tab" data-tab="tables">Таблицы</div>
-            <div class="tab" data-tab="realtime">Realtime</div>
-            <div class="tab" data-tab="auth">Авторизация</div>
+        <div class="file-updates">
+            <h3 style="color: #ffd700; margin-bottom: 20px;">📁 Файлы для обновления:</h3>
+            
+            <div class="file-item">
+                <div class="file-name">1. config.js</div>
+                <div class="code-block">// Замените строку:
+window.SUPABASE_CONFIG = {
+    url: 'https://xqtokipsfzywippmvpgp.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
+};
+
+// На:
+window.SUPABASE_CONFIG = {
+    url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
+    anonKey: 'ВАШ_НОВЫЙ_ANON_KEY'
+};</div>
+            </div>
+
+            <div class="file-item">
+                <div class="file-name">2. api/config.js</div>
+                <div class="code-block">// Замените:
+supabase: {
+    url: process.env.SUPABASE_URL || 'https://xqtokipsfzywippmvpgp.supabase.co',
+    anonKey: process.env.SUPABASE_ANON_KEY || 'старый_ключ'
+}
+
+// На:
+supabase: {
+    url: process.env.SUPABASE_URL || 'https://jjowuzqfnwcuulcknkxh.supabase.co',
+    anonKey: process.env.SUPABASE_ANON_KEY || 'новый_ключ'
+}</div>
+            </div>
+
+            <div class="file-item">
+                <div class="file-name">3. test.html</div>
+                <div class="code-block">// Замените в константе SUPABASE_CONFIG:
+const SUPABASE_CONFIG = {
+    url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
+    key: 'ваш_новый_ключ'
+};</div>
+            </div>
+
+            <div class="file-item">
+                <div class="file-name">4. debug.html</div>
+                <div class="code-block">// Замените в константе SUPABASE_CONFIG:
+const SUPABASE_CONFIG = {
+    url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
+    key: 'ваш_новый_ключ'
+};</div>
+            </div>
         </div>
 
-        <!-- Контент вкладок -->
-        <div class="tab-content active" id="queries">
-            <h3>Выполнение SQL запросов</h3>
-            <textarea class="query-input" id="sqlQuery" placeholder="Введите SQL запрос или выберите готовый пример:
-
--- Примеры запросов:
-SELECT * FROM tarot_user_profiles LIMIT 5;
-SELECT COUNT(*) FROM tarot_user_profiles;
-INSERT INTO tarot_user_profiles (telegram_id, username) VALUES ('test123', 'testuser');
-"></textarea>
-            <button class="btn" id="executeQuery">▶️ Выполнить запрос</button>
-            <button class="btn warning" id="loadExamples">📋 Примеры запросов</button>
-            <div class="json-viewer" id="queryResult">Результат появится здесь...</div>
+        <div class="test-section">
+            <h3 style="color: #ffd700; margin-bottom: 15px;">🧪 Тестирование нового URL</h3>
+            <p>Введите ваш новый API ключ для тестирования:</p>
+            <br>
+            <input type="text" id="newApiKey" placeholder="Введите anon key для проекта jjowuzqfnwcuulcknkxh" 
+                   style="width: 100%; padding: 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; color: white; margin-bottom: 15px;">
+            
+            <button class="btn" id="testCorrectUrl">🔍 Тест правильного URL</button>
+            <button class="btn success" id="generateConfig">📋 Сгенерировать конфигурацию</button>
+            
+            <div class="test-result hidden" id="testResult">
+                <div id="testContent"></div>
+            </div>
         </div>
-
-        <div class="tab-content" id="tables">
-            <h3>Информация о таблицах</h3>
-            <button class="btn" id="loadTables">🔄 Обновить список</button>
-            <table class="data-table" id="tablesInfo">
-                <thead>
-                    <tr>
-                        <th>Таблица</th>
-                        <th>Статус</th>
-                        <th>Записей</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div class="tab-content" id="realtime">
-            <h3>Realtime подписки</h3>
-            <button class="btn" id="subscribeToChanges">🔴 Подписаться на изменения</button>
-            <button class="btn danger" id="unsubscribe">⏹️ Отписаться</button>
-            <div class="json-viewer" id="realtimeEvents">События Realtime появятся здесь...</div>
-        </div>
-
-        <div class="tab-content" id="auth">
-            <h3>Авторизация и RLS</h3>
-            <button class="btn" id="checkAuth">🔐 Проверить авторизацию</button>
-            <button class="btn" id="testRLS">🛡️ Тест RLS политик</button>
-            <div class="json-viewer" id="authInfo">Информация об авторизации...</div>
-        </div>
-
-        <!-- Логи -->
-        <div class="logs" id="logContainer"></div>
     </div>
 
     <script>
-        // Конфигурация
-        const SUPABASE_CONFIG = {
-            url: 'https://xqtokipsfzywippmvpgp.supabase.co',
-            anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
-        };
+        const CORRECT_URL = 'https://jjowuzqfnwcuulcknkxh.supabase.co';
+        const WRONG_URL = 'https://xqtokipsfzywippmvpgp.supabase.co';
 
-        // Глобальные переменные
-        let supabaseClient = null;
-        let realtimeChannel = null;
-
-        // Система логирования с улучшенным форматированием
-        const logger = {
-            log(message, type = 'info', data = null) {
-                const timestamp = new Date().toLocaleTimeString();
-                const logEntry = document.createElement('div');
-                logEntry.className = 'log-entry';
-                
-                let logContent = `<span class="log-timestamp">[${timestamp}]</span><span class="log-${type}">${message}</span>`;
-                
-                if (data) {
-                    logContent += `\n<div style="margin-left: 80px; margin-top: 5px; font-size: 0.8rem; opacity: 0.8;">${JSON.stringify(data, null, 2)}</div>`;
-                }
-                
-                logEntry.innerHTML = logContent;
-                document.getElementById('logContainer').appendChild(logEntry);
-                document.getElementById('logContainer').scrollTop = document.getElementById('logContainer').scrollHeight;
-                
-                console.log(`[${timestamp}] ${message}`, data || '');
-            },
-            
-            success(message, data) { this.log(`✅ ${message}`, 'success', data); },
-            error(message, data) { this.log(`❌ ${message}`, 'error', data); },
-            warning(message, data) { this.log(`⚠️ ${message}`, 'warning', data); },
-            info(message, data) { this.log(`ℹ️ ${message}`, 'info', data); }
-        };
-
-        // Обновление статуса
-        function updateStatus() {
-            document.getElementById('supabaseUrl').textContent = SUPABASE_CONFIG.url;
-            document.getElementById('connectionStatus').textContent = supabaseClient ? 'Подключен' : 'Отключен';
-            document.getElementById('connectionStatus').className = `status-value ${supabaseClient ? 'status-success' : 'status-error'}`;
-            document.getElementById('sdkVersion').textContent = window.supabase ? 'Загружен' : 'Не загружен';
-            document.getElementById('activeClient').textContent = supabaseClient ? 'Инициализирован' : 'Нет';
-        }
-
-        // Загрузка Supabase SDK
-        async function loadSupabaseSDK() {
-            if (window.supabase) return true;
-
-            return new Promise((resolve, reject) => {
-                logger.info('Загрузка Supabase SDK...');
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-                script.onload = () => {
-                    logger.success('Supabase SDK загружен');
-                    updateStatus();
-                    resolve(true);
-                };
-                script.onerror = () => {
-                    logger.error('Ошибка загрузки Supabase SDK');
-                    reject(new Error('Failed to load SDK'));
-                };
-                document.head.appendChild(script);
-            });
-        }
-
-        // Инициализация Supabase
-        async function initializeSupabase() {
-            try {
-                await loadSupabaseSDK();
-
-                supabaseClient = window.supabase.createClient(
-                    SUPABASE_CONFIG.url,
-                    SUPABASE_CONFIG.anonKey,
-                    {
-                        auth: {
-                            persistSession: false,
-                            autoRefreshToken: false
-                        },
-                        db: {
-                            schema: 'public'
-                        },
-                        global: {
-                            headers: {
-                                'X-Client-Info': 'debug-tool'
-                            }
-                        }
-                    }
-                );
-
-                logger.success('Supabase клиент инициализирован');
-                updateStatus();
-                return true;
-
-            } catch (error) {
-                logger.error('Ошибка инициализации Supabase', error);
-                return false;
-            }
-        }
-
-        // Тест подключения
-        async function testConnection() {
-            if (!supabaseClient) {
-                logger.warning('Сначала инициализируйте Supabase');
+        // Тест правильного URL
+        async function testCorrectUrl() {
+            const apiKey = document.getElementById('newApiKey').value.trim();
+            if (!apiKey) {
+                showTestResult('❌ Ошибка', 'Введите API ключ для тестирования', 'error');
                 return;
             }
 
+            showTestResult('🔄 Тестирование...', 'Проверка подключения к правильному URL...', 'info');
+
             try {
-                logger.info('Тестирование подключения...');
-                
-                const startTime = performance.now();
-                const { data, error } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .select('count')
-                    .limit(1);
-                const endTime = performance.now();
-
-                if (error && error.code !== 'PGRST116') {
-                    throw error;
-                }
-
-                logger.success(`Подключение работает (${Math.round(endTime - startTime)}ms)`, {
-                    data: data,
-                    responseTime: `${Math.round(endTime - startTime)}ms`
+                // Тест базового подключения
+                const response = await fetch(`${CORRECT_URL}/rest/v1/`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': apiKey,
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
 
-            } catch (error) {
-                logger.error('Ошибка подключения', error);
-            }
-        }
-
-        // Проверка таблиц
-        async function checkTables() {
-            if (!supabaseClient) {
-                logger.warning('Сначала инициализируйте Supabase');
-                return;
-            }
-
-            const tables = [
-                'tarot_user_profiles',
-                'tarot_questions',
-                'tarot_answers', 
-                'tarot_daily_cards',
-                'tarot_reviews',
-                'tarot_spreads'
-            ];
-
-            logger.info('Проверка доступности таблиц...');
-            
-            const tableResults = [];
-            
-            for (const table of tables) {
-                try {
-                    const { data, error, count } = await supabaseClient
-                        .from(table)
-                        .select('*', { count: 'exact', head: true });
-
-                    if (error && error.code !== 'PGRST116') {
-                        tableResults.push({
-                            table,
-                            status: 'error',
-                            message: error.message,
-                            count: 0
-                        });
-                    } else {
-                        tableResults.push({
-                            table,
-                            status: 'success',
-                            message: 'Доступна',
-                            count: count || 0
-                        });
-                    }
-                } catch (err) {
-                    tableResults.push({
-                        table,
-                        status: 'error',
-                        message: err.message,
-                        count: 0
-                    });
-                }
-            }
-
-            // Обновляем таблицу
-            updateTablesDisplay(tableResults);
-            logger.success('Проверка таблиц завершена', tableResults);
-        }
-
-        // Обновление отображения таблиц
-        function updateTablesDisplay(results) {
-            const tbody = document.querySelector('#tablesInfo tbody');
-            tbody.innerHTML = '';
-
-            results.forEach(result => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${result.table}</td>
-                    <td class="status-${result.status}">${result.message}</td>
-                    <td>${result.count}</td>
-                    <td>
-                        <button class="btn" onclick="inspectTable('${result.table}')">🔍 Просмотр</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // Просмотр таблицы
-        async function inspectTable(tableName) {
-            if (!supabaseClient) return;
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from(tableName)
-                    .select('*')
-                    .limit(5);
-
-                if (error) throw error;
-
-                logger.info(`Содержимое таблицы ${tableName}`, data);
-                
-                // Показываем в JSON viewer
-                document.getElementById('queryResult').textContent = JSON.stringify(data, null, 2);
-                
-                // Переключаемся на вкладку запросов
-                switchTab('queries');
-
-            } catch (error) {
-                logger.error(`Ошибка просмотра таблицы ${tableName}`, error);
-            }
-        }
-
-        // Выполнение SQL запроса
-        async function executeQuery() {
-            if (!supabaseClient) {
-                logger.warning('Сначала инициализируйте Supabase');
-                return;
-            }
-
-            const query = document.getElementById('sqlQuery').value.trim();
-            if (!query) {
-                logger.warning('Введите SQL запрос');
-                return;
-            }
-
-            try {
-                logger.info('Выполнение запроса...', { query });
-                
-                const startTime = performance.now();
-                const { data, error } = await supabaseClient.rpc('execute_sql', { query });
-                const endTime = performance.now();
-
-                if (error) throw error;
-
-                logger.success(`Запрос выполнен (${Math.round(endTime - startTime)}ms)`, data);
-                document.getElementById('queryResult').textContent = JSON.stringify(data, null, 2);
-
-            } catch (error) {
-                logger.error('Ошибка выполнения запроса', error);
-                
-                // Попробуем обычный способ для простых запросов
-                try {
-                    const tableName = query.match(/FROM\s+(\w+)/i)?.[1];
-                    if (tableName && query.toLowerCase().includes('select')) {
-                        const { data, error } = await supabaseClient
-                            .from(tableName)
-                            .select('*')
-                            .limit(10);
-                        
-                        if (!error) {
-                            logger.info('Использован альтернативный метод запроса', data);
-                            document.getElementById('queryResult').textContent = JSON.stringify(data, null, 2);
+                if (response.ok) {
+                    // Дополнительный тест - попробуем получить таблицы
+                    const tablesTest = await fetch(`${CORRECT_URL}/rest/v1/tarot_user_profiles?select=count&limit=1`, {
+                        method: 'GET',
+                        headers: {
+                            'apikey': apiKey,
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
                         }
-                    }
-                } catch (altError) {
-                    logger.error('Альтернативный метод тоже не сработал', altError);
-                }
-            }
-        }
-
-        // Создание тестового пользователя
-        async function createTestUser() {
-            if (!supabaseClient) {
-                logger.warning('Сначала инициализируйте Supabase');
-                return;
-            }
-
-            try {
-                const testUser = {
-                    telegram_id: `debug_${Date.now()}`,
-                    username: 'debug_user',
-                    first_name: 'Debug',
-                    last_name: 'User',
-                    is_premium: false,
-                    questions_used: 0,
-                    created_at: new Date().toISOString()
-                };
-
-                logger.info('Создание тестового пользователя...', testUser);
-
-                const { data, error } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .insert([testUser])
-                    .select();
-
-                if (error) throw error;
-
-                logger.success('Тестовый пользователь создан', data[0]);
-
-            } catch (error) {
-                logger.error('Ошибка создания тестового пользователя', error);
-            }
-        }
-
-        // Запуск полной диагностики
-        async function runDiagnostic() {
-            logger.info('=== ЗАПУСК ПОЛНОЙ ДИАГНОСТИКИ ===');
-
-            // 1. Инициализация
-            const initResult = await initializeSupabase();
-            if (!initResult) return;
-
-            // 2. Тест подключения
-            await testConnection();
-
-            // 3. Проверка таблиц
-            await checkTables();
-
-            // 4. Тест базовых операций
-            await testCRUDOperations();
-
-            logger.info('=== ДИАГНОСТИКА ЗАВЕРШЕНА ===');
-        }
-
-        // Тест CRUD операций
-        async function testCRUDOperations() {
-            if (!supabaseClient) return;
-
-            try {
-                logger.info('Тест CRUD операций...');
-
-                const testId = `crud_test_${Date.now()}`;
-
-                // CREATE
-                const { data: created, error: createError } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .insert([{
-                        telegram_id: testId,
-                        username: 'crud_test',
-                        is_premium: false,
-                        questions_used: 0
-                    }])
-                    .select();
-
-                if (createError) throw new Error(`CREATE failed: ${createError.message}`);
-
-                // READ
-                const { data: read, error: readError } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .select('*')
-                    .eq('telegram_id', testId);
-
-                if (readError) throw new Error(`READ failed: ${readError.message}`);
-
-                // UPDATE
-                const { data: updated, error: updateError } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .update({ questions_used: 1 })
-                    .eq('telegram_id', testId)
-                    .select();
-
-                if (updateError) throw new Error(`UPDATE failed: ${updateError.message}`);
-
-                // DELETE
-                const { error: deleteError } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .delete()
-                    .eq('telegram_id', testId);
-
-                if (deleteError) throw new Error(`DELETE failed: ${deleteError.message}`);
-
-                logger.success('CRUD операции работают корректно');
-
-            } catch (error) {
-                logger.error('Ошибка CRUD операций', error);
-            }
-        }
-
-        // Загрузка примеров запросов
-        function loadExamples() {
-            const examples = [
-                "-- Получить всех пользователей\nSELECT * FROM tarot_user_profiles LIMIT 5;",
-                "-- Подсчитать количество пользователей\nSELECT COUNT(*) FROM tarot_user_profiles;",
-                "-- Найти премиум пользователей\nSELECT * FROM tarot_user_profiles WHERE is_premium = true;",
-                "-- Получить последние вопросы\nSELECT * FROM tarot_questions ORDER BY created_at DESC LIMIT 10;",
-                "-- Статистика по использованию\nSELECT \n  COUNT(*) as total_users,\n  COUNT(CASE WHEN is_premium THEN 1 END) as premium_users\nFROM tarot_user_profiles;"
-            ].join('\n\n');
-
-            document.getElementById('sqlQuery').value = examples;
-        }
-
-        // Переключение вкладок
-        function switchTab(tabName) {
-            // Скрываем все вкладки
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            // Показываем выбранную
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-        }
-
-        // Подписка на Realtime события
-        async function subscribeToChanges() {
-            if (!supabaseClient) {
-                logger.warning('Сначала инициализируйте Supabase');
-                return;
-            }
-
-            try {
-                realtimeChannel = supabaseClient
-                    .channel('debug-channel')
-                    .on('postgres_changes', 
-                        { event: '*', schema: 'public', table: 'tarot_user_profiles' },
-                        (payload) => {
-                            logger.info('Realtime событие', payload);
-                            document.getElementById('realtimeEvents').textContent = JSON.stringify(payload, null, 2);
-                        }
-                    )
-                    .subscribe((status) => {
-                        logger.info(`Realtime подписка: ${status}`);
                     });
 
-                logger.success('Подписка на Realtime события активирована');
+                    let message = `✅ Подключение к правильному URL работает!<br>`;
+                    message += `URL: ${CORRECT_URL}<br>`;
+                    message += `API Status: ${response.status}<br>`;
+                    message += `Tables Status: ${tablesTest.status}<br><br>`;
+
+                    if (tablesTest.status === 404) {
+                        message += `⚠️ Таблицы не найдены. Необходимо создать структуру базы данных.<br>`;
+                        message += `Перейдите в Supabase Dashboard → SQL Editor и создайте таблицы.`;
+                    } else if (tablesTest.ok || tablesTest.status === 406) {
+                        message += `🎉 Таблицы найдены! Всё готово для использования.`;
+                    }
+
+                    showTestResult('✅ Тест пройден!', message, 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
 
             } catch (error) {
-                logger.error('Ошибка подписки на Realtime', error);
+                showTestResult('❌ Ошибка тестирования', 
+                    `URL: ${CORRECT_URL}<br>Ошибка: ${error.message}<br><br>Проверьте правильность API ключа.`, 
+                    'error');
             }
         }
 
-        // Отписка от Realtime
-        function unsubscribe() {
-            if (realtimeChannel) {
-                supabaseClient.removeChannel(realtimeChannel);
-                realtimeChannel = null;
-                logger.success('Отписка от Realtime событий');
+        // Показать результат теста
+        function showTestResult(title, content, type) {
+            const resultDiv = document.getElementById('testResult');
+            const contentDiv = document.getElementById('testContent');
+
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.classList.remove('hidden');
+            contentDiv.innerHTML = `<strong>${title}</strong><br><br>${content}`;
+        }
+
+        // Генерация конфигурации
+        function generateConfig() {
+            const apiKey = document.getElementById('newApiKey').value.trim();
+            if (!apiKey) {
+                showTestResult('❌ Ошибка', 'Введите API ключ для генерации конфигурации', 'error');
+                return;
+            }
+
+            const configFiles = {
+                'config.js': `// Исправленная конфигурация для config.js
+window.SUPABASE_CONFIG = {
+    url: '${CORRECT_URL}',
+    anonKey: '${apiKey}'
+};`,
+
+                'api/config.js': `// Исправленная конфигурация для api/config.js
+const config = {
+    supabase: {
+        url: process.env.SUPABASE_URL || '${CORRECT_URL}',
+        anonKey: process.env.SUPABASE_ANON_KEY || '${apiKey}'
+    },
+    // ... остальные настройки
+};`,
+
+                'test.html': `// Исправленная конфигурация для test.html
+const SUPABASE_CONFIG = {
+    url: '${CORRECT_URL}',
+    key: '${apiKey}'
+};`,
+
+                'debug.html': `// Исправленная конфигурация для debug.html
+const SUPABASE_CONFIG = {
+    url: '${CORRECT_URL}',
+    key: '${apiKey}'
+};`,
+
+                '.env (для переменных окружения)': `SUPABASE_URL=${CORRECT_URL}
+SUPABASE_ANON_KEY=${apiKey}
+SUPABASE_SERVICE_ROLE_KEY=ваш_service_role_key`
+            };
+
+            let configContent = '<h3>📋 Конфигурация для всех файлов:</h3><br>';
+            
+            for (const [fileName, content] of Object.entries(configFiles)) {
+                configContent += `<div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin: 10px 0;">`;
+                configContent += `<strong style="color: #ffd700;">${fileName}:</strong><br><br>`;
+                configContent += `<code style="white-space: pre-line; font-family: monospace; font-size: 0.85rem;">${content}</code>`;
+                configContent += '</div>';
+            }
+
+            configContent += '<br><strong style="color: #51cf66;">✅ Скопируйте соответствующие части в ваши файлы!</strong>';
+
+            showTestResult('📋 Конфигурация сгенерирована', configContent, 'success');
+        }
+
+        // Быстрый тест для демонстрации проблемы
+        async function showProblemDemo() {
+            showTestResult('🔍 Демонстрация проблемы', 'Тестирование неправильного URL...', 'info');
+
+            try {
+                const response = await fetch(`${WRONG_URL}/rest/v1/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                showTestResult('❌ Подтверждение проблемы', 
+                    `Неправильный URL ${WRONG_URL} недоступен.<br>Статус: Сервер не найден.`, 
+                    'error');
+
+            } catch (error) {
+                showTestResult('❌ Подтверждение проблемы', 
+                    `Неправильный URL ${WRONG_URL} недоступен.<br>Ошибка: ${error.message}`, 
+                    'error');
             }
         }
 
-        // Очистка логов
-        function clearLogs() {
-            document.getElementById('logContainer').innerHTML = '';
-            logger.info('Логи очищены');
-        }
-
-        // Инициализация
+        // Обработчики событий
         document.addEventListener('DOMContentLoaded', () => {
-            updateStatus();
+            document.getElementById('testCorrectUrl').addEventListener('click', testCorrectUrl);
+            document.getElementById('generateConfig').addEventListener('click', generateConfig);
 
-            // Обработчики событий
-            document.getElementById('initSupabase').addEventListener('click', initializeSupabase);
-            document.getElementById('testConnection').addEventListener('click', testConnection);
-            document.getElementById('checkTables').addEventListener('click', checkTables);
-            document.getElementById('runDiagnostic').addEventListener('click', runDiagnostic);
-            document.getElementById('createTestUser').addEventListener('click', createTestUser);
-            document.getElementById('clearLogs').addEventListener('click', clearLogs);
-            document.getElementById('executeQuery').addEventListener('click', executeQuery);
-            document.getElementById('loadExamples').addEventListener('click', loadExamples);
-            document.getElementById('loadTables').addEventListener('click', checkTables);
-            document.getElementById('subscribeToChanges').addEventListener('click', subscribeToChanges);
-            document.getElementById('unsubscribe').addEventListener('click', unsubscribe);
-
-            // Обработчики вкладок
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-            });
-
-            // Проверка авторизации
-            document.getElementById('checkAuth').addEventListener('click', async () => {
-                if (!supabaseClient) {
-                    logger.warning('Сначала инициализируйте Supabase');
-                    return;
-                }
-
-                try {
-                    const { data: { user }, error } = await supabaseClient.auth.getUser();
-                    
-                    const authInfo = {
-                        user: user,
-                        session: await supabaseClient.auth.getSession(),
-                        isAuthenticated: !!user
-                    };
-
-                    logger.info('Информация об авторизации', authInfo);
-                    document.getElementById('authInfo').textContent = JSON.stringify(authInfo, null, 2);
-
-                } catch (error) {
-                    logger.error('Ошибка проверки авторизации', error);
-                }
-            });
-
-            // Тест RLS политик
-            document.getElementById('testRLS').addEventListener('click', async () => {
-                if (!supabaseClient) {
-                    logger.warning('Сначала инициализируйте Supabase');
-                    return;
-                }
-
-                try {
-                    logger.info('Тестирование RLS политик...');
-
-                    // Тест без авторизации (anon ключ)
-                    const { data: anonData, error: anonError } = await supabaseClient
-                        .from('tarot_user_profiles')
-                        .select('*')
-                        .limit(1);
-
-                    const rlsInfo = {
-                        anonymousAccess: {
-                            success: !anonError,
-                            error: anonError?.message,
-                            data: anonData
-                        }
-                    };
-
-                    logger.info('Результаты тестирования RLS', rlsInfo);
-                    document.getElementById('authInfo').textContent = JSON.stringify(rlsInfo, null, 2);
-
-                } catch (error) {
-                    logger.error('Ошибка тестирования RLS', error);
-                }
-            });
-
-            logger.info('🔧 Debug Tool готов к работе');
-            logger.info('Нажмите "Подключиться" для начала работы');
+            // Автоматически показываем проблему при загрузке
+            setTimeout(showProblemDemo, 1000);
         });
 
-        // Экспорт для отладки в консоли
-        window.SupabaseDebug = {
-            client: () => supabaseClient,
-            config: SUPABASE_CONFIG,
-            logger,
-            testConnection,
-            checkTables,
-            runDiagnostic,
+        // Экспорт для консоли
+        window.SupabaseFix = {
+            correctUrl: CORRECT_URL,
+            wrongUrl: WRONG_URL,
+            testUrl: testCorrectUrl,
             
-            // Дополнительные утилиты для ручной отладки
-            async rawQuery(query) {
-                if (!supabaseClient) {
-                    console.error('Supabase не инициализирован');
-                    return;
-                }
-                
-                try {
-                    const result = await supabaseClient.rpc('execute_sql', { query });
-                    console.log('Query result:', result);
-                    return result;
-                } catch (error) {
-                    console.error('Query error:', error);
-                    return error;
-                }
-            },
-
-            async inspectTable(tableName, limit = 10) {
-                if (!supabaseClient) {
-                    console.error('Supabase не инициализирован');
+            // Быстрый тест через консоль
+            async quickTest(apiKey) {
+                if (!apiKey) {
+                    console.error('Введите API ключ: SupabaseFix.quickTest("your-key")');
                     return;
                 }
 
                 try {
-                    const { data, error } = await supabaseClient
-                        .from(tableName)
-                        .select('*')
-                        .limit(limit);
-                    
-                    console.table(data);
-                    return { data, error };
+                    const response = await fetch(`${CORRECT_URL}/rest/v1/`, {
+                        headers: {
+                            'apikey': apiKey,
+                            'Authorization': `Bearer ${apiKey}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        console.log('✅ Правильный URL работает!', CORRECT_URL);
+                        return true;
+                    } else {
+                        console.error('❌ Проблема с API ключом или URL:', response.status);
+                        return false;
+                    }
                 } catch (error) {
-                    console.error('Inspect error:', error);
-                    return error;
+                    console.error('❌ Ошибка подключения:', error.message);
+                    return false;
                 }
-            },
-
-            async getTableSchema(tableName) {
-                if (!supabaseClient) {
-                    console.error('Supabase не инициализирован');
-                    return;
-                }
-
-                try {
-                    // Попытка получить схему таблицы через информационную схему
-                    const query = `
-                        SELECT column_name, data_type, is_nullable 
-                        FROM information_schema.columns 
-                        WHERE table_name = '${tableName}' 
-                        AND table_schema = 'public'
-                    `;
-                    
-                    const result = await this.rawQuery(query);
-                    console.table(result.data);
-                    return result;
-                } catch (error) {
-                    console.error('Schema error:', error);
-                    return error;
-                }
-            },
-
-            // Быстрый тест всех основных функций
-            async quickTest() {
-                console.log('=== БЫСТРЫЙ ТЕСТ SUPABASE ===');
-                
-                if (!supabaseClient) {
-                    await initializeSupabase();
-                }
-
-                await testConnection();
-                await checkTables();
-                await testCRUDOperations();
-
-                console.log('=== ТЕСТ ЗАВЕРШЕН ===');
             }
         };
 
-        console.log('🔧 Supabase Debug Tool загружен');
-        console.log('Используйте window.SupabaseDebug для отладки в консоли');
-        console.log('Пример: SupabaseDebug.quickTest()');
+        console.log('🔧 Supabase URL Fix Tool загружен');
+        console.log('Используйте: SupabaseFix.quickTest("your-api-key") для быстрого теста');
     </script>
 </body>
 </html>
