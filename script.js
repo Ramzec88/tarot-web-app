@@ -425,6 +425,28 @@ function getBuiltInCards() {
         image: createCardPlaceholder(card)
     }));
 }
+
+// Асинхронная загрузка изображения с Promise
+async function loadImageAsync(imageSrc) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            console.log('✅ Изображение успешно загружено:', imageSrc);
+            resolve(img);
+        };
+        img.onerror = () => {
+            console.warn('❌ Ошибка загрузки изображения:', imageSrc);
+            reject(new Error(`Не удалось загрузить изображение: ${imageSrc}`));
+        };
+        // Устанавливаем таймаут для медленных соединений
+        setTimeout(() => {
+            reject(new Error(`Таймаут загрузки изображения: ${imageSrc}`));
+        }, 5000);
+        
+        img.src = encodeURI(imageSrc);
+    });
+}
+
 // Функция проверки доступности изображения
 async function checkImageAvailability(imagePath) {
     return new Promise((resolve) => {
@@ -718,38 +740,55 @@ async function handleDailyCardClick() {
             const cardBack = tarotCard?.querySelector('.card-back');
             
             if (cardFront && cardBack) {
-                console.log('🖼️ URL изображения:', randomCard.displayImage);
-                
-                // Сразу устанавливаем изображение как фон
-                cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
-                
-                // Принудительно устанавливаем дополнительные стили для отображения
-                cardFront.style.backgroundSize = 'cover';
-                cardFront.style.backgroundPosition = 'center';
-                cardFront.style.backgroundRepeat = 'no-repeat';
-                cardFront.style.opacity = '1';
-                cardFront.style.visibility = 'visible';
-                
-                console.log('🎨 Background-image установлен:', cardFront.style.backgroundImage);
-                
-                // Показываем лицевую сторону
-                cardFront.classList.remove('hidden');
-                cardBack.classList.add('hidden');
-                
-                console.log('👁️ Состояние видимости - cardFront hidden:', cardFront.classList.contains('hidden'));
-                console.log('👁️ Состояние видимости - cardBack hidden:', cardBack.classList.contains('hidden'));
-                
-                requestAnimationFrame(() => {
-                    void cardFront.offsetHeight;
+                try {
+                    console.log('🖼️ Начинаем загрузку изображения:', randomCard.displayImage);
+                    
+                    // Асинхронно загружаем изображение перед анимацией
+                    await loadImageAsync(randomCard.displayImage);
+                    
+                    // Устанавливаем изображение как фон только после успешной загрузки
+                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    console.log('🎨 Background-image установлен после загрузки:', cardFront.style.backgroundImage);
+                    
+                    // Запускаем анимацию переворота только после загрузки изображения
                     tarotCard.classList.add('flipped');
                     console.log('🔄 Карта перевернута, flipped класс добавлен');
                     
-                    // Проверяем computed styles после применения
+                    // Ждем завершения анимации, затем переключаем видимость
                     setTimeout(() => {
+                        cardFront.classList.remove('hidden');
+                        cardBack.classList.add('hidden');
+                        
+                        console.log('👁️ Состояние видимости - cardFront hidden:', cardFront.classList.contains('hidden'));
+                        console.log('👁️ Состояние видимости - cardBack hidden:', cardBack.classList.contains('hidden'));
                         console.log('🔍 Computed styles - display:', window.getComputedStyle(cardFront).display);
                         console.log('🔍 Computed styles - background-image:', window.getComputedStyle(cardFront).backgroundImage);
-                    }, 100);
-                });
+                    }, 400); // Ждем завершения анимации cardFlip (0.8s / 2 = 0.4s)
+                    
+                } catch (error) {
+                    console.warn('❌ Ошибка загрузки изображения, используем placeholder:', error);
+                    // Используем placeholder при ошибке загрузки
+                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    // Запускаем анимацию с placeholder
+                    tarotCard.classList.add('flipped');
+                    
+                    setTimeout(() => {
+                        cardFront.classList.remove('hidden');
+                        cardBack.classList.add('hidden');
+                    }, 400);
+                }
             }
         }
         
@@ -926,24 +965,25 @@ async function handleAskQuestion() {
             const cardBack = questionTarotCard?.querySelector('.card-back');
             
             if (cardFront && cardBack) {
-                // Создаём временный объект Image для загрузки
-                const tempImage = new Image();
-                tempImage.onload = () => {
-                    console.log('✅ Изображение карты для вопроса загружено');
-                    console.log('🖼️ URL изображения:', randomCard.displayImage);
+                try {
+                    console.log('🖼️ Начинаем асинхронную загрузку изображения для вопроса:', randomCard.displayImage);
                     
-                    // Устанавливаем изображение как фон
+                    // Асинхронно загружаем изображение перед показом
+                    await loadImageAsync(randomCard.displayImage);
+                    
+                    console.log('✅ Изображение карты для вопроса успешно загружено');
+                    
+                    // Устанавливаем изображение как фон только после успешной загрузки
                     cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
-                    console.log('🎨 Background-image установлен:', cardFront.style.backgroundImage);
-                    
-                    // Принудительно устанавливаем дополнительные стили для отображения
                     cardFront.style.backgroundSize = 'cover';
                     cardFront.style.backgroundPosition = 'center';
                     cardFront.style.backgroundRepeat = 'no-repeat';
                     cardFront.style.opacity = '1';
                     cardFront.style.visibility = 'visible';
                     
-                    // Показываем лицевую сторону
+                    console.log('🎨 Background-image установлен после загрузки:', cardFront.style.backgroundImage);
+                    
+                    // Показываем лицевую сторону только после загрузки изображения
                     cardFront.classList.remove('hidden');
                     cardBack.classList.add('hidden');
                     
@@ -951,15 +991,20 @@ async function handleAskQuestion() {
                     console.log('👁️ [ВОПРОС] Состояние видимости - cardBack hidden:', cardBack.classList.contains('hidden'));
                     console.log('🔍 [ВОПРОС] Computed styles - display:', window.getComputedStyle(cardFront).display);
                     console.log('🔍 [ВОПРОС] Computed styles - background-image:', window.getComputedStyle(cardFront).backgroundImage);
-                };
-                tempImage.onerror = () => {
-                    console.warn('❌ Ошибка загрузки изображения, используем placeholder');
+                    
+                } catch (error) {
+                    console.warn('❌ Ошибка загрузки изображения для вопроса, используем placeholder:', error);
+                    // Используем placeholder при ошибке загрузки
                     cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
                     cardFront.classList.remove('hidden');
                     cardBack.classList.add('hidden');
-                };
-                // Запускаем загрузку
-                tempImage.src = encodeURI(randomCard.displayImage);
+                }
             }
             
             // Обновляем лицевую сторону карты
@@ -1112,24 +1157,39 @@ async function handleClarifyingQuestion() {
             const cardBack = questionTarotCard?.querySelector('.card-back');
             
             if (cardFront && cardBack) {
-                // Создаём временный объект Image для загрузки
-                const tempImage = new Image();
-                tempImage.onload = () => {
-                    console.log('✅ Изображение карты для уточняющего вопроса загружено');
-                    // Если изображение успешно загружено, устанавливаем его как фон
+                try {
+                    console.log('🖼️ Начинаем асинхронную загрузку изображения для уточняющего вопроса:', randomCard.displayImage);
+                    
+                    // Асинхронно загружаем изображение перед показом
+                    await loadImageAsync(randomCard.displayImage);
+                    
+                    console.log('✅ Изображение карты для уточняющего вопроса успешно загружено');
+                    
+                    // Устанавливаем изображение как фон только после успешной загрузки
                     cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
-                    // И затем показываем лицевую сторону
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    // Показываем лицевую сторону только после загрузки изображения
                     cardFront.classList.remove('hidden');
                     cardBack.classList.add('hidden');
-                };
-                tempImage.onerror = () => {
-                    console.warn('❌ Ошибка загрузки изображения, используем placeholder');
+                    
+                } catch (error) {
+                    console.warn('❌ Ошибка загрузки изображения для уточняющего вопроса, используем placeholder:', error);
+                    // Используем placeholder при ошибке загрузки
                     cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
                     cardFront.classList.remove('hidden');
                     cardBack.classList.add('hidden');
-                };
-                // Запускаем загрузку
-                tempImage.src = encodeURI(randomCard.displayImage);
+                }
             }
             
             // Обновляем лицевую сторону карты
@@ -1377,21 +1437,32 @@ async function animateSpreadCards() {
         const cardBack = cardPosition.querySelector('.card-back');
         
         if (cardFront && cardBack) {
-            // Создаём временный объект Image для загрузки
-            const tempImage = new Image();
-            tempImage.onload = () => {
+            try {
+                console.log('🖼️ Начинаем асинхронную загрузку изображения для расклада:', randomCard.displayImage);
+                
+                // Асинхронно загружаем изображение перед показом
+                await loadImageAsync(randomCard.displayImage);
+                
                 console.log('✅ Изображение для расклада успешно загружено');
-                // Устанавливаем изображение как фон
+                
+                // Устанавливаем изображение как фон только после успешной загрузки
                 cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
-            };
-            tempImage.onerror = () => {
-                console.warn('❌ Ошибка загрузки изображения для расклада, используем placeholder');
+                cardFront.style.backgroundSize = 'cover';
+                cardFront.style.backgroundPosition = 'center';
+                cardFront.style.backgroundRepeat = 'no-repeat';
+                cardFront.style.opacity = '1';
+                cardFront.style.visibility = 'visible';
+                
+            } catch (error) {
+                console.warn('❌ Ошибка загрузки изображения для расклада, используем placeholder:', error);
+                // Используем placeholder при ошибке загрузки
                 cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
-            };
-            
-            console.log('✅ Пытаемся загрузить карту для расклада:', randomCard.displayImage);
-            // Запускаем загрузку
-            tempImage.src = encodeURI(randomCard.displayImage);
+                cardFront.style.backgroundSize = 'cover';
+                cardFront.style.backgroundPosition = 'center';
+                cardFront.style.backgroundRepeat = 'no-repeat';
+                cardFront.style.opacity = '1';
+                cardFront.style.visibility = 'visible';
+            }
         }
         
         // Переворачиваем карту
