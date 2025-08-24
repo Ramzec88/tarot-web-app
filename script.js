@@ -130,11 +130,10 @@ async function saveAppState() {
             console.log('💾 Сохранение в Supabase через TarotDB...');
             // Сохранение в базе данных
             await window.TarotDB.updateUserProfile(getUserId(), {
-                daily_card_used: appState.dailyCardUsed,
-                last_card_date: appState.lastCardDate,
-                questions_used: appState.questionsUsed,
-                is_premium: appState.isPremium,
-                free_questions_limit: appState.freeQuestionsLimit
+                last_card_day: appState.lastCardDate,
+                total_questions: appState.questionsUsed,
+                is_subscribed: appState.isPremium,
+                free_predictions_left: Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed)
             });
             console.log('✅ Состояние сохранено в Supabase');
         } else {
@@ -171,11 +170,11 @@ async function loadAppState() {
             // Загрузка из базы данных
             const userProfile = await window.TarotDB.getUserProfile(getUserId());
             if (userProfile) {
-                appState.dailyCardUsed = userProfile.daily_card_used || false;
-                appState.lastCardDate = userProfile.last_card_date;
-                appState.questionsUsed = userProfile.questions_used || 0;
-                appState.isPremium = userProfile.is_premium || false;
-                appState.freeQuestionsLimit = userProfile.free_questions_limit || 3;
+                appState.dailyCardUsed = userProfile.last_card_day === new Date().toISOString().split('T')[0];
+                appState.lastCardDate = userProfile.last_card_day;
+                appState.questionsUsed = userProfile.total_questions || 0;
+                appState.isPremium = userProfile.is_subscribed || false;
+                appState.freeQuestionsLimit = 3; // Базовый лимит
                 
                 console.log('✅ Состояние загружено из Supabase:', {
                     dailyCardUsed: appState.dailyCardUsed,
@@ -2007,7 +2006,7 @@ async function handlePremiumTestToggle() {
         // Если TarotDB подключен, обновляем профиль пользователя
         if (window.TarotDB && window.TarotDB.isConnected()) {
             await window.TarotDB.updateUserProfile(userId, {
-                is_premium: isPremium
+                is_subscribed: isPremium
             });
         }
 
@@ -2033,8 +2032,8 @@ async function handlePremiumPurchase() {
         // Если TarotDB подключен, обновляем профиль пользователя
         if (window.TarotDB && window.TarotDB.isConnected()) {
             await window.TarotDB.updateUserProfile(userId, {
-                is_premium: true,
-                premium_purchase_date: new Date().toISOString()
+                is_subscribed: true,
+                subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 дней
             });
         }
 
@@ -2350,11 +2349,11 @@ async function initApp() {
                 // Загружаем профиль пользователя
                 const userProfile = await window.TarotDB.getUserProfile(userId);
                 if (userProfile) {
-                    appState.dailyCardUsed = userProfile.daily_card_used || false;
-                    appState.lastCardDate = userProfile.last_card_date;
-                    appState.questionsUsed = userProfile.questions_used || 0;
-                    appState.isPremium = userProfile.is_premium || false;
-                    appState.freeQuestionsLimit = userProfile.free_questions_limit || 3;
+                    appState.dailyCardUsed = userProfile.last_card_day === new Date().toISOString().split('T')[0];
+                    appState.lastCardDate = userProfile.last_card_day;
+                    appState.questionsUsed = userProfile.total_questions || 0;
+                    appState.isPremium = userProfile.is_subscribed || false;
+                    appState.freeQuestionsLimit = 3;
                     console.log('✅ Профиль пользователя загружен из TarotDB');
                 }
                 
@@ -2665,6 +2664,91 @@ async function testTarotDB() {
     console.log('🧪 === КОНЕЦ ТЕСТА ===');
 }
 
+// Тестирование схемы базы данных
+async function testDatabaseSchema() {
+    console.log('🧪 === ТЕСТ СХЕМЫ БАЗЫ ДАННЫХ ===');
+    
+    if (!window.TarotDB) {
+        console.error('❌ TarotDB недоступен');
+        return;
+    }
+    
+    if (!window.TarotDB.isConnected()) {
+        console.error('❌ TarotDB не подключен');
+        return;
+    }
+    
+    try {
+        const testUserId = getUserId();
+        console.log('🔍 Тестирование с пользователем:', testUserId);
+        
+        // Тест 1: Создание/получение профиля пользователя
+        console.log('📝 Тест 1: Профиль пользователя');
+        const profile = await window.TarotDB.getUserProfile(testUserId);
+        console.log('✅ Профиль получен:', {
+            user_id: profile?.user_id,
+            chat_id: profile?.chat_id,
+            is_subscribed: profile?.is_subscribed,
+            free_predictions_left: profile?.free_predictions_left,
+            total_questions: profile?.total_questions
+        });
+        
+        // Тест 2: Обновление профиля
+        console.log('📝 Тест 2: Обновление профиля');
+        await window.TarotDB.updateUserProfile(testUserId, {
+            total_questions: (profile?.total_questions || 0) + 1,
+            free_predictions_left: Math.max(0, (profile?.free_predictions_left || 3) - 1)
+        });
+        console.log('✅ Профиль обновлен');
+        
+        // Тест 3: Сохранение ежедневной карты
+        console.log('📝 Тест 3: Ежедневная карта');
+        const testCard = {
+            id: 0,
+            name: 'Тест карта',
+            interpretation: 'Тестовая интерпретация карты'
+        };
+        const savedCard = await window.TarotDB.saveDailyCard(testUserId, testCard);
+        console.log('✅ Карта сохранена:', savedCard?.id);
+        
+        // Тест 4: Сохранение вопроса
+        console.log('📝 Тест 4: Вопрос и ответ');
+        const savedQuestion = await window.TarotDB.saveQuestion(testUserId, 'Тестовый вопрос?');
+        console.log('✅ Вопрос сохранен:', savedQuestion?.id);
+        
+        if (savedQuestion?.id) {
+            const savedAnswer = await window.TarotDB.saveAnswer(savedQuestion.id, testCard, 'Тестовый ответ на вопрос');
+            console.log('✅ Ответ сохранен:', savedAnswer?.id);
+        }
+        
+        // Тест 5: Сохранение отзыва
+        console.log('📝 Тест 5: Отзыв');
+        const savedReview = await window.TarotDB.saveReview(testUserId, 5, 'Отличное тестовое приложение!');
+        console.log('✅ Отзыв сохранен:', savedReview?.id);
+        
+        // Тест 6: Получение истории
+        console.log('📝 Тест 6: История пользователя');
+        const history = await window.TarotDB.getUserHistory(testUserId);
+        console.log('✅ История получена:', {
+            questions: history?.questions?.length || 0,
+            dailyCards: history?.dailyCards?.length || 0
+        });
+        
+        // Тест 7: Получение отзывов
+        console.log('📝 Тест 7: Отзывы');
+        const reviews = await window.TarotDB.getReviews(5);
+        console.log('✅ Отзывы получены:', reviews?.length || 0);
+        
+        console.log('🎉 === ВСЕ ТЕСТЫ ЗАВЕРШЕНЫ УСПЕШНО ===');
+        
+    } catch (error) {
+        console.error('❌ Ошибка в тесте схемы:', error);
+    }
+}
+
+// Делаем функцию доступной глобально
+window.testDatabaseSchema = testDatabaseSchema;
+
 // Экспорт для отладки
 window.TarotApp = {
     appState,
@@ -2682,5 +2766,6 @@ window.TarotApp = {
     createCardPlaceholder,
     checkImageAvailability,
     normalizeImagePath,
-    testTarotDB
+    testTarotDB,
+    testDatabaseSchema
 };
