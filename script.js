@@ -118,16 +118,81 @@ const SPREAD_CONFIGS = {
 // 💾 УПРАВЛЕНИЕ СОСТОЯНИЕМ
 // ========================================================================
 
-function saveAppState() {
+async function saveAppState() {
     try {
-        localStorage.setItem('tarotAppState', JSON.stringify(appState));
-        console.log('✅ Состояние сохранено');
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Сохранение в базе данных
+            await window.TarotDB.updateUserProfile(getUserId(), {
+                daily_card_used: appState.dailyCardUsed,
+                last_card_date: appState.lastCardDate,
+                questions_used: appState.questionsUsed,
+                is_premium: appState.isPremium,
+                free_questions_limit: appState.freeQuestionsLimit
+            });
+            console.log('✅ Состояние сохранено в Supabase');
+        } else {
+            // Резервное сохранение в localStorage
+            saveAppStateLocally();
+        }
     } catch (error) {
         console.error('❌ Ошибка сохранения состояния:', error);
+        // Fallback к localStorage при ошибке
+        saveAppStateLocally();
     }
 }
 
-function loadAppState() {
+function getUserId() {
+    return getTelegramUserId() || 'anonymous_user';
+}
+
+function saveAppStateLocally() {
+    try {
+        localStorage.setItem('tarotAppState', JSON.stringify(appState));
+        console.log('✅ Состояние сохранено локально');
+    } catch (error) {
+        console.error('❌ Ошибка локального сохранения состояния:', error);
+    }
+}
+
+async function loadAppState() {
+    try {
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Загрузка из базы данных
+            const userProfile = await window.TarotDB.getUserProfile(getUserId());
+            if (userProfile) {
+                appState.dailyCardUsed = userProfile.daily_card_used || false;
+                appState.lastCardDate = userProfile.last_card_date;
+                appState.questionsUsed = userProfile.questions_used || 0;
+                appState.isPremium = userProfile.is_premium || false;
+                appState.freeQuestionsLimit = userProfile.free_questions_limit || 3;
+                
+                console.log('✅ Состояние загружено из Supabase:', {
+                    dailyCardUsed: appState.dailyCardUsed,
+                    questionsUsed: appState.questionsUsed,
+                    isPremium: appState.isPremium,
+                    historyLength: appState.history.length,
+                    reviewsLength: appState.reviews.length
+                });
+            } else {
+                console.warn('⚠️ Профиль пользователя не найден в базе данных');
+                await loadAppStateLocally();
+            }
+        } else {
+            // Резервная загрузка из localStorage
+            await loadAppStateLocally();
+        }
+        
+        // Очищаем старые записи истории при загрузке
+        await cleanOldHistoryItems();
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки состояния:', error);
+        // Fallback к localStorage
+        await loadAppStateLocally();
+    }
+}
+
+async function loadAppStateLocally() {
     try {
         const saved = localStorage.getItem('tarotAppState');
         if (saved) {
@@ -141,27 +206,18 @@ function loadAppState() {
                 reviews: parsedState.reviews || appState.reviews
             };
             
-            // Очищаем старые записи истории при загрузке
-            cleanOldHistoryItems();
-            
-            console.log('✅ Состояние загружено из локального хранилища:', {
-                dailyCardUsed: appState.dailyCardUsed,
-                questionsUsed: appState.questionsUsed,
-                isPremium: appState.isPremium,
-                historyLength: appState.history.length,
-                reviewsLength: appState.reviews.length
-            });
+            console.log('✅ Состояние загружено из локального хранилища');
         } else {
             console.warn('⚠️ Локальное состояние не найдено');
         }
     } catch (error) {
-        console.error('❌ Ошибка загрузки состояния:', error);
+        console.error('❌ Ошибка локальной загрузки состояния:', error);
         // Сохраняем текущее состояние по умолчанию
-        saveAppState();
+        await saveAppState();
     }
 }
 
-function cleanOldHistoryItems() {
+async function cleanOldHistoryItems() {
     if (!appState.history || appState.history.length === 0) {
         return;
     }
@@ -183,7 +239,7 @@ function cleanOldHistoryItems() {
     
     if (removedCount > 0) {
         console.log(`🗑️ Удалено ${removedCount} записей истории старше 30 дней`);
-        saveAppState(); // Сохраняем обновленное состояние
+        await saveAppState(); // Сохраняем обновленное состояние
     }
 }
 
@@ -593,7 +649,7 @@ function switchTab(tabId) {
 
     // Сбрасываем состояние карты дня при переходе на другие вкладки
     if (tabId !== 'daily-card') {
-        resetDailyCardState();
+        resetDailyCardVisualState();
     }
     
     // Сбрасываем состояние вопросов при переходе на другие вкладки
@@ -622,7 +678,7 @@ function switchTab(tabId) {
     }
 }
 
-function resetDailyCardState() {
+function resetDailyCardVisualState() {
     if (!tarotCard) return;
     
     tarotCard.classList.remove('flipped');
@@ -646,12 +702,16 @@ function resetDailyCardState() {
     if (starAnimationContainer) {
         starAnimationContainer.innerHTML = '';
     }
+}
+
+async function resetDailyCardState() {
+    resetDailyCardVisualState();
     
     // Проверяем, нужно ли сбросить использование карты дня для нового дня
     const today = new Date().toDateString();
     if (appState.lastCardDate !== today) {
         appState.dailyCardUsed = false;
-        saveAppState();
+        await saveAppState();
         console.log('✅ Карта дня сброшена для нового дня');
     }
 }
@@ -733,7 +793,7 @@ async function handleDailyCardClick() {
     }
 
     // Сбрасываем состояние для нового переворота
-    resetDailyCardState();
+    await resetDailyCardState();
     
     // Показываем звездочки прямо на рубашке карты
     animateStars(3, starAnimationContainer);
@@ -878,7 +938,7 @@ async function handleDailyCardClick() {
     // Обновляем состояние
     appState.dailyCardUsed = true;
     appState.lastCardDate = new Date().toDateString();
-    saveAppState();
+    await saveAppState();
 }
 
 // ========================================================================
@@ -1085,7 +1145,7 @@ async function handleAskQuestion() {
             // Обновляем счетчики
             if (!appState.isPremium) {
                 appState.questionsUsed++;
-                saveAppState();
+                await saveAppState();
                 updateQuestionsCounter();
             }
             
@@ -1261,7 +1321,7 @@ async function handleClarifyingQuestion() {
             // Обновляем счетчики
             if (!appState.isPremium) {
                 appState.questionsUsed++;
-                saveAppState();
+                await saveAppState();
                 updateQuestionsCounter();
             }
             
@@ -1570,22 +1630,18 @@ async function addToHistory(type, title, content) {
     
     try {
         if (window.TarotDB && window.TarotDB.isConnected()) {
-            // Сохраняем в Supabase
-            if (type === 'daily-card') {
-                await window.TarotDB.saveDailyCard(telegramId, {
-                    id: Date.now(),
-                    name: title,
-                    interpretation: content
-                });
-            } else if (type === 'question') {
-                const question = await window.TarotDB.saveQuestion(telegramId, title);
-                if (question) {
-                    await window.TarotDB.saveAnswer(question.id, {
-                        id: Date.now(),
-                        name: 'AI Response'
-                    }, content);
-                }
-            }
+            // Сохраняем в Supabase через универсальный метод saveReading
+            const readingData = {
+                user_id: telegramId,
+                type: type,
+                title: title,
+                content: content,
+                cards: [], // В будущем можно добавить информацию о картах
+                timestamp: new Date().toISOString()
+            };
+            
+            await window.TarotDB.saveReading(readingData);
+            console.log('✅ Чтение сохранено в Supabase:', type);
         }
     } catch (error) {
         console.error('❌ Ошибка сохранения в Supabase:', error);
@@ -1612,7 +1668,7 @@ async function addToHistory(type, title, content) {
         appState.history = appState.history.slice(0, 50);
     }
     
-    saveAppState();
+    await saveAppState();
     updateHistoryDisplay();
 }
 
@@ -1688,7 +1744,7 @@ function updateHistoryDisplay() {
     });
 }
 
-function deleteHistoryItem(itemId) {
+async function deleteHistoryItem(itemId) {
     // Ищем элемент в истории
     const itemIndex = appState.history.findIndex(item => item.id === itemId);
     
@@ -1701,7 +1757,7 @@ function deleteHistoryItem(itemId) {
     appState.history.splice(itemIndex, 1);
     
     // Сохраняем состояние
-    saveAppState();
+    await saveAppState();
     
     // Обновляем отображение
     updateHistoryDisplay();
@@ -1823,7 +1879,7 @@ function setupStarRating() {
     }
 }
 
-function handleSubmitReview() {
+async function handleSubmitReview() {
     const reviewText = document.getElementById('reviewText');
     
     const rating = currentRating;
@@ -1849,7 +1905,25 @@ function handleSubmitReview() {
         timestamp: Date.now()
     };
     
-    // Добавляем отзыв в начало массива
+    // Сохраняем в Supabase
+    try {
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            const reviewData = {
+                user_id: getTelegramUserId(),
+                rating: rating,
+                review_text: text,
+                username: getTelegramUserName(),
+                created_at: new Date().toISOString()
+            };
+            
+            await window.TarotDB.saveReview(reviewData);
+            console.log('✅ Отзыв сохранен в Supabase');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сохранения отзыва в Supabase:', error);
+    }
+    
+    // Добавляем отзыв в начало массива (локальное сохранение как fallback)
     appState.reviews.unshift(review);
     
     // Ограничиваем количество отзывов (храним максимум 50)
@@ -1858,7 +1932,7 @@ function handleSubmitReview() {
     }
     
     // Сохраняем состояние
-    saveAppState();
+    await saveAppState();
     
     // Обновляем отображение отзывов
     updateReviewsDisplay();
@@ -1917,7 +1991,7 @@ async function handlePremiumTestToggle() {
 
         // Обновляем локальное состояние
         appState.isPremium = isPremium;
-        saveAppState();
+        await saveAppState();
         updateSubscriptionStatus(isPremium);
         updateQuestionsCounter();
         showMessage(`Режим изменен на ${isPremium ? 'Premium' : 'Базовый'}`, 'info');
@@ -1944,7 +2018,7 @@ async function handlePremiumPurchase() {
 
         // Обновляем локальное состояние
         appState.isPremium = true;
-        saveAppState();
+        await saveAppState();
         updateSubscriptionStatus(true);
         updateQuestionsCounter();
         
@@ -2239,26 +2313,65 @@ async function initApp() {
         // 2. Инициализируем DOM
         initializeDOMElements();
         
-        // 3. Загружаем состояние с приоритетом TarotDB
+        // 3. Загружаем данные с приоритетом TarotDB
         try {
             if (window.TarotDB && window.TarotDB.isConnected()) {
-                console.log('🔄 Попытка загрузки состояния из TarotDB');
+                console.log('🔄 Загрузка данных из TarotDB');
                 const userId = getTelegramUserId();
-                const cloudState = await window.TarotDB.getUserState(userId);
                 
-                if (cloudState) {
-                    console.log('☁️ Состояние успешно загружено из облака');
-                    appState = { ...appState, ...cloudState };
-                } else {
-                    console.warn('⚠️ Состояние в TarotDB не найдено');
+                // Загружаем профиль пользователя
+                const userProfile = await window.TarotDB.getUserProfile(userId);
+                if (userProfile) {
+                    appState.dailyCardUsed = userProfile.daily_card_used || false;
+                    appState.lastCardDate = userProfile.last_card_date;
+                    appState.questionsUsed = userProfile.questions_used || 0;
+                    appState.isPremium = userProfile.is_premium || false;
+                    appState.freeQuestionsLimit = userProfile.free_questions_limit || 3;
+                    console.log('✅ Профиль пользователя загружен из TarotDB');
+                }
+                
+                // Загружаем историю чтений
+                try {
+                    const readings = await window.TarotDB.getUserReadings(userId);
+                    if (readings && readings.length > 0) {
+                        appState.history = readings.map(reading => ({
+                            id: reading.id || Date.now(),
+                            type: reading.type || 'reading',
+                            title: reading.title || 'Чтение',
+                            content: reading.content || '',
+                            date: new Date(reading.created_at).toLocaleString('ru-RU'),
+                            timestamp: new Date(reading.created_at).getTime()
+                        }));
+                        console.log(`✅ История загружена из TarotDB: ${readings.length} записей`);
+                    }
+                } catch (historyError) {
+                    console.error('❌ Ошибка загрузки истории из TarotDB:', historyError);
+                }
+                
+                // Загружаем отзывы пользователя
+                try {
+                    const reviews = await window.TarotDB.getUserReviews(userId);
+                    if (reviews && reviews.length > 0) {
+                        appState.reviews = reviews.map(review => ({
+                            id: review.id || Date.now(),
+                            rating: review.rating,
+                            text: review.review_text || review.text,
+                            username: review.username || getTelegramUserName(),
+                            date: new Date(review.created_at).toLocaleString('ru-RU'),
+                            timestamp: new Date(review.created_at).getTime()
+                        }));
+                        console.log(`✅ Отзывы загружены из TarotDB: ${reviews.length} записей`);
+                    }
+                } catch (reviewsError) {
+                    console.error('❌ Ошибка загрузки отзывов из TarotDB:', reviewsError);
                 }
             }
         } catch (cloudError) {
-            console.error('❌ Ошибка загрузки состояния из TarotDB:', cloudError);
+            console.error('❌ Ошибка загрузки данных из TarotDB:', cloudError);
         }
         
         // Fallback к локальному состоянию
-        loadAppState();
+        await loadAppState();
         
         // 4. Загружаем карты
         await loadCards();
@@ -2270,6 +2383,7 @@ async function initApp() {
         updateSubscriptionStatus(appState.isPremium);
         updateQuestionsCounter();
         updateHistoryDisplay();
+        updateReviewsDisplay();
         
         // 7. Инициализируем Telegram WebApp если доступен
         initializeTelegramWebApp();
