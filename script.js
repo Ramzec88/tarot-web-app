@@ -2419,7 +2419,20 @@ async function initApp() {
         isInitialized = true;
         console.log('✅ Приложение успешно инициализировано');
         
-        // 7.5. ТЕСТИРУЕМ TAROTDB
+        // 7.5. ПРИНУДИТЕЛЬНО ИНИЦИАЛИЗИРУЕМ SUPABASE ЕСЛИ НЕ ИНИЦИАЛИЗИРОВАН
+        if (window.TarotDB && !window.TarotDB.isConnected()) {
+            console.log('🔄 Принудительная инициализация Supabase...');
+            if (window.TarotDB.initialize) {
+                try {
+                    await window.TarotDB.initialize();
+                    console.log('✅ Принудительная инициализация завершена');
+                } catch (error) {
+                    console.error('❌ Ошибка принудительной инициализации:', error);
+                }
+            }
+        }
+        
+        // 7.6. ТЕСТИРУЕМ TAROTDB
         setTimeout(() => {
             testTarotDB();
         }, 1000);
@@ -2617,6 +2630,33 @@ async function testTarotDB() {
                 console.log('- getStatus функция не найдена');
             } else {
                 console.log('- Статус:', window.TarotDB.getStatus());
+            }
+            
+            // Попытка принудительной инициализации
+            if (window.TarotDB.initialize) {
+                console.log('🔄 Пытаемся принудительно инициализировать...');
+                try {
+                    await window.TarotDB.initialize();
+                    console.log('✅ Принудительная инициализация успешна!');
+                    
+                    // Повторный тест после инициализации
+                    if (window.TarotDB.isConnected()) {
+                        console.log('🎉 TarotDB теперь подключен!');
+                        const userId = getUserId();
+                        console.log('Попытка создать тестовый профиль для:', userId);
+                        
+                        const result = await window.TarotDB.createUserProfile(userId, {
+                            username: 'Test User',
+                            is_premium: false
+                        });
+                        
+                        console.log('✅ Тест создания профиля успешен:', result);
+                    }
+                } catch (error) {
+                    console.error('❌ Ошибка принудительной инициализации:', error);
+                }
+            } else {
+                console.log('❌ Функция initialize не найдена');
             }
         }
     } else {
