@@ -713,22 +713,15 @@ async function handleDailyCardClick() {
         starAnimationContainer.innerHTML = '';
         
         if (cardImage && randomCard.displayImage) {
-            // Проверяем доступность изображения
-            const imageAvailable = await checkImageAvailability(randomCard.displayImage);
-            
-            if (imageAvailable) {
-                console.log('✅ Изображение доступно:', randomCard.displayImage);
-                cardImage.src = encodeURI(randomCard.displayImage);
-            } else {
-                console.warn('⚠️ Изображение недоступно, используем placeholder:', randomCard.displayImage);
-                cardImage.src = createCardPlaceholder(randomCard);
-            }
+            // Прямо пытаемся загрузить реальное изображение, плейсхолдер - только в onerror
+            console.log('✅ Пытаемся загрузить карту дня:', randomCard.displayImage);
+            cardImage.src = encodeURI(randomCard.displayImage);
             
             cardImage.alt = randomCard.name;
             
             // Добавляем обработчики для отслеживания загрузки
             cardImage.onload = function() {
-                console.log('✅ Изображение карты успешно загружено');
+                console.log('✅ Изображение карты дня успешно загружено');
                 // изображение точно есть; можно показать "лицо"
                 // (если показываешь front только после onload — это ещё надёжнее)
                 const card = tarotCard;
@@ -747,7 +740,7 @@ async function handleDailyCardClick() {
             };
             
             cardImage.onerror = function() {
-                console.warn('❌ Ошибка загрузки изображения, устанавливаем placeholder');
+                console.warn('❌ Ошибка загрузки изображения карты дня, устанавливаем placeholder');
                 this.src = createCardPlaceholder(randomCard);
             };
         }
@@ -927,43 +920,37 @@ async function handleAskQuestion() {
             // Переворачиваем карту
             questionTarotCard?.classList.add('flipped');
             
-            // Подготавливаем изображение
+            // Подготавливаем изображение - сначала реальный URL, плейсхолдер только в onerror
             if (questionCardImage) {
-                const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+                const card  = document.getElementById('questionTarotCard');
+                const front = card.querySelector('.card-front');
+                const back  = card.querySelector('.card-back');
+                const img   = document.getElementById('questionCardImage');
                 
-                if (imageAvailable) {
-                    questionCardImage.src = encodeURI(randomCard.displayImage);
-                } else {
-                    questionCardImage.src = createCardPlaceholder(randomCard);
-                }
+                const realUrl = encodeURI(randomCard.displayImage); // ← реальный URL карты (с кириллицей!)
+                
+                img.onload = () => {
+                    console.log('✅ Изображение карты для вопроса загружено');
+                    // картинка реально загрузилась — показываем front
+                    front.classList.remove('hidden');
+                    back.classList.add('hidden');
+                    // на всякий — убираем фон-плейсхолдер у front
+                    front.style.background = 'none';
+                    // убедимся, что img видим и имеет размер
+                    img.style.display = 'block';
+                    img.style.opacity = '1';
+                };
+                
+                img.onerror = () => {
+                    console.warn('❌ Ошибка загрузки, используем placeholder');
+                    // только если реальная картинка не загрузилась — ставим плейсхолдер
+                    img.src = createCardPlaceholder(randomCard); // ваша функция плейсхолдера
+                    img.style.display = 'block';
+                };
                 
                 questionCardImage.alt = randomCard.name;
-                
-                // Обработчики загрузки изображения
-                questionCardImage.onload = () => {
-                    console.log('✅ Изображение карты для вопроса загружено');
-                    
-                    // КРИТИЧЕСКОЕ ДЕЙСТВИЕ: включаем "лицо" через переворот контейнера
-                    // (т.к. .card-front у нас повернут на 180°)
-                    const card = document.getElementById('questionTarotCard');
-                    const front = card?.querySelector('.card-front');
-                    const back = card?.querySelector('.card-back');
-                    
-                    if (card && front && back) {
-                        front.classList.remove('hidden');
-                        back.classList.add('hidden');
-                        
-                        requestAnimationFrame(() => {
-                            // форс-рефлоу для WebKit, потом переворот
-                            void front.offsetHeight;
-                            card.classList.add('flipped');
-                        });
-                    }
-                };
-                questionCardImage.onerror = () => {
-                    console.warn('❌ Ошибка загрузки, используем placeholder');
-                    questionCardImage.src = createCardPlaceholder(randomCard);
-                };
+                img.style.display = 'block';        // сразу даём место в layout
+                img.src = realUrl;                  // ВАЖНО: сначала пытаемся реальный URL
             }
             
             // Обновляем лицевую сторону карты
@@ -1112,43 +1099,37 @@ async function handleClarifyingQuestion() {
             // Переворачиваем карту
             questionTarotCard?.classList.add('flipped');
             
-            // Подготавливаем изображение
+            // Подготавливаем изображение - сначала реальный URL, плейсхолдер только в onerror
             if (questionCardImage) {
-                const imageAvailable = await checkImageAvailability(randomCard.displayImage);
+                const card  = document.getElementById('questionTarotCard');
+                const front = card.querySelector('.card-front');
+                const back  = card.querySelector('.card-back');
+                const img   = document.getElementById('questionCardImage');
                 
-                if (imageAvailable) {
-                    questionCardImage.src = encodeURI(randomCard.displayImage);
-                } else {
-                    questionCardImage.src = createCardPlaceholder(randomCard);
-                }
+                const realUrl = encodeURI(randomCard.displayImage); // ← реальный URL карты (с кириллицей!)
+                
+                img.onload = () => {
+                    console.log('✅ Изображение карты для уточняющего вопроса загружено');
+                    // картинка реально загрузилась — показываем front
+                    front.classList.remove('hidden');
+                    back.classList.add('hidden');
+                    // на всякий — убираем фон-плейсхолдер у front
+                    front.style.background = 'none';
+                    // убедимся, что img видим и имеет размер
+                    img.style.display = 'block';
+                    img.style.opacity = '1';
+                };
+                
+                img.onerror = () => {
+                    console.warn('❌ Ошибка загрузки, используем placeholder');
+                    // только если реальная картинка не загрузилась — ставим плейсхолдер
+                    img.src = createCardPlaceholder(randomCard); // ваша функция плейсхолдера
+                    img.style.display = 'block';
+                };
                 
                 questionCardImage.alt = randomCard.name;
-                
-                // Обработчики загрузки изображения
-                questionCardImage.onload = () => {
-                    console.log('✅ Изображение карты для уточняющего вопроса загружено');
-                    
-                    // КРИТИЧЕСКОЕ ДЕЙСТВИЕ: включаем "лицо" через переворот контейнера
-                    // (т.к. .card-front у нас повернут на 180°)
-                    const card = document.getElementById('questionTarotCard');
-                    const front = card?.querySelector('.card-front');
-                    const back = card?.querySelector('.card-back');
-                    
-                    if (card && front && back) {
-                        front.classList.remove('hidden');
-                        back.classList.add('hidden');
-                        
-                        requestAnimationFrame(() => {
-                            // форс-рефлоу для WebKit, потом переворот
-                            void front.offsetHeight;
-                            card.classList.add('flipped');
-                        });
-                    }
-                };
-                questionCardImage.onerror = () => {
-                    console.warn('❌ Ошибка загрузки, используем placeholder');
-                    questionCardImage.src = createCardPlaceholder(randomCard);
-                };
+                img.style.display = 'block';        // сразу даём место в layout
+                img.src = realUrl;                  // ВАЖНО: сначала пытаемся реальный URL
             }
             
             // Обновляем лицевую сторону карты
@@ -1396,15 +1377,21 @@ async function animateSpreadCards() {
         const tarotCard = cardPosition.querySelector('.tarot-card');
         const randomCard = getRandomCard();
         
-        // Устанавливаем изображение
+        // Устанавливаем изображение - прямо пытаемся загрузить реальное изображение
         const cardImage = cardPosition.querySelector('.card-image');
-        const imageAvailable = await checkImageAvailability(randomCard.displayImage);
         
-        if (imageAvailable) {
-            cardImage.src = encodeURI(randomCard.displayImage);
-        } else {
+        // Обработчики загрузки
+        cardImage.onload = () => {
+            console.log('✅ Изображение для расклада успешно загружено');
+        };
+        cardImage.onerror = () => {
+            console.warn('❌ Ошибка загрузки изображения для расклада, используем placeholder');
             cardImage.src = createCardPlaceholder(randomCard);
-        }
+        };
+        
+        console.log('✅ Пытаемся загрузить карту для расклада:', randomCard.displayImage);
+        cardImage.src = encodeURI(randomCard.displayImage);
+        cardImage.alt = randomCard.name;
         
         // Переворачиваем карту
         tarotCard?.classList.add('flipped');
