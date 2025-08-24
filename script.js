@@ -2016,6 +2016,19 @@ async function handlePremiumTestToggle() {
     try {
         // Если TarotDB подключен, обновляем профиль пользователя
         if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Сначала проверяем существование профиля
+            let userProfile = await window.TarotDB.getUserProfile(userId);
+            
+            // Если профиль не существует, создаем его
+            if (!userProfile) {
+                console.log('🆕 Создаем новый профиль пользователя');
+                userProfile = await window.TarotDB.createUserProfile(userId, {
+                    username: getTelegramUserName(),
+                    is_subscribed: false
+                });
+            }
+
+            // Обновляем профиль
             await window.TarotDB.updateUserProfile(userId, {
                 is_subscribed: isPremium
             });
@@ -2042,9 +2055,23 @@ async function handlePremiumPurchase() {
         
         // Если TarotDB подключен, обновляем профиль пользователя
         if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Сначала проверяем существование профиля
+            let userProfile = await window.TarotDB.getUserProfile(userId);
+            
+            // Если профиль не существует, создаем его
+            if (!userProfile) {
+                console.log('🆕 Создаем новый профиль пользователя');
+                userProfile = await window.TarotDB.createUserProfile(userId, {
+                    username: getTelegramUserName(),
+                    is_subscribed: false
+                });
+            }
+
+            // Обновляем профиль
             await window.TarotDB.updateUserProfile(userId, {
                 is_subscribed: true,
-                subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 дней
+                subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 дней
+                premium_purchase_date: new Date().toISOString()
             });
         }
 
