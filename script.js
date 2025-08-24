@@ -718,35 +718,38 @@ async function handleDailyCardClick() {
             const cardBack = tarotCard?.querySelector('.card-back');
             
             if (cardFront && cardBack) {
-                // Создаём временный объект Image для загрузки
-                const tempImage = new Image();
-                tempImage.onload = () => {
-                    console.log('✅ Изображение карты дня успешно загружено');
-                    // Если изображение успешно загружено, устанавливаем его как фон
-                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
-                    // И затем показываем лицевую сторону
-                    cardFront.classList.remove('hidden');
-                    cardBack.classList.add('hidden');
+                console.log('🖼️ URL изображения:', randomCard.displayImage);
+                
+                // Сразу устанавливаем изображение как фон
+                cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                
+                // Принудительно устанавливаем дополнительные стили для отображения
+                cardFront.style.backgroundSize = 'cover';
+                cardFront.style.backgroundPosition = 'center';
+                cardFront.style.backgroundRepeat = 'no-repeat';
+                cardFront.style.opacity = '1';
+                cardFront.style.visibility = 'visible';
+                
+                console.log('🎨 Background-image установлен:', cardFront.style.backgroundImage);
+                
+                // Показываем лицевую сторону
+                cardFront.classList.remove('hidden');
+                cardBack.classList.add('hidden');
+                
+                console.log('👁️ Состояние видимости - cardFront hidden:', cardFront.classList.contains('hidden'));
+                console.log('👁️ Состояние видимости - cardBack hidden:', cardBack.classList.contains('hidden'));
+                
+                requestAnimationFrame(() => {
+                    void cardFront.offsetHeight;
+                    tarotCard.classList.add('flipped');
+                    console.log('🔄 Карта перевернута, flipped класс добавлен');
                     
-                    requestAnimationFrame(() => {
-                        // форс-рефлоу для WebKit, потом переворот
-                        void cardFront.offsetHeight;
-                        tarotCard.classList.add('flipped');
-                    });
-                };
-                tempImage.onerror = () => {
-                    console.warn('❌ Ошибка загрузки изображения карты дня, используем placeholder');
-                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
-                    cardFront.classList.remove('hidden');
-                    cardBack.classList.add('hidden');
-                    
-                    requestAnimationFrame(() => {
-                        void cardFront.offsetHeight;
-                        tarotCard.classList.add('flipped');
-                    });
-                };
-                // Запускаем загрузку
-                tempImage.src = encodeURI(randomCard.displayImage);
+                    // Проверяем computed styles после применения
+                    setTimeout(() => {
+                        console.log('🔍 Computed styles - display:', window.getComputedStyle(cardFront).display);
+                        console.log('🔍 Computed styles - background-image:', window.getComputedStyle(cardFront).backgroundImage);
+                    }, 100);
+                });
             }
         }
         
@@ -759,30 +762,23 @@ async function handleDailyCardClick() {
 
         if (!card || !front || !back) return;
 
-        // 1) z-index'ы и снятие hidden — чтобы именно front был видим
-        front.style.zIndex = '2';
-        back.style.zIndex  = '1';
-
+        // Управляем видимостью только через CSS-классы
         front.classList.remove('hidden');
-        front.style.display = '';        // на всякий случай
         back.classList.add('hidden');
-        back.style.display  = 'none';    // iOS любит явный display
 
-        // 2) принудительный reflow перед финальным состоянием (Safari fix)
+        // Принудительный reflow для WebKit
         void front.offsetHeight;
 
-        // 3) если карта должна быть "лицом" (в твоей логике — да), следим за flip
-        //    В твоём сценарии daily: ты добавляешь .flipped через 1000ms — это ОК,
-        //    главное потом не снимать flipped до показа front.
-        //    На всякий случай ещё раз применим нужный класс чуть позже:
+        // Применяем 3D-трансформацию для корректного отображения
         requestAnimationFrame(() => {
-            card.classList.add('flipped');           // фронт смотрит на нас (т.к. front повернут на 180)
-            // микро-сдвиг, чтобы у WebKit не было "плоского" слоя
+            card.classList.add('flipped');
+            // Микро-сдвиг для WebKit 3D-слоя
             front.style.transform = 'rotateY(180deg) translateZ(0)';
         });
         
-        console.log('✅ Классы обновлены - cardFront hidden:', front?.classList.contains('hidden'));
-        console.log('✅ Классы обновлены - cardBack hidden:', back?.classList.contains('hidden'));
+        console.log('✅ [КАРТА ДНЯ] Классы обновлены - cardFront hidden:', front?.classList.contains('hidden'));
+        console.log('✅ [КАРТА ДНЯ] Классы обновлены - cardBack hidden:', back?.classList.contains('hidden'));
+        console.log('🎨 [КАРТА ДНЯ] Background-image:', front?.style.backgroundImage || 'не установлен');
     }, 400);
 
     // После полной анимации показываем информацию
@@ -934,11 +930,27 @@ async function handleAskQuestion() {
                 const tempImage = new Image();
                 tempImage.onload = () => {
                     console.log('✅ Изображение карты для вопроса загружено');
-                    // Если изображение успешно загружено, устанавливаем его как фон
+                    console.log('🖼️ URL изображения:', randomCard.displayImage);
+                    
+                    // Устанавливаем изображение как фон
                     cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
-                    // И затем показываем лицевую сторону
+                    console.log('🎨 Background-image установлен:', cardFront.style.backgroundImage);
+                    
+                    // Принудительно устанавливаем дополнительные стили для отображения
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    // Показываем лицевую сторону
                     cardFront.classList.remove('hidden');
                     cardBack.classList.add('hidden');
+                    
+                    console.log('👁️ [ВОПРОС] Состояние видимости - cardFront hidden:', cardFront.classList.contains('hidden'));
+                    console.log('👁️ [ВОПРОС] Состояние видимости - cardBack hidden:', cardBack.classList.contains('hidden'));
+                    console.log('🔍 [ВОПРОС] Computed styles - display:', window.getComputedStyle(cardFront).display);
+                    console.log('🔍 [ВОПРОС] Computed styles - background-image:', window.getComputedStyle(cardFront).backgroundImage);
                 };
                 tempImage.onerror = () => {
                     console.warn('❌ Ошибка загрузки изображения, используем placeholder');
@@ -961,10 +973,9 @@ async function handleAskQuestion() {
                 console.log('📍 cardFront element:', cardFront);
                 console.log('📍 cardBack element:', cardBack);
                 
-                // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
+                // Управляем видимостью только через CSS-классы
                 if (cardFront) {
                     cardFront.classList.remove('hidden');
-                    cardFront.style.display = ''; // убираем возможные inline стили
                 }
                 if (cardBack) {
                     cardBack.classList.add('hidden');
@@ -1126,10 +1137,9 @@ async function handleClarifyingQuestion() {
                 const cardFront = questionTarotCard?.querySelector('.card-front');
                 const cardBack = questionTarotCard?.querySelector('.card-back');
                 
-                // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
+                // Управляем видимостью только через CSS-классы
                 if (cardFront) {
                     cardFront.classList.remove('hidden');
-                    cardFront.style.display = ''; // убираем возможные inline стили
                 }
                 if (cardBack) {
                     cardBack.classList.add('hidden');
