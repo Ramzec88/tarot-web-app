@@ -2383,11 +2383,8 @@ async function initApp() {
         console.log('👤 Получен пользователь ID:', userId);
         
         // 4. Загружаем локальные данные
-        const localAppState = loadAppStateFromLocalStorage();
-        if (localAppState) {
-            Object.assign(appState, localAppState);
-            console.log('📱 Локальное состояние загружено');
-        }
+        await loadAppStateLocally();
+        console.log('📱 Локальное состояние загружено');
         
         // 5. Синхронизируем данные с TarotDB
         try {
