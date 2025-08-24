@@ -141,8 +141,9 @@ async function saveAppState() {
                 // Fallback к старой логике
                 await window.TarotDB.updateUserProfile(getUserId(), {
                     last_card_day: appState.lastCardDate,
-                    questions_used: appState.questionsUsed,
-                    is_premium: appState.isPremium
+                    total_questions: appState.questionsUsed,
+                    is_subscribed: appState.isPremium,
+                    free_predictions_left: Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed)
                 });
             }
             console.log('✅ Состояние сохранено в Supabase');
@@ -2414,8 +2415,9 @@ async function initApp() {
                     if (userProfile) {
                         appState.dailyCardUsed = userProfile.last_card_day === new Date().toISOString().split('T')[0];
                         appState.lastCardDate = userProfile.last_card_day;
-                        appState.questionsUsed = userProfile.questions_used || 0;
-                        appState.isPremium = userProfile.is_premium || false;
+                        appState.questionsUsed = userProfile.total_questions || 0;
+                        appState.isPremium = userProfile.is_subscribed || false;
+                        appState.freeQuestionsLimit = userProfile.free_predictions_left || 3;
                         console.log('✅ Профиль пользователя загружен из TarotDB (fallback)');
                     }
                 }
@@ -2518,7 +2520,12 @@ async function initApp() {
         try {
             if (window.TarotDB && window.TarotDB.isConnected()) {
                 const userId = getTelegramUserId();
-                await window.TarotDB.updateUserState(userId, appState);
+                await window.TarotDB.updateUserProfile(userId, {
+                    total_questions: appState.questionsUsed,
+                    is_subscribed: appState.isPremium,
+                    last_card_day: appState.lastCardDate,
+                    free_predictions_left: Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed)
+                });
                 console.log('☁️ Состояние синхронизировано с TarotDB');
             }
         } catch (syncError) {
