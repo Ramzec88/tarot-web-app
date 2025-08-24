@@ -25,7 +25,7 @@ export default function handler(req, res) {
         const config = {
             supabase: {
                 url: process.env.SUPABASE_URL || 'https://jjowuzqfnwcuulcknkxh.supabase.co',
-                anonKey: process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
+                anonKey: process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFmbndjdXVsY2tua3hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3MDk4MzQsImV4cCI6MjA1OTI4NTgzNH0.Yzw4rjZh1KhKIKtzwAShYC-7nGjzp6aORTUaBtNxtVQ'
             },
             api: {
                 n8nWebhookUrl: process.env.N8N_WEBHOOK_URL || 'https://volshebstvo.app.n8n.cloud/webhook/shepot-kart',
@@ -62,7 +62,7 @@ export default function handler(req, res) {
             fallback: {
                 supabase: {
                     url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
-                    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
+                    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqb3d1enFmbndjdXVsY2tua3hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3MDk4MzQsImV4cCI6MjA1OTI4NTgzNH0.Yzw4rjZh1KhKIKtzwAShYC-7nGjzp6aORTUaBtNxtVQ'
                 },
                 api: {
                     n8nWebhookUrl: 'https://volshebstvo.app.n8n.cloud/webhook/shepot-kart',
