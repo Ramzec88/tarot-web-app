@@ -120,7 +120,14 @@ const SPREAD_CONFIGS = {
 
 async function saveAppState() {
     try {
+        console.log('🔄 saveAppState: проверка TarotDB...', {
+            tarotDBExists: !!window.TarotDB,
+            isConnected: window.TarotDB ? window.TarotDB.isConnected() : false,
+            connectionStatus: window.TarotDB ? window.TarotDB.getStatus() : null
+        });
+        
         if (window.TarotDB && window.TarotDB.isConnected()) {
+            console.log('💾 Сохранение в Supabase через TarotDB...');
             // Сохранение в базе данных
             await window.TarotDB.updateUserProfile(getUserId(), {
                 daily_card_used: appState.dailyCardUsed,
@@ -131,6 +138,7 @@ async function saveAppState() {
             });
             console.log('✅ Состояние сохранено в Supabase');
         } else {
+            console.log('📱 TarotDB недоступен, используем localStorage');
             // Резервное сохранение в localStorage
             saveAppStateLocally();
         }
@@ -142,7 +150,10 @@ async function saveAppState() {
 }
 
 function getUserId() {
-    return getTelegramUserId() || 'anonymous_user';
+    const telegramId = getTelegramUserId();
+    const userId = telegramId || 'anonymous_user';
+    console.log('🆔 getUserId:', { telegramId, userId });
+    return userId;
 }
 
 function saveAppStateLocally() {
@@ -1628,8 +1639,17 @@ function resetSpreadState() {
 async function addToHistory(type, title, content) {
     const telegramId = getTelegramUserId();
     
+    console.log('📚 addToHistory вызван:', {
+        type,
+        title: title.substring(0, 50) + '...',
+        telegramId,
+        tarotDBExists: !!window.TarotDB,
+        isConnected: window.TarotDB ? window.TarotDB.isConnected() : false
+    });
+    
     try {
         if (window.TarotDB && window.TarotDB.isConnected()) {
+            console.log('💾 Сохранение чтения в Supabase...');
             // Сохраняем в Supabase через универсальный метод saveReading
             const readingData = {
                 user_id: telegramId,
@@ -1642,6 +1662,8 @@ async function addToHistory(type, title, content) {
             
             await window.TarotDB.saveReading(readingData);
             console.log('✅ Чтение сохранено в Supabase:', type);
+        } else {
+            console.log('📱 TarotDB недоступен для сохранения чтения, используем только localStorage');
         }
     } catch (error) {
         console.error('❌ Ошибка сохранения в Supabase:', error);
@@ -2315,6 +2337,12 @@ async function initApp() {
         
         // 3. Загружаем данные с приоритетом TarotDB
         try {
+            console.log('🔍 Проверка TarotDB при инициализации:', {
+                tarotDBExists: !!window.TarotDB,
+                isConnected: window.TarotDB ? window.TarotDB.isConnected() : false,
+                connectionStatus: window.TarotDB ? window.TarotDB.getStatus() : null
+            });
+            
             if (window.TarotDB && window.TarotDB.isConnected()) {
                 console.log('🔄 Загрузка данных из TarotDB');
                 const userId = getTelegramUserId();
@@ -2390,6 +2418,11 @@ async function initApp() {
         
         isInitialized = true;
         console.log('✅ Приложение успешно инициализировано');
+        
+        // 7.5. ТЕСТИРУЕМ TAROTDB
+        setTimeout(() => {
+            testTarotDB();
+        }, 1000);
         
         // 8. Показываем информацию о загруженных картах
         if (allCards && allCards.length > 0) {
@@ -2555,6 +2588,43 @@ if (document.readyState === 'loading') {
     initApp();
 }
 
+// 🧪 ТЕСТОВАЯ ФУНКЦИЯ ДЛЯ ОТЛАДКИ TAROTDB
+async function testTarotDB() {
+    console.log('🧪 === ТЕСТ TAROTDB ===');
+    console.log('TarotDB существует:', !!window.TarotDB);
+    
+    if (window.TarotDB) {
+        console.log('TarotDB подключен:', window.TarotDB.isConnected());
+        console.log('Статус подключения:', window.TarotDB.getStatus());
+        
+        if (window.TarotDB.isConnected()) {
+            try {
+                const userId = getUserId();
+                console.log('Попытка создать тестовый профиль для:', userId);
+                
+                const result = await window.TarotDB.createUserProfile(userId, {
+                    username: 'Test User',
+                    is_premium: false
+                });
+                
+                console.log('✅ Тест создания профиля успешен:', result);
+            } catch (error) {
+                console.error('❌ Ошибка теста TarotDB:', error);
+            }
+        } else {
+            console.log('⚠️ TarotDB не подключен, причины:');
+            if (!window.TarotDB.getStatus) {
+                console.log('- getStatus функция не найдена');
+            } else {
+                console.log('- Статус:', window.TarotDB.getStatus());
+            }
+        }
+    } else {
+        console.log('❌ window.TarotDB не существует');
+    }
+    console.log('🧪 === КОНЕЦ ТЕСТА ===');
+}
+
 // Экспорт для отладки
 window.TarotApp = {
     appState,
@@ -2571,5 +2641,6 @@ window.TarotApp = {
     currentRating,
     createCardPlaceholder,
     checkImageAvailability,
-    normalizeImagePath
+    normalizeImagePath,
+    testTarotDB
 };
