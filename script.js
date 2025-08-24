@@ -132,16 +132,32 @@ function loadAppState() {
         const saved = localStorage.getItem('tarotAppState');
         if (saved) {
             const parsedState = JSON.parse(saved);
-            appState = { ...appState, ...parsedState };
+            
+            // Глубокое слияние состояний с приоритетом загруженного состояния
+            appState = {
+                ...appState,
+                ...parsedState,
+                history: parsedState.history || appState.history,
+                reviews: parsedState.reviews || appState.reviews
+            };
             
             // Очищаем старые записи истории при загрузке
             cleanOldHistoryItems();
             
-            console.log('✅ Состояние загружено:', appState);
+            console.log('✅ Состояние загружено из локального хранилища:', {
+                dailyCardUsed: appState.dailyCardUsed,
+                questionsUsed: appState.questionsUsed,
+                isPremium: appState.isPremium,
+                historyLength: appState.history.length,
+                reviewsLength: appState.reviews.length
+            });
+        } else {
+            console.warn('⚠️ Локальное состояние не найдено');
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки состояния:', error);
-        appState = { ...appState };
+        // Сохраняем текущее состояние по умолчанию
+        saveAppState();
     }
 }
 
@@ -1887,26 +1903,56 @@ function updateSubscriptionStatus(isPremium = false) {
     }
 }
 
-function handlePremiumTestToggle() {
+async function handlePremiumTestToggle() {
     const isPremium = premiumTestToggle.checked;
-    appState.isPremium = isPremium;
-    saveAppState();
-    updateSubscriptionStatus(isPremium);
-    updateQuestionsCounter();
-    showMessage(`Режим изменен на ${isPremium ? 'Premium' : 'Базовый'}`, 'info');
+    const userId = getTelegramUserId();
+
+    try {
+        // Если TarotDB подключен, обновляем профиль пользователя
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            await window.TarotDB.updateUserProfile(userId, {
+                is_premium: isPremium
+            });
+        }
+
+        // Обновляем локальное состояние
+        appState.isPremium = isPremium;
+        saveAppState();
+        updateSubscriptionStatus(isPremium);
+        updateQuestionsCounter();
+        showMessage(`Режим изменен на ${isPremium ? 'Premium' : 'Базовый'}`, 'info');
+    } catch (error) {
+        console.error('❌ Ошибка обновления статуса Premium:', error);
+        showMessage('Не удалось обновить статус Premium', 'error');
+    }
 }
 
-function handlePremiumPurchase() {
-    // Здесь должна быть интеграция с платежной системой
-    console.log('💰 Покупка Premium');
-    
-    // Симулируем успешную покупку для демо
-    appState.isPremium = true;
-    saveAppState();
-    updateSubscriptionStatus(true);
-    updateQuestionsCounter();
-    
-    showMessage('Premium активирован! Теперь у вас безлимитные возможности!', 'success');
+async function handlePremiumPurchase() {
+    const userId = getTelegramUserId();
+
+    try {
+        // Здесь должна быть реальная интеграция с платежной системой
+        console.log('💰 Покупка Premium');
+        
+        // Если TarotDB подключен, обновляем профиль пользователя
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            await window.TarotDB.updateUserProfile(userId, {
+                is_premium: true,
+                premium_purchase_date: new Date().toISOString()
+            });
+        }
+
+        // Обновляем локальное состояние
+        appState.isPremium = true;
+        saveAppState();
+        updateSubscriptionStatus(true);
+        updateQuestionsCounter();
+        
+        showMessage('Premium активирован! Теперь у вас безлимитные возможности!', 'success');
+    } catch (error) {
+        console.error('❌ Ошибка активации Premium:', error);
+        showMessage('Не удалось активировать Premium', 'error');
+    }
 }
 // ========================================================================
 // 🛠️ УТИЛИТЫ
@@ -2193,7 +2239,25 @@ async function initApp() {
         // 2. Инициализируем DOM
         initializeDOMElements();
         
-        // 3. Загружаем состояние
+        // 3. Загружаем состояние с приоритетом TarotDB
+        try {
+            if (window.TarotDB && window.TarotDB.isConnected()) {
+                console.log('🔄 Попытка загрузки состояния из TarotDB');
+                const userId = getTelegramUserId();
+                const cloudState = await window.TarotDB.getUserState(userId);
+                
+                if (cloudState) {
+                    console.log('☁️ Состояние успешно загружено из облака');
+                    appState = { ...appState, ...cloudState };
+                } else {
+                    console.warn('⚠️ Состояние в TarotDB не найдено');
+                }
+            }
+        } catch (cloudError) {
+            console.error('❌ Ошибка загрузки состояния из TarotDB:', cloudError);
+        }
+        
+        // Fallback к локальному состоянию
         loadAppState();
         
         // 4. Загружаем карты
@@ -2216,13 +2280,24 @@ async function initApp() {
         // 8. Показываем информацию о загруженных картах
         if (allCards && allCards.length > 0) {
             console.log(`🃏 Всего карт загружено: ${allCards.length}`);
-            console.log('🖼️ Примеры изображений карт:', allCards.slice(0, 3).map(c => ({ 
-                name: c.name, 
+            console.log('🖼️ Примеры изображений карт:', allCards.slice(0, 3).map(c => ({
+                name: c.name,
                 image: c.image,
                 imageUpright: c.imageUpright,
                 imageReversed: c.imageReversed,
                 displayImage: c.displayImage
             })));
+        }
+        
+        // 9. Синхронизируем состояние с TarotDB
+        try {
+            if (window.TarotDB && window.TarotDB.isConnected()) {
+                const userId = getTelegramUserId();
+                await window.TarotDB.updateUserState(userId, appState);
+                console.log('☁️ Состояние синхронизировано с TarotDB');
+            }
+        } catch (syncError) {
+            console.error('❌ Ошибка синхронизации состояния с TarotDB:', syncError);
         }
         
     } catch (error) {
