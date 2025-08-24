@@ -144,6 +144,13 @@ async function createUserProfile(telegramId, username = null) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
         
+        // Проверяем, что telegramId можно преобразовать в число
+        const chatId = parseInt(telegramId);
+        if (isNaN(chatId)) {
+            console.warn('⚠️ Неверный format Telegram ID (не число), используем локальное сохранение:', telegramId);
+            return saveUserProfileLocally(telegramId, username);
+        }
+        
         // Генерируем UUID для user_id
         const userId = self.crypto.randomUUID();
         
@@ -152,7 +159,7 @@ async function createUserProfile(telegramId, username = null) {
             .insert([
                 {
                     user_id: userId,
-                    chat_id: parseInt(telegramId),
+                    chat_id: chatId,
                     username: username,
                     is_subscribed: false,
                     total_questions: 0,
@@ -193,11 +200,18 @@ async function getUserProfile(telegramId) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 секунд
         
+        // Проверяем, что telegramId можно преобразовать в число
+        const chatId = parseInt(telegramId);
+        if (isNaN(chatId)) {
+            console.warn('⚠️ Неверный format Telegram ID (не число), используем локальный профиль:', telegramId);
+            return getUserProfileLocally(telegramId);
+        }
+        
         // Ищем пользователя по chat_id
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .select('*')
-            .eq('chat_id', parseInt(telegramId))
+            .eq('chat_id', chatId)
             .single()
             .abortSignal(controller.signal);
 
@@ -243,11 +257,18 @@ async function updateUserProfile(telegramId, updates) {
     }
 
     try {
+        // Проверяем, что telegramId можно преобразовать в число
+        const chatId = parseInt(telegramId);
+        if (isNaN(chatId)) {
+            console.warn('⚠️ Неверный format Telegram ID (не число), используем локальное обновление:', telegramId);
+            return updateUserProfileLocally(telegramId, updates);
+        }
+        
         // Обновляем пользователя по chat_id
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .update(updates)
-            .eq('chat_id', parseInt(telegramId))
+            .eq('chat_id', chatId)
             .select()
             .single();
 
