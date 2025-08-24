@@ -192,79 +192,59 @@ async function createUserProfile(telegramId, username = null) {
 
 async function getUserProfile(telegramId) {
     if (!supabaseClient) {
-        console.log('📱 Supabase недоступен, используем локальный профиль');
         return getUserProfileLocally(telegramId);
     }
 
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 секунд
-        
-        // Проверяем, что telegramId можно преобразовать в число
         const chatId = parseInt(telegramId);
         if (isNaN(chatId)) {
-            console.warn('⚠️ Неверный format Telegram ID (не число), используем локальный профиль:', telegramId);
-            return getUserProfileLocally(telegramId);
+            console.warn('⚠️ Неверный формат Telegram ID:', telegramId);
+            return null;  // Возвращаем null вместо локального профиля
         }
         
-        // Ищем пользователя по chat_id
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .select('*')
             .eq('chat_id', chatId)
-            .single()
-            .abortSignal(controller.signal);
+            .single();
 
-        clearTimeout(timeoutId);
-
-        // Если пользователь не найден, создаем новый профиль
+        // Если пользователь не найден - возвращаем null
         if (error && error.code === 'PGRST116') {
-            console.log('👤 Пользователь не найден, создаем новый профиль для ID:', telegramId);
-            
-            // Получаем username из Telegram данных если доступно
-            let username = null;
-            if (typeof window !== 'undefined' && window.getTelegramUserName) {
-                try {
-                    username = window.getTelegramUserName();
-                } catch (e) {
-                    console.warn('⚠️ Не удалось получить username:', e);
-                }
-            }
-            
-            return await createUserProfile(telegramId, username);
+            console.log('👤 Пользователь не найден для ID:', telegramId);
+            return null;
         }
         
         if (error) {
             console.warn('⚠️ Ошибка Supabase при получении профиля:', error.message);
-            return getUserProfileLocally(telegramId);
+            return null;
         }
         
-        console.log('✅ Профиль пользователя получен из Supabase для ID:', telegramId);
         return data;
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.warn('⚠️ Таймаут получения профиля из Supabase');
-        } else {
-            console.error('❌ Критическая ошибка получения профиля:', error.message);
-        }
-        return getUserProfileLocally(telegramId);
+        console.error('❌ Критическая ошибка получения профиля:', error.message);
+        return null;
     }
 }
 
 async function updateUserProfile(telegramId, updates) {
+    // Проверяем существование профиля перед обновлением
+    const userProfile = await getUserProfile(telegramId);
+    if (!userProfile) {
+        console.warn('⚠️ Невозможно обновить профиль: пользователь не найден');
+        return null;
+    }
+
     if (!supabaseClient) {
         return updateUserProfileLocally(telegramId, updates);
     }
 
     try {
-        // Проверяем, что telegramId можно преобразовать в число
         const chatId = parseInt(telegramId);
         if (isNaN(chatId)) {
-            console.warn('⚠️ Неверный format Telegram ID (не число), используем локальное обновление:', telegramId);
-            return updateUserProfileLocally(telegramId, updates);
+            console.warn('⚠️ Неверный формат Telegram ID:', telegramId);
+            return null;
         }
         
-        // Обновляем пользователя по chat_id
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .update(updates)
@@ -272,13 +252,16 @@ async function updateUserProfile(telegramId, updates) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Ошибка обновления профиля:', error);
+            return null;
+        }
         
         console.log('✅ Профиль обновлен:', data);
         return data;
     } catch (error) {
-        console.error('❌ Ошибка обновления профиля:', error);
-        return updateUserProfileLocally(telegramId, updates);
+        console.error('❌ Критическая ошибка обновления профиля:', error);
+        return null;
     }
 }
 
