@@ -129,12 +129,22 @@ async function saveAppState() {
         if (window.TarotDB && window.TarotDB.isConnected()) {
             console.log('💾 Сохранение в Supabase через TarotDB...');
             // Сохранение в базе данных
-            await window.TarotDB.updateUserProfile(getUserId(), {
-                last_card_day: appState.lastCardDate,
-                total_questions: appState.questionsUsed,
-                is_subscribed: appState.isPremium,
-                free_predictions_left: Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed)
-            });
+            // Используем новую логику синхронизации если доступна
+            if (window.TarotDB.syncUserDataToSupabase) {
+                await window.TarotDB.syncUserDataToSupabase(getUserId(), {
+                    questionsUsed: appState.questionsUsed,
+                    isPremium: appState.isPremium,
+                    dailyCardUsed: appState.dailyCardUsed,
+                    lastCardDay: appState.lastCardDate
+                });
+            } else {
+                // Fallback к старой логике
+                await window.TarotDB.updateUserProfile(getUserId(), {
+                    last_card_day: appState.lastCardDate,
+                    questions_used: appState.questionsUsed,
+                    is_premium: appState.isPremium
+                });
+            }
             console.log('✅ Состояние сохранено в Supabase');
         } else {
             console.log('📱 TarotDB недоступен, используем localStorage');
@@ -2056,17 +2066,48 @@ async function handlePremiumPurchase() {
 function getTelegramUserId() {
     // Пытаемся получить ID пользователя из проверенных данных
     if (window.validatedTelegramUser && window.validatedTelegramUser.id) {
+        console.log('✅ Используем проверенный Telegram ID:', window.validatedTelegramUser.id);
         return window.validatedTelegramUser.id;
     }
     
-    // Для разработки используем initDataUnsafe
+    // Проверяем основной API Telegram WebApp
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
-        console.warn('⚠️ Используются непроверенные данные Telegram (только для разработки)');
-        return window.Telegram.WebApp.initDataUnsafe.user.id;
+        const telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+        if (telegramUser.id) {
+            console.log('📱 Используем Telegram WebApp ID:', telegramUser.id);
+            return telegramUser.id.toString();
+        }
     }
     
-    // Fallback для тестирования
-    return 'test_user_' + Date.now();
+    // Проверяем, не является ли это Bot API данными
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+        try {
+            // В реальном приложении здесь должна быть валидация initData на сервере
+            const urlParams = new URLSearchParams(window.Telegram.WebApp.initData);
+            const userParam = urlParams.get('user');
+            if (userParam) {
+                const userData = JSON.parse(decodeURIComponent(userParam));
+                if (userData && userData.id) {
+                    console.log('🔐 Используем данные из initData:', userData.id);
+                    return userData.id.toString();
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Ошибка парсинга initData:', error);
+        }
+    }
+    
+    // Fallback для тестирования - генерируем стабильный ID
+    const testId = localStorage.getItem('tarot_test_user_id');
+    if (testId) {
+        console.log('🧪 Используем сохраненный тестовый ID:', testId);
+        return testId;
+    }
+    
+    const newTestId = 'test_user_' + Math.random().toString(36).substring(2, 11);
+    localStorage.setItem('tarot_test_user_id', newTestId);
+    console.warn('⚠️ Создан новый тестовый ID:', newTestId);
+    return newTestId;
 }
 
 function getTelegramUserName() {
@@ -2109,6 +2150,9 @@ function getTelegramUserName() {
     const index = Math.abs(hash) % mysticalNames.length;
     return mysticalNames[index];
 }
+
+// Экспортируем функцию в глобальную область видимости для использования в supabase.js
+window.getTelegramUserName = getTelegramUserName;
 
 async function validateTelegramData() {
     // Проверяем, есть ли Telegram WebApp initData
@@ -2334,7 +2378,18 @@ async function initApp() {
         // 2. Инициализируем DOM
         initializeDOMElements();
         
-        // 3. Загружаем данные с приоритетом TarotDB
+        // 3. Получаем Telegram ID пользователя 
+        const userId = getTelegramUserId();
+        console.log('👤 Получен пользователь ID:', userId);
+        
+        // 4. Загружаем локальные данные
+        const localAppState = loadAppStateFromLocalStorage();
+        if (localAppState) {
+            Object.assign(appState, localAppState);
+            console.log('📱 Локальное состояние загружено');
+        }
+        
+        // 5. Синхронизируем данные с TarotDB
         try {
             console.log('🔍 Проверка TarotDB при инициализации:', {
                 tarotDBExists: !!window.TarotDB,
@@ -2343,19 +2398,33 @@ async function initApp() {
             });
             
             if (window.TarotDB && window.TarotDB.isConnected()) {
-                console.log('🔄 Загрузка данных из TarotDB');
-                const userId = getTelegramUserId();
+                console.log('🔄 Синхронизация данных с TarotDB');
                 
-                // Загружаем профиль пользователя
-                const userProfile = await window.TarotDB.getUserProfile(userId);
-                if (userProfile) {
-                    appState.dailyCardUsed = userProfile.last_card_day === new Date().toISOString().split('T')[0];
-                    appState.lastCardDate = userProfile.last_card_day;
-                    appState.questionsUsed = userProfile.total_questions || 0;
-                    appState.isPremium = userProfile.is_subscribed || false;
-                    appState.freeQuestionsLimit = 3;
-                    console.log('✅ Профиль пользователя загружен из TarotDB');
+                // Выполняем синхронизацию данных
+                if (window.TarotDB.performDataSync) {
+                    const syncedState = await window.TarotDB.performDataSync(userId, appState);
+                    if (syncedState) {
+                        // Обновляем состояние приложения синхронизированными данными
+                        appState.isPremium = syncedState.isPremium;
+                        appState.questionsUsed = syncedState.questionsUsed;
+                        appState.dailyCardUsed = syncedState.dailyCardUsed;
+                        appState.lastCardDate = syncedState.lastCardDay;
+                        console.log('✅ Данные синхронизированы с TarotDB');
+                    }
+                } else {
+                    // Fallback к старой логике если performDataSync недоступен
+                    const userProfile = await window.TarotDB.getUserProfile(userId);
+                    if (userProfile) {
+                        appState.dailyCardUsed = userProfile.last_card_day === new Date().toISOString().split('T')[0];
+                        appState.lastCardDate = userProfile.last_card_day;
+                        appState.questionsUsed = userProfile.questions_used || 0;
+                        appState.isPremium = userProfile.is_premium || false;
+                        console.log('✅ Профиль пользователя загружен из TarotDB (fallback)');
+                    }
                 }
+                
+                // Устанавливаем лимиты
+                appState.freeQuestionsLimit = 3;
                 
                 // Загружаем историю чтений
                 try {
