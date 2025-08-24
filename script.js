@@ -20,13 +20,13 @@ let currentRating = 0;
 
 // 🎯 DOM ЭЛЕМЕНТЫ
 let mainNav, secondaryNav, tabContents;
-let tarotCard, cardBack, cardFront, cardImage;
+let tarotCard, cardBack, cardFront;
 let cardInfoAfterFlip, flippedCardName, cardIntroText;
 let aiAnswerContainer, aiInterpretationTitle, aiInterpretationTextElement;
 let afterDailyCardBanner, askMoreQuestionsBtn, premiumBannerBtn;
 let starAnimationContainer, questionsLeftElement;
 let questionTextarea, submitQuestionBtn, charCounter;
-let loadingState, questionAnswerContainer, questionAnswerText, questionCardImage;
+let loadingState, questionAnswerContainer, questionAnswerText;
 let premiumTestToggle, premiumTestLabel;
 let clarifyingQuestionContainer, clarifyingQuestionTextarea, submitClarifyingQuestionBtn, clarifyingQuestionWarning;
 let questionAnimationContainer, questionStarAnimationContainer, questionIntroText;
@@ -712,37 +712,42 @@ async function handleDailyCardClick() {
     setTimeout(async () => {
         starAnimationContainer.innerHTML = '';
         
-        if (cardImage && randomCard.displayImage) {
-            // Прямо пытаемся загрузить реальное изображение, плейсхолдер - только в onerror
-            console.log('✅ Пытаемся загрузить карту дня:', randomCard.displayImage);
-            cardImage.src = encodeURI(randomCard.displayImage);
+        if (randomCard.displayImage) {
+            // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
+            const cardFront = tarotCard?.querySelector('.card-front');
+            const cardBack = tarotCard?.querySelector('.card-back');
             
-            cardImage.alt = randomCard.name;
-            
-            // Добавляем обработчики для отслеживания загрузки
-            cardImage.onload = function() {
-                console.log('✅ Изображение карты дня успешно загружено');
-                // изображение точно есть; можно показать "лицо"
-                // (если показываешь front только после onload — это ещё надёжнее)
-                const card = tarotCard;
-                const front = card?.querySelector('.card-front');
-                if (card && front) {
-                    // дополнительная принудительная активация лицевой стороны
-                    front.style.zIndex = '2';
-                    front.style.display = '';
-                    front.classList.remove('hidden');
-                    void front.offsetHeight; // принудительный reflow
+            if (cardFront && cardBack) {
+                // Создаём временный объект Image для загрузки
+                const tempImage = new Image();
+                tempImage.onload = () => {
+                    console.log('✅ Изображение карты дня успешно загружено');
+                    // Если изображение успешно загружено, устанавливаем его как фон
+                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                    // И затем показываем лицевую сторону
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                    
                     requestAnimationFrame(() => {
-                        card.classList.add('flipped');
-                        front.style.transform = 'rotateY(180deg) translateZ(0)';
+                        // форс-рефлоу для WebKit, потом переворот
+                        void cardFront.offsetHeight;
+                        tarotCard.classList.add('flipped');
                     });
-                }
-            };
-            
-            cardImage.onerror = function() {
-                console.warn('❌ Ошибка загрузки изображения карты дня, устанавливаем placeholder');
-                this.src = createCardPlaceholder(randomCard);
-            };
+                };
+                tempImage.onerror = () => {
+                    console.warn('❌ Ошибка загрузки изображения карты дня, используем placeholder');
+                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                    
+                    requestAnimationFrame(() => {
+                        void cardFront.offsetHeight;
+                        tarotCard.classList.add('flipped');
+                    });
+                };
+                // Запускаем загрузку
+                tempImage.src = encodeURI(randomCard.displayImage);
+            }
         }
         
         console.log('🔄 Показываем переднюю сторону карты');
@@ -920,37 +925,29 @@ async function handleAskQuestion() {
             // Переворачиваем карту
             questionTarotCard?.classList.add('flipped');
             
-            // Подготавливаем изображение - сначала реальный URL, плейсхолдер только в onerror
-            if (questionCardImage) {
-                const card  = document.getElementById('questionTarotCard');
-                const front = card.querySelector('.card-front');
-                const back  = card.querySelector('.card-back');
-                const img   = document.getElementById('questionCardImage');
-                
-                const realUrl = encodeURI(randomCard.displayImage); // ← реальный URL карты (с кириллицей!)
-                
-                img.onload = () => {
+            // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
+            const cardFront = questionTarotCard?.querySelector('.card-front');
+            const cardBack = questionTarotCard?.querySelector('.card-back');
+            
+            if (cardFront && cardBack) {
+                // Создаём временный объект Image для загрузки
+                const tempImage = new Image();
+                tempImage.onload = () => {
                     console.log('✅ Изображение карты для вопроса загружено');
-                    // картинка реально загрузилась — показываем front
-                    front.classList.remove('hidden');
-                    back.classList.add('hidden');
-                    // на всякий — убираем фон-плейсхолдер у front
-                    front.style.background = 'none';
-                    // убедимся, что img видим и имеет размер
-                    img.style.display = 'block';
-                    img.style.opacity = '1';
+                    // Если изображение успешно загружено, устанавливаем его как фон
+                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                    // И затем показываем лицевую сторону
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
                 };
-                
-                img.onerror = () => {
-                    console.warn('❌ Ошибка загрузки, используем placeholder');
-                    // только если реальная картинка не загрузилась — ставим плейсхолдер
-                    img.src = createCardPlaceholder(randomCard); // ваша функция плейсхолдера
-                    img.style.display = 'block';
+                tempImage.onerror = () => {
+                    console.warn('❌ Ошибка загрузки изображения, используем placeholder');
+                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
                 };
-                
-                questionCardImage.alt = randomCard.name;
-                img.style.display = 'block';        // сразу даём место в layout
-                img.src = realUrl;                  // ВАЖНО: сначала пытаемся реальный URL
+                // Запускаем загрузку
+                tempImage.src = encodeURI(randomCard.displayImage);
             }
             
             // Обновляем лицевую сторону карты
@@ -1099,37 +1096,29 @@ async function handleClarifyingQuestion() {
             // Переворачиваем карту
             questionTarotCard?.classList.add('flipped');
             
-            // Подготавливаем изображение - сначала реальный URL, плейсхолдер только в onerror
-            if (questionCardImage) {
-                const card  = document.getElementById('questionTarotCard');
-                const front = card.querySelector('.card-front');
-                const back  = card.querySelector('.card-back');
-                const img   = document.getElementById('questionCardImage');
-                
-                const realUrl = encodeURI(randomCard.displayImage); // ← реальный URL карты (с кириллицей!)
-                
-                img.onload = () => {
+            // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
+            const cardFront = questionTarotCard?.querySelector('.card-front');
+            const cardBack = questionTarotCard?.querySelector('.card-back');
+            
+            if (cardFront && cardBack) {
+                // Создаём временный объект Image для загрузки
+                const tempImage = new Image();
+                tempImage.onload = () => {
                     console.log('✅ Изображение карты для уточняющего вопроса загружено');
-                    // картинка реально загрузилась — показываем front
-                    front.classList.remove('hidden');
-                    back.classList.add('hidden');
-                    // на всякий — убираем фон-плейсхолдер у front
-                    front.style.background = 'none';
-                    // убедимся, что img видим и имеет размер
-                    img.style.display = 'block';
-                    img.style.opacity = '1';
+                    // Если изображение успешно загружено, устанавливаем его как фон
+                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                    // И затем показываем лицевую сторону
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
                 };
-                
-                img.onerror = () => {
-                    console.warn('❌ Ошибка загрузки, используем placeholder');
-                    // только если реальная картинка не загрузилась — ставим плейсхолдер
-                    img.src = createCardPlaceholder(randomCard); // ваша функция плейсхолдера
-                    img.style.display = 'block';
+                tempImage.onerror = () => {
+                    console.warn('❌ Ошибка загрузки изображения, используем placeholder');
+                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
                 };
-                
-                questionCardImage.alt = randomCard.name;
-                img.style.display = 'block';        // сразу даём место в layout
-                img.src = realUrl;                  // ВАЖНО: сначала пытаемся реальный URL
+                // Запускаем загрузку
+                tempImage.src = encodeURI(randomCard.displayImage);
             }
             
             // Обновляем лицевую сторону карты
@@ -1333,15 +1322,11 @@ function createSpreadCardPosition(cardConfig, index) {
     const cardFront = document.createElement('div');
     cardFront.className = 'card-front hidden';
     
-    const cardImage = document.createElement('img');
-    cardImage.className = 'card-image';
-    cardImage.alt = 'Карта расклада';
+    // Изображение будет установлено как background-image
     
     const cardLabel = document.createElement('div');
     cardLabel.className = 'card-label';
     cardLabel.textContent = cardConfig.label;
-    
-    cardFront.appendChild(cardImage);
     tarotCard.appendChild(cardBack);
     tarotCard.appendChild(cardFront);
     position.appendChild(tarotCard);
@@ -1377,35 +1362,35 @@ async function animateSpreadCards() {
         const tarotCard = cardPosition.querySelector('.tarot-card');
         const randomCard = getRandomCard();
         
-        // Устанавливаем изображение - прямо пытаемся загрузить реальное изображение
-        const cardImage = cardPosition.querySelector('.card-image');
+        // Подготавливаем изображение как background-image для раскладов
+        const cardFront = cardPosition.querySelector('.card-front');
+        const cardBack = cardPosition.querySelector('.card-back');
         
-        // Обработчики загрузки
-        cardImage.onload = () => {
-            console.log('✅ Изображение для расклада успешно загружено');
-        };
-        cardImage.onerror = () => {
-            console.warn('❌ Ошибка загрузки изображения для расклада, используем placeholder');
-            cardImage.src = createCardPlaceholder(randomCard);
-        };
-        
-        console.log('✅ Пытаемся загрузить карту для расклада:', randomCard.displayImage);
-        cardImage.src = encodeURI(randomCard.displayImage);
-        cardImage.alt = randomCard.name;
+        if (cardFront && cardBack) {
+            // Создаём временный объект Image для загрузки
+            const tempImage = new Image();
+            tempImage.onload = () => {
+                console.log('✅ Изображение для расклада успешно загружено');
+                // Устанавливаем изображение как фон
+                cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+            };
+            tempImage.onerror = () => {
+                console.warn('❌ Ошибка загрузки изображения для расклада, используем placeholder');
+                cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+            };
+            
+            console.log('✅ Пытаемся загрузить карту для расклада:', randomCard.displayImage);
+            // Запускаем загрузку
+            tempImage.src = encodeURI(randomCard.displayImage);
+        }
         
         // Переворачиваем карту
         tarotCard?.classList.add('flipped');
         
         setTimeout(() => {
-            const cardFront = cardPosition.querySelector('.card-front');
-            const cardBack = cardPosition.querySelector('.card-back');
-            
-            // ИСПРАВЛЕНИЕ: убираем класс hidden с лицевой стороны независимо от текущего состояния
-            if (cardFront) {
+            // Показываем лицевую сторону с изображением
+            if (cardFront && cardBack) {
                 cardFront.classList.remove('hidden');
-                cardFront.style.display = ''; // убираем возможные inline стили
-            }
-            if (cardBack) {
                 cardBack.classList.add('hidden');
             }
             
@@ -1952,7 +1937,7 @@ function initializeDOMElements() {
     tabContents = document.querySelectorAll('.tab-content');
     
     // ЗАЩИТА: удаляем дублированные элементы с критическими ID
-    ['tarotCard', 'cardImage', 'questionCardImage', 'questionTarotCard'].forEach(id => {
+    ['tarotCard', 'questionTarotCard'].forEach(id => {
         document.querySelectorAll(`#${id}`).forEach((node, index, array) => {
             if (index < array.length - 1) {
                 console.warn(`🚨 Найден дублированный #${id}, удаляем:`, node);
@@ -1965,7 +1950,7 @@ function initializeDOMElements() {
     tarotCard = document.getElementById('tarotCard');
     cardBack = tarotCard?.querySelector('.card-back');
     cardFront = tarotCard?.querySelector('.card-front');
-    cardImage = document.getElementById('cardImage');
+    // cardImage больше не используется - изображения через background-image
     cardInfoAfterFlip = document.getElementById('cardInfoAfterFlip');
     flippedCardName = document.getElementById('flippedCardName');
     cardIntroText = document.getElementById('cardIntroText');
@@ -1991,7 +1976,7 @@ function initializeDOMElements() {
     loadingState = document.getElementById('loadingState');
     questionAnswerContainer = document.getElementById('questionAnswerContainer');
     questionAnswerText = document.getElementById('questionAnswerText');
-    questionCardImage = document.getElementById('questionCardImage');
+    // questionCardImage больше не используется - изображения через background-image
     
     // Новые элементы для анимации вопросов
     questionAnimationContainer = document.getElementById('questionAnimationContainer');
