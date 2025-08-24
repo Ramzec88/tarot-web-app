@@ -1630,17 +1630,15 @@ input:checked + .slider:before {
   pointer-events: none !important;
 }
 
-/* Лицевая сторона и картинка во весь блок */
-#questionTarotCard .card-front {
-  position: relative;
-  background: none !important; /* убираем градиент-плейсхолдер */
+/* Настройки для отображения изображений карт как background-image */
+.card-front {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 
-#questionTarotCard #questionCardImage {
-  display: block;            /* важно: не inline и не none */
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;         /* или contain */
+/* Убираем старые правила для img элементов */
+#questionCardImage,
+#cardImage {
+  display: none !important;
 }
