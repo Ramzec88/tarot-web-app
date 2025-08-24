@@ -294,10 +294,10 @@ body {
     padding: 20px;
     box-sizing: border-box;
     
-    /* backface-visibility с webkit-фиксами */
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    -moz-backface-visibility: hidden;
+    /* Убираем backface-visibility для предотвращения проблем с рендерингом */
+    /* backface-visibility: hidden; */
+    /* -webkit-backface-visibility: hidden; */
+    /* -moz-backface-visibility: hidden; */
 }
 
 .card-back {
