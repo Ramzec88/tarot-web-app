@@ -223,20 +223,15 @@ body {
 }
 
 .tarot-card {
+    position: relative;
     width: 180px;
     height: 270px;
     margin: 0 auto 20px;
-    background: linear-gradient(145deg, #4b0082, #6a0dad);
-    border-radius: 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     cursor: pointer;
     transition: all 0.5s ease;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 2px solid #ffd700;
-    position: relative;
+    border-radius: 15px;
     overflow: hidden;
     transform-style: preserve-3d;
     -webkit-transform-style: preserve-3d;
@@ -287,6 +282,7 @@ body {
 
 .card-back, .card-front {
     position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     backface-visibility: hidden;
@@ -297,12 +293,16 @@ body {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    box-sizing: border-box;
 }
 
 .card-back {
     transform: rotateY(0deg);
     -webkit-transform: rotateY(0deg);
     -moz-transform: rotateY(0deg);
+    background: linear-gradient(145deg, #2d1b69, #4b0082);
+    border-radius: 15px;
+    overflow: hidden;
 }
 
 .card-front {
@@ -312,6 +312,9 @@ body {
     background: linear-gradient(145deg, #4b0082, #6a0dad); 
     border-radius: 15px; 
     overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 /* Универсальный класс для скрытия элементов карт */
