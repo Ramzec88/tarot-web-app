@@ -144,14 +144,19 @@ async function createUserProfile(telegramId, username = null) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
         
+        // Генерируем UUID для user_id
+        const userId = self.crypto.randomUUID();
+        
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .insert([
                 {
-                    telegram_id: telegramId,
+                    user_id: userId,
+                    chat_id: parseInt(telegramId),
                     username: username,
-                    is_premium: false,
-                    questions_used: 0,
+                    is_subscribed: false,
+                    free_predictions_left: 3,
+                    total_questions: 0,
                     created_at: new Date().toISOString()
                 }
             ])
@@ -191,7 +196,7 @@ async function getUserProfile(telegramId) {
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .select('*')
-            .eq('telegram_id', telegramId)
+            .eq('chat_id', parseInt(telegramId))
             .single()
             .abortSignal(controller.signal);
 
@@ -229,7 +234,7 @@ async function updateUserProfile(telegramId, updates) {
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .update(updates)
-            .eq('telegram_id', telegramId)
+            .eq('chat_id', parseInt(telegramId))
             .select()
             .single();
 
@@ -250,11 +255,18 @@ async function saveDailyCard(telegramId, cardData) {
     }
 
     try {
+        // Получаем профиль пользователя для получения user_id
+        const userProfile = await getUserProfile(telegramId);
+        if (!userProfile || !userProfile.user_id) {
+            console.warn('⚠️ Не удалось получить user_id, используем локальное сохранение');
+            return saveDailyCardLocally(telegramId, cardData);
+        }
+
         const { data, error } = await supabaseClient
             .from('tarot_daily_cards')
             .insert([
                 {
-                    telegram_id: telegramId,
+                    user_id: userProfile.user_id,
                     card_id: cardData.id,
                     card_name: cardData.name,
                     interpretation: cardData.interpretation,
@@ -281,12 +293,19 @@ async function getDailyCard(telegramId, date = null) {
     }
 
     try {
+        // Получаем профиль пользователя для получения user_id
+        const userProfile = await getUserProfile(telegramId);
+        if (!userProfile || !userProfile.user_id) {
+            console.warn('⚠️ Не удалось получить user_id, используем локальное получение');
+            return getDailyCardLocally(telegramId, date);
+        }
+
         const targetDate = date || new Date().toISOString().split('T')[0];
         
         const { data, error } = await supabaseClient
             .from('tarot_daily_cards')
             .select('*')
-            .eq('telegram_id', telegramId)
+            .eq('user_id', userProfile.user_id)
             .eq('date', targetDate)
             .single();
 
@@ -306,11 +325,18 @@ async function saveQuestion(telegramId, questionText) {
     }
 
     try {
+        // Получаем профиль пользователя для получения user_id
+        const userProfile = await getUserProfile(telegramId);
+        if (!userProfile || !userProfile.user_id) {
+            console.warn('⚠️ Не удалось получить user_id, используем локальное сохранение');
+            return saveQuestionLocally(telegramId, questionText);
+        }
+
         const { data, error } = await supabaseClient
             .from('tarot_questions')
             .insert([
                 {
-                    telegram_id: telegramId,
+                    user_id: userProfile.user_id,
                     question_text: questionText,
                     created_at: new Date().toISOString()
                 }
@@ -365,11 +391,18 @@ async function saveReview(telegramId, rating, reviewText) {
     }
 
     try {
+        // Получаем профиль пользователя для получения user_id
+        const userProfile = await getUserProfile(telegramId);
+        if (!userProfile || !userProfile.user_id) {
+            console.warn('⚠️ Не удалось получить user_id, используем локальное сохранение');
+            return saveReviewLocally(telegramId, rating, reviewText);
+        }
+
         const { data, error } = await supabaseClient
             .from('tarot_reviews')
             .insert([
                 {
-                    telegram_id: telegramId,
+                    user_id: userProfile.user_id,
                     rating: rating,
                     review_text: reviewText,
                     created_at: new Date().toISOString()
@@ -416,6 +449,13 @@ async function getUserHistory(telegramId, limit = 20) {
     }
 
     try {
+        // Получаем профиль пользователя для получения user_id
+        const userProfile = await getUserProfile(telegramId);
+        if (!userProfile || !userProfile.user_id) {
+            console.warn('⚠️ Не удалось получить user_id, используем локальную историю');
+            return getUserHistoryLocally(telegramId, limit);
+        }
+
         // Получаем историю вопросов с ответами
         const { data: questionsData, error: questionsError } = await supabaseClient
             .from('tarot_questions')
@@ -429,7 +469,7 @@ async function getUserHistory(telegramId, limit = 20) {
                     created_at
                 )
             `)
-            .eq('telegram_id', telegramId)
+            .eq('user_id', userProfile.user_id)
             .order('created_at', { ascending: false })
             .limit(limit);
 
@@ -439,7 +479,7 @@ async function getUserHistory(telegramId, limit = 20) {
         const { data: dailyCardsData, error: dailyCardsError } = await supabaseClient
             .from('tarot_daily_cards')
             .select('*')
-            .eq('telegram_id', telegramId)
+            .eq('user_id', userProfile.user_id)
             .order('created_at', { ascending: false })
             .limit(limit);
 
