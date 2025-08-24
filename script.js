@@ -431,7 +431,8 @@ async function checkImageAvailability(imagePath) {
         const img = new Image();
         img.onload = () => resolve(true);
         img.onerror = () => resolve(false);
-        img.src = imagePath;
+        // ИСПРАВЛЕНИЕ: кодируем URL для корректной работы с кириллицей
+        img.src = encodeURI(imagePath);
         
         // Таймаут для медленных соединений
         setTimeout(() => resolve(false), 3000);
@@ -717,7 +718,7 @@ async function handleDailyCardClick() {
             
             if (imageAvailable) {
                 console.log('✅ Изображение доступно:', randomCard.displayImage);
-                cardImage.src = randomCard.displayImage;
+                cardImage.src = encodeURI(randomCard.displayImage);
             } else {
                 console.warn('⚠️ Изображение недоступно, используем placeholder:', randomCard.displayImage);
                 cardImage.src = createCardPlaceholder(randomCard);
@@ -748,6 +749,12 @@ async function handleDailyCardClick() {
         if (cardBack) {
             cardBack.classList.add('hidden');
         }
+        
+        // Снимаем класс flipped после завершения анимации
+        tarotCard?.classList.remove('flipped');
+        requestAnimationFrame(() => {
+            tarotCard?.classList.remove('flipped');
+        });
         
         console.log('✅ Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
         console.log('✅ Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
@@ -898,7 +905,7 @@ async function handleAskQuestion() {
                 const imageAvailable = await checkImageAvailability(randomCard.displayImage);
                 
                 if (imageAvailable) {
-                    questionCardImage.src = randomCard.displayImage;
+                    questionCardImage.src = encodeURI(randomCard.displayImage);
                 } else {
                     questionCardImage.src = createCardPlaceholder(randomCard);
                 }
@@ -932,6 +939,12 @@ async function handleAskQuestion() {
                 if (cardBack) {
                     cardBack.classList.add('hidden');
                 }
+                
+                // Снимаем класс flipped после завершения анимации
+                questionTarotCard?.classList.remove('flipped');
+                requestAnimationFrame(() => {
+                    questionTarotCard?.classList.remove('flipped');
+                });
                 
                 console.log('✅ [ВОПРОС] Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
                 console.log('✅ [ВОПРОС] Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
@@ -1061,7 +1074,7 @@ async function handleClarifyingQuestion() {
                 const imageAvailable = await checkImageAvailability(randomCard.displayImage);
                 
                 if (imageAvailable) {
-                    questionCardImage.src = randomCard.displayImage;
+                    questionCardImage.src = encodeURI(randomCard.displayImage);
                 } else {
                     questionCardImage.src = createCardPlaceholder(randomCard);
                 }
@@ -1089,6 +1102,12 @@ async function handleClarifyingQuestion() {
                 if (cardBack) {
                     cardBack.classList.add('hidden');
                 }
+                
+                // Снимаем класс flipped после завершения анимации
+                questionTarotCard?.classList.remove('flipped');
+                requestAnimationFrame(() => {
+                    questionTarotCard?.classList.remove('flipped');
+                });
                 
                 // Показываем название карты
                 if (questionFlippedCardName) {
@@ -1323,7 +1342,7 @@ async function animateSpreadCards() {
         const imageAvailable = await checkImageAvailability(randomCard.displayImage);
         
         if (imageAvailable) {
-            cardImage.src = randomCard.displayImage;
+            cardImage.src = encodeURI(randomCard.displayImage);
         } else {
             cardImage.src = createCardPlaceholder(randomCard);
         }
@@ -1343,6 +1362,12 @@ async function animateSpreadCards() {
             if (cardBack) {
                 cardBack.classList.add('hidden');
             }
+            
+            // Снимаем класс flipped после завершения анимации
+            tarotCard?.classList.remove('flipped');
+            requestAnimationFrame(() => {
+                tarotCard?.classList.remove('flipped');
+            });
         }, 400);
         
         // Сохраняем выбранную карту для интерпретации
@@ -1880,6 +1905,16 @@ function initializeDOMElements() {
     secondaryNav = document.getElementById('secondaryNav');
     tabContents = document.querySelectorAll('.tab-content');
     
+    // ЗАЩИТА: удаляем дублированные элементы с критическими ID
+    ['tarotCard', 'cardImage', 'questionCardImage', 'questionTarotCard'].forEach(id => {
+        document.querySelectorAll(`#${id}`).forEach((node, index, array) => {
+            if (index < array.length - 1) {
+                console.warn(`🚨 Найден дублированный #${id}, удаляем:`, node);
+                node.remove();
+            }
+        });
+    });
+    
     // Карта дня
     tarotCard = document.getElementById('tarotCard');
     cardBack = tarotCard?.querySelector('.card-back');
@@ -1917,7 +1952,9 @@ function initializeDOMElements() {
     questionStarAnimationContainer = document.getElementById('questionStarAnimationContainer');
     questionIntroText = document.getElementById('questionIntroText');
     questionCardContainer = document.getElementById('questionCardContainer');
+    
     questionTarotCard = document.getElementById('questionTarotCard');
+    
     questionCardInfoAfterFlip = document.getElementById('questionCardInfoAfterFlip');
     questionFlippedCardName = document.getElementById('questionFlippedCardName');
     
@@ -2166,7 +2203,7 @@ function testCardImage() {
         console.error('❌ Ошибка загрузки изображения:', randomCard.displayImage);
         console.log('🔄 Попробуем placeholder:', createCardPlaceholder(randomCard));
     };
-    testImg.src = randomCard.displayImage;
+    testImg.src = encodeURI(randomCard.displayImage);
 }
 
 function testAllCardImages() {
