@@ -314,8 +314,9 @@ body {
     transform: rotateY(180deg);
     -webkit-transform: rotateY(180deg);
     -moz-transform: rotateY(180deg);
-    background: linear-gradient(145deg, #4b0082, #6a0dad); 
-    border-radius: 15px; 
+    /* Убираем градиент, чтобы не конфликтовал с background-image */
+    background: transparent;
+    border-radius: 15px;
     overflow: hidden;
     background-size: cover;
     background-position: center;
@@ -323,14 +324,7 @@ body {
     z-index: 2;
 }
 
-/* Универсальный класс для скрытия элементов карт - переопределяет общий .hidden */
-.card-back.hidden,
-.card-front.hidden {
-    display: block !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
+/* Удалено - конфликтующее правило */
 
 .card-image {
     max-width: 90%;
@@ -1621,17 +1615,29 @@ input:checked + .slider:before {
     display: block !important;
 }
 
-/* Скрытие сторон карты гарантированно, поверх трансформаций */
-.card-back.hidden,
-.card-front.hidden {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+/* Специальные правила для flex-контейнеров */
+.subscription-banner.show {
+    display: flex !important;
 }
 
 /* Настройки для отображения изображений карт как background-image */
 .card-front {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  /* Принудительное отображение для WebKit */
+  -webkit-background-size: cover !important;
+  -webkit-background-position: center !important;
+  /* Убираем возможные конфликты */
+  background-color: transparent !important;
+  /* Гарантируем видимость */
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Дополнительные правила для гарантированного отображения */
+.card-front:not(.hidden) {
+  display: flex !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
