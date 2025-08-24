@@ -24,7 +24,7 @@ export default function handler(req, res) {
         // Публичная конфигурация (безопасная для клиента)
         const config = {
             supabase: {
-                url: process.env.SUPABASE_URL || 'https://xqtokipsfzywippmvpgp.supabase.co',
+                url: process.env.SUPABASE_URL || 'https://jjowuzqfnwcuulcknkxh.supabase.co',
                 anonKey: process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
             },
             api: {
@@ -61,7 +61,7 @@ export default function handler(req, res) {
             message: 'Ошибка загрузки конфигурации',
             fallback: {
                 supabase: {
-                    url: 'https://xqtokipsfzywippmvpgp.supabase.co',
+                    url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
                     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdG9raXBzZnp5d2lwcG12cGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEwNzAyNDQsImV4cCI6MjA0NjY0NjI0NH0.GgwhQgjWLrOj4zYoL6S7_3iuYdO4ufcRsAWY_wqtTkY'
                 },
                 api: {
