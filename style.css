@@ -1384,6 +1384,32 @@ input:checked + .slider:before {
     vertical-align: middle;
 }
 
+/* Test Button */
+.test-button {
+    display: block;
+    margin: 15px auto 0;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.test-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.test-button:active {
+    transform: translateY(0);
+}
+
 
 /* ===== TOAST NOTIFICATIONS ===== */
 .toast {
