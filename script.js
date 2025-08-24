@@ -2098,17 +2098,18 @@ function getTelegramUserId() {
         }
     }
     
-    // Fallback для тестирования - генерируем стабильный ID
+    // Fallback для тестирования - генерируем стабильный числовой ID
     const testId = localStorage.getItem('tarot_test_user_id');
     if (testId) {
         console.log('🧪 Используем сохраненный тестовый ID:', testId);
         return testId;
     }
     
-    const newTestId = 'test_user_' + Math.random().toString(36).substring(2, 11);
-    localStorage.setItem('tarot_test_user_id', newTestId);
-    console.warn('⚠️ Создан новый тестовый ID:', newTestId);
-    return newTestId;
+    // Генерируем числовой тестовый ID (отрицательный, чтобы не пересекаться с реальными Telegram ID)
+    const newTestId = -Math.floor(Math.random() * 1000000000);
+    localStorage.setItem('tarot_test_user_id', newTestId.toString());
+    console.warn('⚠️ Создан новый числовой тестовый ID:', newTestId);
+    return newTestId.toString();
 }
 
 function getTelegramUserName() {
