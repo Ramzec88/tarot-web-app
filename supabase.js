@@ -82,7 +82,9 @@ async function initializeSupabase() {
                 },
                 realtime: {
                     disabled: true // Отключаем realtime для лучшей производительности
-                }
+                },
+                // Включаем подробное логирование для отладки
+                debug: true
             });
             
             console.log('✅ Supabase клиент инициализирован:', config.url.replace(/\/\/.*@/, '//***@'));
@@ -134,6 +136,21 @@ async function initializeSupabase() {
 }
 
 // 📝 ФУНКЦИИ ДЛЯ РАБОТЫ С ПОЛЬЗОВАТЕЛЯМИ
+
+// Вспомогательная функция для получения или создания профиля пользователя
+async function getOrCreateUserProfile(telegramId, username = null) {
+    console.log('🔍 Получение или создание профиля для ID:', telegramId);
+    
+    let userProfile = await getUserProfile(telegramId);
+    
+    if (!userProfile) {
+        console.log('👤 Профиль не найден, создаем новый...');
+        userProfile = await createUserProfile(telegramId, username);
+    }
+    
+    return userProfile;
+}
+
 async function createUserProfile(telegramId, username = null) {
     if (!supabaseClient) {
         console.warn('⚠️ Supabase недоступен, сохраняем локально');
@@ -144,29 +161,28 @@ async function createUserProfile(telegramId, username = null) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
         
-        // Проверяем, что telegramId можно преобразовать в число
-        const chatId = parseInt(telegramId);
-        if (isNaN(chatId)) {
-            console.warn('⚠️ Неверный format Telegram ID (не число), используем локальное сохранение:', telegramId);
+        // Валидируем telegram_id (должен быть строкой или числом)
+        if (!telegramId || telegramId.toString().trim() === '') {
+            console.warn('⚠️ Пустой Telegram ID, используем локальное сохранение');
             return saveUserProfileLocally(telegramId, username);
         }
         
-        // Генерируем UUID для user_id
-        const userId = self.crypto.randomUUID();
-        
+        // For RLS Option A: Use upsert with telegram_id for idempotent operations
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
-            .insert([
+            .upsert([
                 {
-                    user_id: userId,
-                    chat_id: chatId,
+                    telegram_id: telegramId, // Only telegram_id for anon insert
                     username: username,
                     is_subscribed: false,
-                    total_questions: 0,
+                    questions_used: 0, // Changed from total_questions to questions_used (default 0)
                     free_predictions_left: 3,
                     last_card_day: null
                 }
-            ])
+            ], { 
+                onConflict: 'telegram_id',
+                ignoreDuplicates: false // Always update on conflict
+            })
             .select()
             .single()
             .abortSignal(controller.signal);
@@ -196,26 +212,37 @@ async function getUserProfile(telegramId) {
     }
 
     try {
-        const chatId = parseInt(telegramId);
-        if (isNaN(chatId)) {
-            console.warn('⚠️ Неверный формат Telegram ID:', telegramId);
-            return null;  // Возвращаем null вместо локального профиля
+        // Валидируем telegram_id
+        if (!telegramId || telegramId.toString().trim() === '') {
+            console.warn('⚠️ Пустой Telegram ID');
+            return null;
         }
         
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .select('*')
-            .eq('chat_id', chatId)
-            .single();
+            .eq('telegram_id', telegramId) // Using telegram_id consistently
+            .maybeSingle();
 
-        // Если пользователь не найден - возвращаем null
-        if (error && error.code === 'PGRST116') {
-            console.log('👤 Пользователь не найден для ID:', telegramId);
+        // Подробное логирование ответа Supabase
+        console.log('🔍 Supabase response for getUserProfile:', { 
+            telegramId, 
+            data: data || null, 
+            error: error || null,
+            errorCode: error?.code,
+            errorMessage: error?.message,
+            errorDetails: error?.details
+        });
+
+        // С .maybeSingle() не нужно проверять PGRST116, null возвращается автоматически
+        if (error) {
+            console.warn('⚠️ Ошибка Supabase при получении профиля:', error.message);
             return null;
         }
         
-        if (error) {
-            console.warn('⚠️ Ошибка Supabase при получении профиля:', error.message);
+        // Если пользователь не найден, data будет null
+        if (!data) {
+            console.log('👤 Пользователь не найден для ID:', telegramId);
             return null;
         }
         
@@ -239,16 +266,16 @@ async function updateUserProfile(telegramId, updates) {
     }
 
     try {
-        const chatId = parseInt(telegramId);
-        if (isNaN(chatId)) {
-            console.warn('⚠️ Неверный формат Telegram ID:', telegramId);
+        // Валидируем telegram_id
+        if (!telegramId || telegramId.toString().trim() === '') {
+            console.warn('⚠️ Пустой Telegram ID');
             return null;
         }
         
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .update(updates)
-            .eq('chat_id', chatId)
+            .eq('telegram_id', telegramId) // Using telegram_id consistently
             .select()
             .single();
 
@@ -272,8 +299,8 @@ async function saveDailyCard(telegramId, cardData) {
     }
 
     try {
-        // Получаем профиль пользователя для получения user_id
-        const userProfile = await getUserProfile(telegramId);
+        // Получаем или создаем профиль пользователя для получения user_id
+        const userProfile = await getOrCreateUserProfile(telegramId);
         if (!userProfile || !userProfile.user_id) {
             console.warn('⚠️ Не удалось получить user_id, используем локальное сохранение');
             return saveDailyCardLocally(telegramId, cardData);
@@ -313,8 +340,8 @@ async function getDailyCard(telegramId, date = null) {
     }
 
     try {
-        // Получаем профиль пользователя для получения user_id
-        const userProfile = await getUserProfile(telegramId);
+        // Получаем или создаем профиль пользователя для получения user_id
+        const userProfile = await getOrCreateUserProfile(telegramId);
         if (!userProfile || !userProfile.user_id) {
             console.warn('⚠️ Не удалось получить user_id, используем локальное получение');
             return getDailyCardLocally(telegramId, date);
@@ -345,8 +372,8 @@ async function saveQuestion(telegramId, questionText) {
     }
 
     try {
-        // Получаем профиль пользователя для получения user_id
-        const userProfile = await getUserProfile(telegramId);
+        // Получаем или создаем профиль пользователя для получения user_id
+        const userProfile = await getOrCreateUserProfile(telegramId);
         if (!userProfile || !userProfile.user_id) {
             console.warn('⚠️ Не удалось получить user_id, используем локальное сохранение');
             return saveQuestionLocally(telegramId, questionText);
@@ -411,8 +438,8 @@ async function saveReview(telegramId, rating, reviewText) {
     }
 
     try {
-        // Получаем профиль пользователя для получения user_id
-        const userProfile = await getUserProfile(telegramId);
+        // Получаем или создаем профиль пользователя для получения user_id
+        const userProfile = await getOrCreateUserProfile(telegramId);
         if (!userProfile || !userProfile.user_id) {
             console.warn('⚠️ Не удалось получить user_id, используем локальное сохранение');
             return saveReviewLocally(telegramId, rating, reviewText);
@@ -441,17 +468,35 @@ async function saveReview(telegramId, rating, reviewText) {
     }
 }
 
-async function getReviews(limit = 10) {
+async function getReviews(limit = 10, currentPage = 1, perPage = null) {
     if (!supabaseClient) {
         return getReviewsLocally(limit);
     }
 
     try {
-        const { data, error } = await supabaseClient
+        let query = supabaseClient
             .from('tarot_reviews')
             .select('rating, review_text, created_at')
-            .order('created_at', { ascending: false })
-            .limit(limit);
+            .order('created_at', { ascending: false });
+
+        // If pagination parameters are provided, use them instead of simple limit
+        if (perPage !== null && currentPage !== null) {
+            // Sanitize pagination parameters to prevent PGRST103 errors
+            const page = Math.max(1, Number(currentPage || 1));
+            const pageSize = Math.max(1, Math.min(100, Number(perPage || 10))); // Max 100 per page
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
+            
+            console.log('🔍 Sanitized pagination:', { page, pageSize, from, to });
+            query = query.range(from, to);
+        } else {
+            // Sanitize simple limit
+            const sanitizedLimit = Math.max(1, Math.min(100, Number(limit || 10)));
+            console.log('🔍 Sanitized limit:', sanitizedLimit);
+            query = query.limit(sanitizedLimit);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         
@@ -469,8 +514,8 @@ async function getUserHistory(telegramId, limit = 20) {
     }
 
     try {
-        // Получаем профиль пользователя для получения user_id
-        const userProfile = await getUserProfile(telegramId);
+        // Получаем или создаем профиль пользователя для получения user_id
+        const userProfile = await getOrCreateUserProfile(telegramId);
         if (!userProfile || !userProfile.user_id) {
             console.warn('⚠️ Не удалось получить user_id, используем локальную историю');
             return getUserHistoryLocally(telegramId, limit);
@@ -518,10 +563,13 @@ async function getUserHistory(telegramId, limit = 20) {
 // 💾 ЛОКАЛЬНЫЕ FALLBACK ФУНКЦИИ
 function saveUserProfileLocally(telegramId, username) {
     const profile = {
-        telegram_id: telegramId,
+        user_id: null, // Nullable for guests
+        telegram_id: telegramId.toString(), // Ensure it's a string
         username: username,
-        is_premium: false,
-        questions_used: 0,
+        is_subscribed: false, // Changed from is_premium to match schema
+        questions_used: 0, // Default 0
+        free_predictions_left: 3,
+        last_card_day: null,
         created_at: new Date().toISOString()
     };
     
@@ -789,6 +837,7 @@ window.TarotDB = {
     // Пользователи
     createUserProfile,
     getUserProfile,
+    getOrCreateUserProfile,
     updateUserProfile,
     
     // Ежедневные карты
