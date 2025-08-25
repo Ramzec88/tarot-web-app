@@ -135,6 +135,54 @@ async function initializeSupabase() {
     }
 }
 
+// 🧹 ФУНКЦИИ САНИТИЗАЦИИ ДАННЫХ
+
+// Санитизация Telegram ID
+function sanitizeTelegramId(telegramId) {
+    if (!telegramId) return null;
+    
+    // Если это объект, пытаемся извлечь ID
+    if (typeof telegramId === 'object' && telegramId !== null) {
+        if (telegramId.id) return sanitizeTelegramId(telegramId.id);
+        if (telegramId.chat_id) return sanitizeTelegramId(telegramId.chat_id);
+        console.warn('⚠️ Неизвестная структура объекта telegram_id:', telegramId);
+        return null;
+    }
+    
+    // Приводим к строке и очищаем
+    const cleaned = String(telegramId).trim();
+    
+    // Проверяем, что это не JSON
+    if (cleaned.startsWith('{') || cleaned.startsWith('[')) {
+        console.warn('⚠️ Telegram ID похож на JSON:', cleaned);
+        return null;
+    }
+    
+    // Проверяем, что это валидный ID (число или строка без пробелов)
+    if (!/^-?\d+$/.test(cleaned) && !/^[a-zA-Z0-9_]+$/.test(cleaned)) {
+        console.warn('⚠️ Неверный формат Telegram ID:', cleaned);
+        return null;
+    }
+    
+    return cleaned;
+}
+
+// Санитизация username
+function sanitizeUsername(username) {
+    if (!username || username === null || username === undefined) return null;
+    
+    // Приводим к строке и очищаем
+    const cleaned = String(username).trim();
+    
+    // Ограничиваем длину
+    if (cleaned.length > 100) {
+        return cleaned.substring(0, 100);
+    }
+    
+    // Убираем потенциально опасные символы
+    return cleaned.replace(/[<>]/g, '');
+}
+
 // 📝 ФУНКЦИИ ДЛЯ РАБОТЫ С ПОЛЬЗОВАТЕЛЯМИ
 
 // Вспомогательная функция для получения или создания профиля пользователя
@@ -161,19 +209,22 @@ async function createUserProfile(telegramId, username = null) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
         
-        // Валидируем telegram_id (должен быть строкой или числом)
-        if (!telegramId || telegramId.toString().trim() === '') {
-            console.warn('⚠️ Пустой Telegram ID, используем локальное сохранение');
+        // Санитизация и валидация входных данных
+        const sanitizedTelegramId = sanitizeTelegramId(telegramId);
+        if (!sanitizedTelegramId) {
+            console.warn('⚠️ Неверный Telegram ID, используем локальное сохранение:', telegramId);
             return saveUserProfileLocally(telegramId, username);
         }
+        
+        const sanitizedUsername = sanitizeUsername(username);
         
         // For RLS Option A: Use upsert with telegram_id for idempotent operations
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .upsert([
                 {
-                    telegram_id: telegramId, // Only telegram_id for anon insert
-                    username: username,
+                    telegram_id: sanitizedTelegramId, // Only telegram_id for anon insert
+                    username: sanitizedUsername,
                     is_subscribed: false,
                     questions_used: 0, // Changed from total_questions to questions_used (default 0)
                     free_predictions_left: 3,
@@ -212,21 +263,23 @@ async function getUserProfile(telegramId) {
     }
 
     try {
-        // Валидируем telegram_id
-        if (!telegramId || telegramId.toString().trim() === '') {
-            console.warn('⚠️ Пустой Telegram ID');
+        // Санитизация и валидация telegram_id
+        const sanitizedTelegramId = sanitizeTelegramId(telegramId);
+        if (!sanitizedTelegramId) {
+            console.warn('⚠️ Неверный Telegram ID при получении профиля:', telegramId);
             return null;
         }
         
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .select('*')
-            .eq('telegram_id', telegramId) // Using telegram_id consistently
+            .eq('telegram_id', sanitizedTelegramId) // Using sanitized telegram_id
             .maybeSingle();
 
         // Подробное логирование ответа Supabase
         console.log('🔍 Supabase response for getUserProfile:', { 
-            telegramId, 
+            originalTelegramId: telegramId,
+            sanitizedTelegramId: sanitizedTelegramId, 
             data: data || null, 
             error: error || null,
             errorCode: error?.code,
