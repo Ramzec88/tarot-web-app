@@ -39,6 +39,39 @@ ALTER TABLE tarot_user_profiles ALTER COLUMN questions_used SET DEFAULT 0;
 --   FOR UPDATE TO anon
 --   USING (telegram_id IS NOT NULL);
 
+-- 9. RLS policies for other tables (REQUIRED to fix 401 errors)
+-- RLS политики для tarot_questions
+-- CREATE POLICY "Allow anonymous insert to tarot_questions" ON tarot_questions
+--   FOR INSERT TO anon
+--   WITH CHECK (true);
+-- CREATE POLICY "Allow anonymous select from tarot_questions" ON tarot_questions
+--   FOR SELECT TO anon
+--   USING (true);
+
+-- RLS политики для tarot_answers
+-- CREATE POLICY "Allow anonymous insert to tarot_answers" ON tarot_answers
+--   FOR INSERT TO anon
+--   WITH CHECK (true);
+-- CREATE POLICY "Allow anonymous select from tarot_answers" ON tarot_answers
+--   FOR SELECT TO anon
+--   USING (true);
+
+-- RLS политики для tarot_daily_cards
+-- CREATE POLICY "Allow anonymous insert to tarot_daily_cards" ON tarot_daily_cards
+--   FOR INSERT TO anon
+--   WITH CHECK (true);
+-- CREATE POLICY "Allow anonymous select from tarot_daily_cards" ON tarot_daily_cards
+--   FOR SELECT TO anon
+--   USING (true);
+
+-- RLS политики для tarot_reviews
+-- CREATE POLICY "Allow anonymous insert to tarot_reviews" ON tarot_reviews
+--   FOR INSERT TO anon
+--   WITH CHECK (true);
+-- CREATE POLICY "Allow anonymous select from tarot_reviews" ON tarot_reviews
+--   FOR SELECT TO anon
+--   USING (true);
+
 -- Notes:
 -- - The commented policies above should be uncommented and applied in Supabase dashboard
 -- - Column type changes (telegram_id to text) should be done carefully with data migration
