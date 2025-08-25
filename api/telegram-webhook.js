@@ -76,7 +76,7 @@ async function handleStartCommand(chatId, user) {
             .from('tarot_user_profiles')
             .select('*')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!existingUser) {
             // Создаем нового пользователя
@@ -123,7 +123,7 @@ async function handlePremiumCommand(chatId, user) {
             .from('tarot_user_profiles')
             .select('is_subscribed, subscription_expiry_date, free_predictions_left')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!userProfile) {
             await sendMessage(chatId, 'Сначала выполните команду /start');
@@ -168,7 +168,7 @@ async function handleStatsCommand(chatId, user) {
             .from('tarot_user_profiles')
             .select('*')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!userProfile) {
             await sendMessage(chatId, 'Сначала выполните команду /start');
@@ -230,7 +230,7 @@ async function handleHistoryShare(userId, data) {
             .from('tarot_user_profiles')
             .select('chat_id')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (!userProfile) return;
 
@@ -271,7 +271,7 @@ async function handlePremiumPurchase(userId, data) {
             .from('tarot_user_profiles')
             .select('chat_id, first_name')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (userProfile) {
             await sendMessage(userProfile.chat_id,
@@ -308,7 +308,7 @@ async function handleFeedback(userId, data) {
             .from('tarot_user_profiles')
             .select('chat_id')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (userProfile) {
             await sendMessage(userProfile.chat_id,
