@@ -59,3 +59,23 @@ ALTER TABLE tarot_user_profiles ALTER COLUMN questions_used SET DEFAULT 0;
 -- - questions_used defaults to 0
 -- - user_id can be null for guest users
 -- - Unique constraint exists on telegram_id
+
+-- =====================================
+-- TABLE STRUCTURE REQUIREMENTS:
+-- =====================================
+
+-- tarot_answers table should have these columns:
+-- - id (primary key)
+-- - question_id (foreign key to tarot_questions.id)
+-- - card_id (text, the card identifier)
+-- - card_name (text, the card name) -- THIS COLUMN MIGHT BE MISSING
+-- - interpretation (text, the AI interpretation)
+-- - created_at (timestamp)
+
+-- If card_name column doesn't exist, add it:
+-- ALTER TABLE tarot_answers ADD COLUMN card_name text;
+
+-- Verify table structure with:
+-- SELECT column_name, data_type, is_nullable 
+-- FROM information_schema.columns 
+-- WHERE table_name = 'tarot_answers';
