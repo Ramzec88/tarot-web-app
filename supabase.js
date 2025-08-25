@@ -412,9 +412,15 @@ async function saveAnswer(questionId, cardData, interpretation) {
             .insert([
                 {
                     question_id: questionId,
-                    card_id: cardData.id,
-                    card_name: cardData.name,
-                    interpretation: interpretation,
+                    user_id: null, // Пока null, можно добавить логику получения user_id
+                    cards_drawn: [{ // Используем существующую структуру
+                        id: cardData.id,
+                        name: cardData.name,
+                        image: cardData.image,
+                        description: cardData.description
+                    }],
+                    ai_prediction: interpretation, // Используем ai_prediction вместо interpretation
+                    spread_type: 'single_card', // Тип расклада
                     created_at: new Date().toISOString()
                 }
             ])
@@ -522,23 +528,27 @@ async function getUserHistory(telegramId, limit = 20) {
         }
 
         // Получаем историю вопросов с ответами
+        // Сначала проверяем существование таблицы tarot_answers и её колонок
         const { data: questionsData, error: questionsError } = await supabaseClient
             .from('tarot_questions')
             .select(`
                 id,
                 question_text,
-                created_at,
-                tarot_answers (
-                    card_name,
-                    interpretation,
-                    created_at
-                )
+                created_at
             `)
             .eq('user_id', userProfile.user_id)
             .order('created_at', { ascending: false })
             .limit(limit);
+            
+        // Логируем ошибку для отладки
+        if (questionsError) {
+            console.log('🔍 Questions query error details:', questionsError);
+        }
 
-        if (questionsError) throw questionsError;
+        if (questionsError) {
+            console.warn('⚠️ Ошибка получения вопросов:', questionsError.message);
+            return getUserHistoryLocally(telegramId, limit);
+        }
 
         // Получаем историю ежедневных карт
         const { data: dailyCardsData, error: dailyCardsError } = await supabaseClient
@@ -548,7 +558,14 @@ async function getUserHistory(telegramId, limit = 20) {
             .order('created_at', { ascending: false })
             .limit(limit);
 
-        if (dailyCardsError) throw dailyCardsError;
+        if (dailyCardsError) {
+            console.warn('⚠️ Ошибка получения ежедневных карт:', dailyCardsError.message);
+            // Возвращаем хотя бы вопросы, если они есть
+            return {
+                questions: questionsData || [],
+                dailyCards: []
+            };
+        }
 
         return {
             questions: questionsData || [],
@@ -714,6 +731,35 @@ function getConnectionStatus() {
     };
 }
 
+// Функция для проверки структуры таблиц (отладочная)
+async function checkTableStructure(tableName) {
+    if (!supabaseClient) {
+        console.warn('⚠️ Supabase недоступен для проверки структуры таблиц');
+        return null;
+    }
+    
+    try {
+        console.log(`🔍 Проверяем структуру таблицы: ${tableName}`);
+        
+        // Пытаемся сделать простой запрос, чтобы узнать о структуре из ошибки
+        const { data, error } = await supabaseClient
+            .from(tableName)
+            .select('*')
+            .limit(1);
+            
+        if (error) {
+            console.log(`❌ Ошибка при проверке ${tableName}:`, error);
+            return { error, exists: false };
+        } else {
+            console.log(`✅ Таблица ${tableName} существует, пример данных:`, data);
+            return { data, exists: true, structure: data[0] ? Object.keys(data[0]) : [] };
+        }
+    } catch (err) {
+        console.error(`❌ Критическая ошибка проверки ${tableName}:`, err);
+        return { error: err, exists: false };
+    }
+}
+
 // 🔄 ФУНКЦИИ СИНХРОНИЗАЦИИ
 async function syncUserDataToSupabase(telegramId, localData) {
     if (!supabaseClient) {
@@ -833,6 +879,7 @@ window.TarotDB = {
     initialize: initializeSupabase,
     isConnected: isSupabaseConnected,
     getStatus: getConnectionStatus,
+    checkTableStructure: checkTableStructure,
     
     // Пользователи
     createUserProfile,
