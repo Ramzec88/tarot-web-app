@@ -41,36 +41,36 @@ ALTER TABLE tarot_user_profiles ALTER COLUMN questions_used SET DEFAULT 0;
 
 -- 9. RLS policies for other tables (REQUIRED to fix 401 errors)
 -- RLS политики для tarot_questions
--- CREATE POLICY "Allow anonymous insert to tarot_questions" ON tarot_questions
---   FOR INSERT TO anon
---   WITH CHECK (true);
--- CREATE POLICY "Allow anonymous select from tarot_questions" ON tarot_questions
---   FOR SELECT TO anon
---   USING (true);
+CREATE POLICY "Allow anonymous insert to tarot_questions" ON tarot_questions
+  FOR INSERT TO anon
+  WITH CHECK (true);
+CREATE POLICY "Allow anonymous select from tarot_questions" ON tarot_questions
+  FOR SELECT TO anon
+  USING (true);
 
 -- RLS политики для tarot_answers
--- CREATE POLICY "Allow anonymous insert to tarot_answers" ON tarot_answers
---   FOR INSERT TO anon
---   WITH CHECK (true);
--- CREATE POLICY "Allow anonymous select from tarot_answers" ON tarot_answers
---   FOR SELECT TO anon
---   USING (true);
+CREATE POLICY "Allow anonymous insert to tarot_answers" ON tarot_answers
+  FOR INSERT TO anon
+  WITH CHECK (true);
+CREATE POLICY "Allow anonymous select from tarot_answers" ON tarot_answers
+  FOR SELECT TO anon
+  USING (true);
 
 -- RLS политики для tarot_daily_cards
--- CREATE POLICY "Allow anonymous insert to tarot_daily_cards" ON tarot_daily_cards
---   FOR INSERT TO anon
---   WITH CHECK (true);
--- CREATE POLICY "Allow anonymous select from tarot_daily_cards" ON tarot_daily_cards
---   FOR SELECT TO anon
---   USING (true);
+CREATE POLICY "Allow anonymous insert to tarot_daily_cards" ON tarot_daily_cards
+  FOR INSERT TO anon
+  WITH CHECK (true);
+CREATE POLICY "Allow anonymous select from tarot_daily_cards" ON tarot_daily_cards
+  FOR SELECT TO anon
+  USING (true);
 
 -- RLS политики для tarot_reviews
--- CREATE POLICY "Allow anonymous insert to tarot_reviews" ON tarot_reviews
---   FOR INSERT TO anon
---   WITH CHECK (true);
--- CREATE POLICY "Allow anonymous select from tarot_reviews" ON tarot_reviews
---   FOR SELECT TO anon
---   USING (true);
+CREATE POLICY "Allow anonymous insert to tarot_reviews" ON tarot_reviews
+  FOR INSERT TO anon
+  WITH CHECK (true);
+CREATE POLICY "Allow anonymous select from tarot_reviews" ON tarot_reviews
+  FOR SELECT TO anon
+  USING (true);
 
 -- Notes:
 -- - The commented policies above should be uncommented and applied in Supabase dashboard
@@ -92,6 +92,23 @@ ALTER TABLE tarot_user_profiles ALTER COLUMN questions_used SET DEFAULT 0;
 -- - questions_used defaults to 0
 -- - user_id can be null for guest users
 -- - Unique constraint exists on telegram_id
+
+-- =====================================
+-- CLEANUP SCRIPT FOR CORRUPTED telegram_id VALUES:
+-- =====================================
+
+-- Remove records with JSON-like telegram_id values
+-- DELETE FROM tarot_user_profiles WHERE telegram_id LIKE '{%' OR telegram_id LIKE '[%';
+
+-- Remove records with null or empty telegram_id
+-- DELETE FROM tarot_user_profiles WHERE telegram_id IS NULL OR telegram_id = '';
+
+-- Clean up whitespace in telegram_id
+-- UPDATE tarot_user_profiles SET telegram_id = TRIM(telegram_id) WHERE telegram_id != TRIM(telegram_id);
+
+-- Show problematic records before cleanup:
+-- SELECT id, telegram_id, username, created_at FROM tarot_user_profiles 
+-- WHERE telegram_id IS NULL OR telegram_id = '' OR telegram_id LIKE '{%' OR telegram_id LIKE '[%';
 
 -- =====================================
 -- TABLE STRUCTURE REQUIREMENTS:
