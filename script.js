@@ -17,6 +17,7 @@ let appState = {
 let allCards = [];
 let isInitialized = false;
 let currentRating = 0;
+let initAppCalled = false; // Prevent double initialization
 
 // 🎯 DOM ЭЛЕМЕНТЫ
 let mainNav, secondaryNav, tabContents;
@@ -2376,6 +2377,13 @@ function setupEventListeners() {
 // ========================================================================
 
 async function initApp() {
+    // Prevent double initialization
+    if (initAppCalled) {
+        console.log('⚠️ initApp уже был вызван, пропускаем повторную инициализацию');
+        return;
+    }
+    
+    initAppCalled = true;
     console.log('🚀 Инициализация приложения...');
     
     try {
@@ -2578,9 +2586,21 @@ function initializeTelegramWebApp() {
             // Расширяем на весь экран
             window.Telegram.WebApp.expand();
             
-            // Устанавливаем цвета темы
-            window.Telegram.WebApp.setHeaderColor('#1a1a2e');
-            window.Telegram.WebApp.setBackgroundColor('#1a1a2e');
+            // Устанавливаем цвета темы с проверкой версии (≥ 6.1)
+            try {
+                const webAppVersion = window.Telegram.WebApp.version;
+                const versionNumber = parseFloat(webAppVersion || '0');
+                
+                if (versionNumber >= 6.1) {
+                    console.log('🎨 Устанавливаем цвета темы (версия WebApp:', webAppVersion, ')');
+                    window.Telegram.WebApp.setHeaderColor('#1a1a2e');
+                    window.Telegram.WebApp.setBackgroundColor('#1a1a2e');
+                } else {
+                    console.log('⚠️ Цвета темы недоступны в версии WebApp:', webAppVersion);
+                }
+            } catch (colorError) {
+                console.warn('⚠️ Ошибка при установке цветов темы:', colorError.message);
+            }
             
             // Показываем, что приложение готово
             window.Telegram.WebApp.ready();
@@ -2688,17 +2708,19 @@ function testAllCardImages() {
 // 🏁 ЗАПУСК ПРИЛОЖЕНИЯ
 // ========================================================================
 
-// Запускаем приложение после загрузки DOM
-document.addEventListener('DOMContentLoaded', async () => {
+// Безопасная инициализация - запускаем только один раз
+function safeInitApp() {
     console.log('🏁 DOM готов, запускаем приложение...');
-    await initApp();
-});
-
-// Запасной вариант инициализации
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
     initApp();
+}
+
+// Единственная точка входа для инициализации
+if (document.readyState === 'loading') {
+    // Если DOM еще не загружен, ждем DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', safeInitApp, { once: true });
+} else {
+    // DOM уже загружен, запускаем сразу
+    safeInitApp();
 }
 
 // 🧪 ТЕСТОВАЯ ФУНКЦИЯ ДЛЯ ОТЛАДКИ TAROTDB
