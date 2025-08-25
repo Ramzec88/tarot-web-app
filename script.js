@@ -162,8 +162,9 @@ async function saveAppState() {
 
 function getUserId() {
     const telegramId = getTelegramUserId();
-    const userId = telegramId || 'anonymous_user';
-    console.log('🆔 getUserId:', { telegramId, userId });
+    // Обеспечиваем, что возвращается чистая строка
+    const userId = telegramId ? String(telegramId).trim() : 'anonymous_user';
+    console.log('🆔 getUserId:', { telegramId, userId: userId });
     return userId;
 }
 
