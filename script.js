@@ -2483,6 +2483,20 @@ async function initApp() {
         const userId = getTelegramUserId();
         console.log('👤 Получен пользователь ID:', userId);
         
+        // Сохраняем данные Telegram пользователя в appState
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            appState.telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+            console.log('👤 Telegram пользователь сохранен:', appState.telegramUser);
+        } else {
+            // Создаем mock пользователя для тестирования
+            appState.telegramUser = {
+                id: userId || 'webapp_user',
+                first_name: 'Test User',
+                username: 'testuser'
+            };
+            console.log('🧪 Mock пользователь создан:', appState.telegramUser);
+        }
+        
         // 4. Загружаем локальные данные
         await loadAppStateLocally();
         console.log('📱 Локальное состояние загружено');
