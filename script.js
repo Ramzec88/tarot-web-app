@@ -804,6 +804,48 @@ function resetQuestionAnswerOnly() {
 }
 
 // ========================================================================
+// ========================================================================
+// 🤖 ГЕНЕРАЦИЯ ПРЕДСКАЗАНИЙ ЧЕРЕЗ API
+
+async function generatePredictionAPI(card, question) {
+    try {
+        const userData = {
+            user_id: appState.telegramUser?.id || 'webapp_user',
+            userName: appState.telegramUser?.first_name || 'Гость'
+        };
+
+        const response = await fetch('/api/generate-prediction', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: userData.user_id,
+                userName: userData.userName,
+                question: question,
+                cards: card, // Поддерживаем как одну карту, так и массив
+                type: 'single_card'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        
+        if (!result.success || !result.prediction) {
+            throw new Error('Некорректный ответ от API');
+        }
+
+        return result.prediction;
+
+    } catch (error) {
+        console.error('❌ Ошибка API генерации предсказания:', error);
+        throw error;
+    }
+}
+
 // 🃏 ОБРАБОТКА КАРТЫ ДНЯ (ИСПРАВЛЕНО С УЛУЧШЕННОЙ ЗАГРУЗКОЙ ИЗОБРАЖЕНИЙ)
 // ========================================================================
 
@@ -943,8 +985,18 @@ async function handleDailyCardClick() {
         aiAnswerContainer?.classList.remove('hidden');
         aiAnswerContainer?.classList.add('show');
 
-        // Печатаем ИИ-текст
-        const interpretationText = randomCard.description || simulatedAiText;
+        // Генерируем интерпретацию через API
+        let interpretationText;
+        try {
+            console.log('🤖 Генерируем интерпретацию карты дня через API...');
+            interpretationText = await generatePredictionAPI(randomCard, 'карта дня');
+            console.log('✅ Интерпретация карты дня получена:', interpretationText.substring(0, 100) + '...');
+        } catch (error) {
+            console.error('❌ Ошибка генерации интерпретации карты дня:', error);
+            // Fallback к локальной интерпретации
+            interpretationText = randomCard.description || simulatedAiText;
+        }
+        
         await typeText(aiInterpretationTextElement, interpretationText);
 
         // Показываем баннер
@@ -1146,9 +1198,20 @@ async function handleAskQuestion() {
             questionAnswerContainer?.classList.remove('hidden');
             questionAnswerContainer?.classList.add('show');
             
-            // Формируем ответ
-            const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-            const answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+            // Генерируем ответ через API
+            let answer;
+            try {
+                console.log('🤖 Отправляем запрос на генерацию предсказания...');
+                const prediction = await generatePredictionAPI(randomCard, question);
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${prediction}`;
+                console.log('✅ Предсказание получено:', prediction.substring(0, 100) + '...');
+            } catch (error) {
+                console.error('❌ Ошибка генерации предсказания:', error);
+                // Fallback к локальной генерации
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+            }
             
             // Печатаем текст
             if (questionAnswerText) {
