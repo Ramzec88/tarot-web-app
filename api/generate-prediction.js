@@ -73,13 +73,19 @@ export default async function handler(req, res) {
 
 async function generateN8nPrediction(data) {
     const n8nConfig = {
-        webhookUrl: process.env.N8N_WEBHOOK_URL,
-        secret: process.env.N8N_SECRET
+        webhookUrl: process.env.N8N_WEBHOOK_URL
     };
 
     if (!n8nConfig.webhookUrl) {
         throw new Error('N8N_WEBHOOK_URL не настроен');
     }
+
+    console.log('🌐 Отправляем в n8n:', n8nConfig.webhookUrl);
+    console.log('📤 Данные карты:', {
+        name: data.card.name,
+        meaningUpright: data.card.meaningUpright,
+        description: data.card.description
+    });
 
     const requestPayload = {
         action: 'generate_prediction',
@@ -88,20 +94,19 @@ async function generateN8nPrediction(data) {
         card: {
             name: data.card.name,
             symbol: data.card.symbol || '🔮',
-            meaning: data.card.meaning
+            meaning: data.card.meaningUpright || data.card.description || 'Значение карты'
         },
         question: data.question,
         type: data.type
     };
 
     const payload = JSON.stringify(requestPayload);
-    const signature = createHmacSignature(payload, n8nConfig.secret);
+    console.log('📤 Отправляем payload:', payload);
 
     const response = await fetch(n8nConfig.webhookUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-N8N-Sign': signature,
             'User-Agent': 'TarotWebApp/1.0'
         },
         body: payload
@@ -112,6 +117,7 @@ async function generateN8nPrediction(data) {
     }
 
     const result = await response.json();
+    console.log('📥 Ответ от n8n:', result);
     
     if (!result.success || !result.prediction) {
         throw new Error('Некорректный ответ от n8n API');
@@ -120,17 +126,6 @@ async function generateN8nPrediction(data) {
     return result;
 }
 
-function createHmacSignature(payload, secret) {
-    if (!secret) {
-        console.warn('⚠️ N8N_SECRET не настроен, отправляем без подписи');
-        return '';
-    }
-    
-    return crypto
-        .createHmac('sha256', secret)
-        .update(payload)
-        .digest('hex');
-}
 
 function generateLocalPrediction(card, question) {
     const templates = [
