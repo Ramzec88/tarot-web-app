@@ -122,6 +122,18 @@ function setupConfigFromData(data) {
         console.log('✅ API конфигурация загружена');
     }
 
+    // Устанавливаем n8n конфигурацию
+    if (data.n8n) {
+        window.N8N_CONFIG = {
+            enabled: data.n8n.enabled !== false,
+            webhookUrl: data.n8n.webhookUrl || '',
+            secret: data.n8n.secret || '',
+            timeout: data.n8n.timeout || 30000,
+            fallbackEnabled: data.n8n.fallbackEnabled !== false
+        };
+        console.log('✅ N8N конфигурация загружена');
+    }
+
     // Устанавливаем конфигурацию приложения
     if (data.app) {
         window.APP_CONFIG = {
@@ -155,6 +167,17 @@ function setupFallbackConfigs() {
             paymentUrl: 'https://www.wildberries.ru/catalog/199937445/detail.aspx',
             timeout: 10000,
             retryAttempts: 3
+        };
+    }
+
+    // Fallback n8n конфигурация
+    if (!window.N8N_CONFIG) {
+        window.N8N_CONFIG = {
+            enabled: false, // По умолчанию отключено
+            webhookUrl: '',
+            secret: '',
+            timeout: 30000,
+            fallbackEnabled: true
         };
     }
 
@@ -343,6 +366,10 @@ function getAPIConfig() {
     return window.API_CONFIG;
 }
 
+function getN8nConfig() {
+    return window.N8N_CONFIG;
+}
+
 function getAppConfig() {
     return window.APP_CONFIG;
 }
@@ -368,6 +395,7 @@ function isConfigReady() {
     const ready = !!(
         window.SUPABASE_CONFIG &&
         window.API_CONFIG &&
+        window.N8N_CONFIG &&
         window.APP_CONFIG &&
         window.FALLBACK_CARDS &&
         window.FALLBACK_CARDS.length > 0 &&
@@ -381,6 +409,7 @@ function isConfigReady() {
         console.warn('⚠️ Конфигурация не готова:', {
             supabase: !!window.SUPABASE_CONFIG,
             api: !!window.API_CONFIG,
+            n8n: !!window.N8N_CONFIG,
             app: !!window.APP_CONFIG,
             cards: window.FALLBACK_CARDS ? window.FALLBACK_CARDS.length : 0,
             tables: !!window.TABLES,
@@ -397,6 +426,7 @@ function debugConfig() {
     console.log('🔧 Состояние конфигурации:', {
         supabase: !!window.SUPABASE_CONFIG,
         api: !!window.API_CONFIG,
+        n8n: !!window.N8N_CONFIG,
         app: !!window.APP_CONFIG,
         tables: !!window.TABLES,
         telegram: !!window.TELEGRAM_CONFIG,
@@ -408,8 +438,9 @@ function debugConfig() {
     if (window.SUPABASE_CONFIG) {
         console.log('Supabase URL:', window.SUPABASE_CONFIG.url);
     }
-    if (window.API_CONFIG) {
-        console.log('N8N Webhook:', window.API_CONFIG.n8nWebhookUrl);
+    if (window.N8N_CONFIG) {
+        console.log('N8N Enabled:', window.N8N_CONFIG.enabled);
+        console.log('N8N Webhook:', window.N8N_CONFIG.webhookUrl);
     }
 }
 
@@ -417,6 +448,7 @@ function debugConfig() {
 window.initializeConfig = initializeConfig;
 window.getSupabaseConfig = getSupabaseConfig;
 window.getAPIConfig = getAPIConfig;
+window.getN8nConfig = getN8nConfig;
 window.getAppConfig = getAppConfig;
 window.getTablesConfig = getTablesConfig;
 window.getTelegramConfig = getTelegramConfig;
