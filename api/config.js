@@ -32,6 +32,13 @@ export default function handler(req, res) {
                 cardsUrl: process.env.CARDS_URL || '',
                 paymentUrl: process.env.PAYMENT_URL || 'https://www.wildberries.ru/catalog/199937445/detail.aspx'
             },
+            n8n: {
+                enabled: process.env.N8N_ENABLED === 'true',
+                webhookUrl: process.env.N8N_WEBHOOK_URL || 'https://volshebstvo.app.n8n.cloud/webhook/webapp-api',
+                timeout: parseInt(process.env.N8N_TIMEOUT) || 30000,
+                fallbackEnabled: process.env.N8N_FALLBACK_ENABLED !== 'false'
+                // Не передаем secret на клиент из соображений безопасности
+            },
             app: {
                 freeQuestionsLimit: parseInt(process.env.FREE_QUESTIONS_LIMIT) || 3,
                 premiumPrice: parseInt(process.env.PREMIUM_PRICE) || 299,
@@ -68,6 +75,12 @@ export default function handler(req, res) {
                     n8nWebhookUrl: 'https://volshebstvo.app.n8n.cloud/webhook/shepot-kart',
                     cardsUrl: '',
                     paymentUrl: 'https://www.wildberries.ru/catalog/199937445/detail.aspx'
+                },
+                n8n: {
+                    enabled: false,
+                    webhookUrl: 'https://volshebstvo.app.n8n.cloud/webhook/webapp-api',
+                    timeout: 30000,
+                    fallbackEnabled: true
                 },
                 app: {
                     freeQuestionsLimit: 3,
