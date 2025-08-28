@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Финальная проверка Tarot App</title>
+    <title>Диагностика Supabase - Tarot App</title>
     <style>
         * {
             margin: 0;
@@ -20,93 +20,67 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(15px);
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            background: linear-gradient(45deg, #51cf66, #4ecdc4);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .success-banner {
-            background: rgba(81, 207, 102, 0.2);
-            border: 2px solid #51cf66;
+        .alert {
+            background: rgba(255, 107, 107, 0.2);
+            border: 2px solid #ff6b6b;
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 30px;
             text-align: center;
         }
 
-        .checklist {
+        .alert-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+        }
+
+        .diagnostic-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 25px;
             margin-bottom: 25px;
+            border-left: 4px solid #4ecdc4;
         }
 
-        .checklist-item {
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #4ecdc4;
             display: flex;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .checklist-icon {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-size: 16px;
+        .section-icon {
+            margin-right: 10px;
+            font-size: 1.4rem;
         }
 
-        .checklist-icon.pending {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-        }
-
-        .checklist-icon.success {
-            background: rgba(81, 207, 102, 0.2);
-            color: #51cf66;
-        }
-
-        .checklist-icon.error {
-            background: rgba(255, 107, 107, 0.2);
-            color: #ff6b6b;
-        }
-
-        .checklist-text {
-            flex: 1;
-        }
-
-        .checklist-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .checklist-desc {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-
-        .test-controls {
+        .controls {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
@@ -131,18 +105,24 @@
             box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
         }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        .btn.danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
         }
 
         .btn.success {
             background: linear-gradient(135deg, #51cf66, #40c057);
         }
 
-        .btn.primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        .btn.warning {
+            background: linear-gradient(135deg, #ffd43b, #fab005);
+            color: #1a1a2e;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .result-panel {
@@ -155,460 +135,664 @@
 
         .result-panel.error {
             border-left-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
         }
 
         .result-panel.success {
             border-left-color: #51cf66;
+            background: rgba(81, 207, 102, 0.1);
         }
 
-        .next-steps {
-            background: rgba(102, 126, 234, 0.1);
-            border: 2px solid #667eea;
-            border-radius: 15px;
-            padding: 25px;
-            margin-top: 30px;
+        .result-panel.warning {
+            border-left-color: #ffd43b;
+            background: rgba(255, 212, 59, 0.1);
         }
 
-        .next-steps h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-
-        .step {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 15px;
-            padding-left: 30px;
-            position: relative;
-        }
-
-        .step::before {
-            content: "▶️";
-            position: absolute;
-            left: 0;
-            top: 0;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 2px solid #4ecdc4;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .code-example {
-            background: rgba(0, 0, 0, 0.3);
+        .code-block {
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 8px;
             padding: 15px;
-            font-family: monospace;
+            font-family: 'Monaco', 'Menlo', monospace;
             font-size: 0.85rem;
-            margin: 10px 0;
+            margin: 15px 0;
+            overflow-x: auto;
             border: 1px solid rgba(255, 255, 255, 0.1);
             white-space: pre-wrap;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #666;
+        }
+
+        .status-card.success {
+            border-left-color: #51cf66;
+        }
+
+        .status-card.error {
+            border-left-color: #ff6b6b;
+        }
+
+        .status-card.warning {
+            border-left-color: #ffd43b;
+        }
+
+        .status-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .status-value {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .log-timestamp {
+            color: #868e96;
+            margin-right: 10px;
+            min-width: 80px;
+        }
+
+        .log-success { color: #51cf66; }
+        .log-error { color: #ff6b6b; }
+        .log-warning { color: #ffd43b; }
+        .log-info { color: #74c0fc; }
+
+        .hidden { display: none; }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #b0b0b0;
+            font-weight: 500;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .input-field::placeholder {
+            color: #888;
+        }
+
+        @media (max-width: 768px) {
+            .container { 
+                padding: 20px; 
+                margin: 10px;
+            }
+            .controls { 
+                grid-template-columns: 1fr; 
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎉 Финальная проверка</h1>
-            <p>Проверим, что всё работает после обновления URL</p>
+            <h1>🔧 Диагностика Supabase</h1>
+            <p>Найдем и исправим проблемы с сохранением данных</p>
         </div>
 
-        <div class="success-banner">
-            <h3 style="color: #51cf66; margin-bottom: 10px;">✅ URL успешно обновлен!</h3>
-            <p>Теперь давайте убедимся, что всё работает корректно</p>
+        <div class="alert">
+            <div class="alert-title">🚨 Проблема обнаружена</div>
+            <p>Данные не сохраняются в таблицы Supabase. Запустим полную диагностику для выявления причин.</p>
         </div>
 
-        <div class="checklist">
-            <h3 style="color: #ffd700; margin-bottom: 20px;">📋 Чек-лист проверки:</h3>
-            
-            <div class="checklist-item">
-                <div class="checklist-icon pending" id="check1">⏳</div>
-                <div class="checklist-text">
-                    <div class="checklist-title">1. Подключение к Supabase</div>
-                    <div class="checklist-desc">Проверка базового подключения к базе данных</div>
-                </div>
+        <div class="diagnostic-section">
+            <div class="section-title">
+                <span class="section-icon">🔑</span>
+                Настройка подключения
             </div>
-
-            <div class="checklist-item">
-                <div class="checklist-icon pending" id="check2">⏳</div>
-                <div class="checklist-text">
-                    <div class="checklist-title">2. Загрузка карт Таро</div>
-                    <div class="checklist-desc">Проверка загрузки изображений и данных карт</div>
-                </div>
+            <div class="input-group">
+                <label class="input-label">Supabase URL:</label>
+                <input type="text" class="input-field" id="supabaseUrl" value="https://jjowuzqfnwcuulcknkxh.supabase.co" readonly>
             </div>
-
-            <div class="checklist-item">
-                <div class="checklist-icon pending" id="check3">⏳</div>
-                <div class="checklist-text">
-                    <div class="checklist-title">3. Сохранение данных</div>
-                    <div class="checklist-desc">Проверка записи в таблицы базы данных</div>
-                </div>
-            </div>
-
-            <div class="checklist-item">
-                <div class="checklist-icon pending" id="check4">⏳</div>
-                <div class="checklist-text">
-                    <div class="checklist-title">4. Основное приложение</div>
-                    <div class="checklist-desc">Тест основного функционала Tarot App</div>
-                </div>
+            <div class="input-group">
+                <label class="input-label">Anon Key (введите ваш ключ):</label>
+                <input type="password" class="input-field" id="supabaseKey" placeholder="Введите ваш anon key">
             </div>
         </div>
 
-        <div class="test-controls">
-            <button class="btn" id="testSupabase">🔗 Тест Supabase</button>
-            <button class="btn" id="testCards">🃏 Тест карт</button>
-            <button class="btn" id="testDatabase">💾 Тест БД</button>
-            <button class="btn primary" id="runAllTests">🚀 Запустить все тесты</button>
+        <div class="controls">
+            <button class="btn" id="testConnection">🔗 Тест подключения</button>
+            <button class="btn warning" id="checkTables">📋 Проверить таблицы</button>
+            <button class="btn success" id="testInsert">💾 Тест записи</button>
+            <button class="btn danger" id="checkRLS">🔒 Проверить RLS</button>
+            <button class="btn" id="runFullDiagnostic">🚀 Полная диагностика</button>
+            <button class="btn" id="clearLogs">🗑️ Очистить логи</button>
         </div>
 
-        <div class="result-panel hidden" id="resultPanel">
-            <h4 id="resultTitle">Результаты тестирования</h4>
-            <div id="resultContent"></div>
-        </div>
+        <div class="status-grid" id="statusGrid"></div>
 
-        <div class="next-steps">
-            <h3>🎯 Следующие шаги:</h3>
-            <div class="step">
-                <strong>Откройте ваше основное приложение</strong> (index.html) и проверьте, что:
-                <br>• Карта дня загружается и переворачивается
-                <br>• Можно задать вопрос и получить ответ
-                <br>• Изображения карт отображаются корректно
-            </div>
-            <div class="step">
-                <strong>Проверьте консоль браузера</strong> - не должно быть ошибок "Load failed" или "hostname not found"
-            </div>
-            <div class="step">
-                <strong>Протестируйте все функции:</strong> карта дня, вопросы, расклады, историю
-            </div>
-            <div class="step">
-                <strong>Если что-то не работает</strong> - используйте debug инструменты или обратитесь за помощью
-            </div>
+        <div class="log-container" id="logContainer"></div>
+
+        <div class="result-panel hidden" id="solutionPanel">
+            <h4>💡 Рекомендуемые решения</h4>
+            <div id="solutionContent"></div>
         </div>
     </div>
 
     <script>
-        // Правильная конфигурация (обновленная)
-        const CORRECT_CONFIG = {
-            url: 'https://jjowuzqfnwcuulcknkxh.supabase.co',
-            // Здесь должен быть ваш реальный ключ
-            key: 'YOUR_ACTUAL_ANON_KEY' // Замените на ваш ключ
-        };
-
         let supabaseClient = null;
 
-        // Утилиты
-        function updateChecklistItem(itemId, status, icon) {
-            const element = document.getElementById(itemId);
-            element.className = `checklist-icon ${status}`;
-            element.textContent = icon;
+        // Система логирования
+        const logger = {
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerHTML = `
+                    <span class="log-timestamp">[${timestamp}]</span>
+                    <span class="log-${type}">${message}</span>
+                `;
+                document.getElementById('logContainer').appendChild(logEntry);
+                document.getElementById('logContainer').scrollTop = document.getElementById('logContainer').scrollHeight;
+                console.log(`[${timestamp}] ${message}`);
+            },
+            
+            success(message) { this.log(`✅ ${message}`, 'success'); },
+            error(message) { this.log(`❌ ${message}`, 'error'); },
+            warning(message) { this.log(`⚠️ ${message}`, 'warning'); },
+            info(message) { this.log(`ℹ️ ${message}`, 'info'); }
+        };
+
+        // Создание карточки статуса
+        function createStatusCard(title, value, status = 'info') {
+            const card = document.createElement('div');
+            card.className = `status-card ${status}`;
+            card.innerHTML = `
+                <div class="status-title">${title}</div>
+                <div class="status-value">${value}</div>
+            `;
+            return card;
         }
 
-        function showResult(title, content, type = 'success') {
-            const panel = document.getElementById('resultPanel');
-            const titleEl = document.getElementById('resultTitle');
-            const contentEl = document.getElementById('resultContent');
+        // Обновление статуса
+        function updateStatus() {
+            const grid = document.getElementById('statusGrid');
+            grid.innerHTML = '';
 
-            panel.className = `result-panel ${type}`;
-            panel.classList.remove('hidden');
-            titleEl.textContent = title;
-            contentEl.innerHTML = content;
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            
+            grid.appendChild(createStatusCard(
+                '🔗 Подключение',
+                supabaseClient ? 'Инициализировано' : 'Не подключено',
+                supabaseClient ? 'success' : 'error'
+            ));
+
+            grid.appendChild(createStatusCard(
+                '🔑 Конфигурация',
+                key ? 'API ключ введен' : 'API ключ не введен',
+                key ? 'success' : 'warning'
+            ));
+
+            grid.appendChild(createStatusCard(
+                '📊 URL',
+                url || 'Не задан',
+                url ? 'success' : 'error'
+            ));
         }
 
         // Загрузка Supabase SDK
         async function loadSupabaseSDK() {
             if (window.supabase) return true;
 
+            logger.info('Загрузка Supabase SDK...');
+            
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
                 script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-                script.onload = resolve;
-                script.onerror = reject;
+                script.onload = () => {
+                    logger.success('Supabase SDK загружен');
+                    resolve(true);
+                };
+                script.onerror = () => {
+                    logger.error('Не удалось загрузить Supabase SDK');
+                    reject(false);
+                };
                 document.head.appendChild(script);
             });
         }
 
-        // Тест 1: Подключение к Supabase
-        async function testSupabaseConnection() {
-            updateChecklistItem('check1', 'pending', '⏳');
-            
+        // Инициализация Supabase клиента
+        async function initializeSupabase() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+
+            if (!url || !key) {
+                logger.error('URL или API ключ не заданы');
+                return false;
+            }
+
             try {
-                // Используйте ваш реальный API ключ здесь
-                const apiKey = prompt('Введите ваш Supabase anon key:');
-                if (!apiKey) {
-                    throw new Error('API ключ не введен');
-                }
-
                 await loadSupabaseSDK();
-                supabaseClient = window.supabase.createClient(CORRECT_CONFIG.url, apiKey);
+                
+                supabaseClient = window.supabase.createClient(url, key, {
+                    auth: {
+                        persistSession: false,
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false
+                    },
+                    db: {
+                        schema: 'public'
+                    },
+                    global: {
+                        headers: {
+                            'x-application': 'tarot-diagnostic'
+                        }
+                    }
+                });
 
-                // Тест подключения
-                const { data, error } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .select('count')
-                    .limit(1);
-
-                if (error && error.code !== 'PGRST116') {
-                    throw error;
-                }
-
-                updateChecklistItem('check1', 'success', '✅');
+                logger.success('Supabase клиент инициализирован');
+                updateStatus();
                 return true;
 
             } catch (error) {
-                updateChecklistItem('check1', 'error', '❌');
-                throw error;
+                logger.error(`Ошибка инициализации: ${error.message}`);
+                return false;
             }
         }
 
-        // Тест 2: Загрузка карт
-        async function testCardsLoading() {
-            updateChecklistItem('check2', 'pending', '⏳');
+        // Тест подключения
+        async function testConnection() {
+            if (!await initializeSupabase()) return false;
+
+            logger.info('Тестирование подключения...');
 
             try {
-                // Тест загрузки файла карт
-                const response = await fetch('./cards.json');
-                if (!response.ok) {
-                    throw new Error('Файл cards.json не найден');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                const { data, error } = await supabaseClient
+                    .from('tarot_user_profiles')
+                    .select('count', { count: 'exact', head: true })
+                    .abortSignal(controller.signal);
+
+                clearTimeout(timeoutId);
+
+                if (error) {
+                    logger.error(`Ошибка подключения: ${error.message}`);
+                    logger.info(`Код ошибки: ${error.code}`);
+                    logger.info(`Детали: ${error.details || 'нет'}`);
+                    return false;
                 }
 
-                const cards = await response.json();
-                if (!Array.isArray(cards) || cards.length === 0) {
-                    throw new Error('Неправильный формат файла карт');
-                }
-
-                // Тест загрузки изображения
-                const testCard = cards[0];
-                if (testCard.image) {
-                    const img = new Image();
-                    await new Promise((resolve, reject) => {
-                        img.onload = resolve;
-                        img.onerror = reject;
-                        img.src = testCard.image;
-                        setTimeout(reject, 5000); // Таймаут 5 сек
-                    });
-                }
-
-                updateChecklistItem('check2', 'success', '✅');
-                return { success: true, cardsCount: cards.length };
+                logger.success('Подключение успешно');
+                logger.info(`Найдено записей: ${data || 'неизвестно'}`);
+                updateStatus();
+                return true;
 
             } catch (error) {
-                updateChecklistItem('check2', 'error', '❌');
-                throw error;
+                if (error.name === 'AbortError') {
+                    logger.error('Таймаут подключения (более 10 секунд)');
+                } else {
+                    logger.error(`Критическая ошибка подключения: ${error.message}`);
+                }
+                return false;
             }
         }
 
-        // Тест 3: База данных
-        async function testDatabase() {
-            updateChecklistItem('check3', 'pending', '⏳');
+        // Проверка структуры таблиц
+        async function checkTables() {
+            if (!supabaseClient) {
+                logger.warning('Сначала выполните тест подключения');
+                return false;
+            }
 
-            try {
-                if (!supabaseClient) {
-                    throw new Error('Сначала выполните тест Supabase');
+            const tables = [
+                'tarot_user_profiles',
+                'tarot_daily_cards', 
+                'tarot_questions',
+                'tarot_answers',
+                'tarot_reviews'
+            ];
+
+            logger.info('Проверка структуры таблиц...');
+
+            for (const tableName of tables) {
+                try {
+                    logger.info(`Проверяем таблицу: ${tableName}`);
+
+                    const { data, error } = await supabaseClient
+                        .from(tableName)
+                        .select('*')
+                        .limit(1);
+
+                    if (error) {
+                        logger.error(`Таблица ${tableName}: ${error.message}`);
+                        
+                        if (error.code === '42P01') {
+                            logger.warning(`Таблица ${tableName} не существует!`);
+                        } else if (error.code === '42501') {
+                            logger.warning(`Нет прав доступа к таблице ${tableName}`);
+                        }
+                    } else {
+                        logger.success(`Таблица ${tableName}: доступна`);
+                        
+                        if (data && data.length > 0) {
+                            const columns = Object.keys(data[0]);
+                            logger.info(`Колонки: ${columns.join(', ')}`);
+                        } else {
+                            logger.info('Таблица пуста');
+                        }
+                    }
+
+                } catch (error) {
+                    logger.error(`Критическая ошибка при проверке ${tableName}: ${error.message}`);
                 }
 
-                // Тест записи
-                const testData = {
-                    telegram_id: `test_${Date.now()}`,
-                    username: 'test_final_check',
-                    is_premium: false,
-                    questions_used: 0
-                };
+                // Небольшая пауза между запросами
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
 
-                const { data: inserted, error: insertError } = await supabaseClient
+            return true;
+        }
+
+        // Тест записи данных
+        async function testInsert() {
+            if (!supabaseClient) {
+                logger.warning('Сначала выполните тест подключения');
+                return false;
+            }
+
+            logger.info('Тестирование записи данных...');
+
+            try {
+                // Генерируем уникальный test ID
+                const testId = `test_${Date.now()}`;
+                
+                logger.info(`Попытка записи тестового пользователя с telegram_id: ${testId}`);
+
+                // Пытаемся записать тестового пользователя
+                const { data, error } = await supabaseClient
                     .from('tarot_user_profiles')
-                    .insert([testData])
+                    .insert([
+                        {
+                            telegram_id: testId,
+                            username: 'test_diagnostic',
+                            is_subscribed: false,
+                            questions_used: 0,
+                            free_predictions_left: 3
+                        }
+                    ])
                     .select();
 
-                if (insertError) throw insertError;
+                if (error) {
+                    logger.error(`Ошибка записи: ${error.message}`);
+                    logger.info(`Код ошибки: ${error.code}`);
+                    logger.info(`Детали: ${error.details || 'нет'}`);
+                    
+                    // Специфические ошибки
+                    if (error.code === '23505') {
+                        logger.warning('Конфликт уникальности - возможно, пользователь уже существует');
+                    } else if (error.code === '42501') {
+                        logger.error('Нет прав на запись - проверьте RLS политики!');
+                    } else if (error.code === '23502') {
+                        logger.error('Нарушение NOT NULL ограничения');
+                    }
+                    
+                    return false;
+                }
 
-                // Тест чтения
-                const { data: read, error: readError } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .select('*')
-                    .eq('telegram_id', testData.telegram_id);
+                logger.success('Тестовая запись успешна!');
+                logger.info(`Записан пользователь с ID: ${data[0]?.id}`);
 
-                if (readError) throw readError;
-
-                // Тест удаления (очистка)
+                // Очищаем тестовые данные
                 await supabaseClient
                     .from('tarot_user_profiles')
                     .delete()
-                    .eq('telegram_id', testData.telegram_id);
+                    .eq('telegram_id', testId);
 
-                updateChecklistItem('check3', 'success', '✅');
+                logger.info('Тестовые данные очищены');
                 return true;
 
             } catch (error) {
-                updateChecklistItem('check3', 'error', '❌');
-                throw error;
+                logger.error(`Критическая ошибка записи: ${error.message}`);
+                return false;
             }
         }
 
-        // Тест 4: Основное приложение
-        async function testMainApp() {
-            updateChecklistItem('check4', 'pending', '⏳');
-
-            try {
-                // Проверяем, доступно ли основное приложение
-                const response = await fetch('./index.html');
-                if (!response.ok) {
-                    throw new Error('Основное приложение (index.html) не найдено');
-                }
-
-                // Проверяем основные файлы
-                const files = ['script.js', 'style.css', 'config.js'];
-                for (const file of files) {
-                    const fileResponse = await fetch(`./${file}`);
-                    if (!fileResponse.ok) {
-                        throw new Error(`Файл ${file} не найден`);
-                    }
-                }
-
-                updateChecklistItem('check4', 'success', '✅');
-                return true;
-
-            } catch (error) {
-                updateChecklistItem('check4', 'error', '❌');
-                throw error;
+        // Проверка RLS политик
+        async function checkRLS() {
+            if (!supabaseClient) {
+                logger.warning('Сначала выполните тест подключения');
+                return false;
             }
-        }
 
-        // Запуск всех тестов
-        async function runAllTests() {
-            const startTime = Date.now();
-            const results = [];
+            logger.info('Проверка RLS политик...');
 
             try {
-                showResult('🔄 Выполнение тестов...', 'Запуск всех проверок, пожалуйста подождите...', 'info');
+                // Проверяем анонимный доступ к каждой таблице
+                const tables = ['tarot_user_profiles', 'tarot_daily_cards', 'tarot_questions', 'tarot_answers', 'tarot_reviews'];
 
-                // Тест 1
-                try {
-                    await testSupabaseConnection();
-                    results.push({ test: 'Supabase', success: true });
-                } catch (error) {
-                    results.push({ test: 'Supabase', success: false, error: error.message });
-                }
+                for (const tableName of tables) {
+                    logger.info(`Проверяем RLS для таблицы: ${tableName}`);
 
-                // Тест 2
-                try {
-                    const cardResult = await testCardsLoading();
-                    results.push({ test: 'Cards', success: true, data: cardResult });
-                } catch (error) {
-                    results.push({ test: 'Cards', success: false, error: error.message });
-                }
+                    try {
+                        // Попытка чтения
+                        const { data: readData, error: readError } = await supabaseClient
+                            .from(tableName)
+                            .select('*')
+                            .limit(1);
 
-                // Тест 3
-                try {
-                    await testDatabase();
-                    results.push({ test: 'Database', success: true });
-                } catch (error) {
-                    results.push({ test: 'Database', success: false, error: error.message });
-                }
-
-                // Тест 4
-                try {
-                    await testMainApp();
-                    results.push({ test: 'Main App', success: true });
-                } catch (error) {
-                    results.push({ test: 'Main App', success: false, error: error.message });
-                }
-
-                // Подводим итоги
-                const successCount = results.filter(r => r.success).length;
-                const totalTests = results.length;
-                const duration = Date.now() - startTime;
-
-                let resultHtml = `<strong>Тестирование завершено за ${Math.round(duration / 1000)} сек</strong><br><br>`;
-                resultHtml += `<strong>Результат: ${successCount}/${totalTests} тестов пройдено</strong><br><br>`;
-
-                results.forEach(result => {
-                    const icon = result.success ? '✅' : '❌';
-                    resultHtml += `${icon} <strong>${result.test}:</strong> `;
-                    
-                    if (result.success) {
-                        resultHtml += 'Пройден';
-                        if (result.data) {
-                            resultHtml += ` (${JSON.stringify(result.data)})`;
+                        if (readError) {
+                            if (readError.code === '42501') {
+                                logger.error(`${tableName}: RLS блокирует чтение для анонимных пользователей`);
+                            } else {
+                                logger.warning(`${tableName}: Ошибка чтения - ${readError.message}`);
+                            }
+                        } else {
+                            logger.success(`${tableName}: Чтение разрешено`);
                         }
-                    } else {
-                        resultHtml += `Ошибка - ${result.error}`;
-                    }
-                    resultHtml += '<br>';
-                });
 
-                if (successCount === totalTests) {
-                    resultHtml += '<br><strong style="color: #51cf66;">🎉 Все тесты пройдены! Приложение готово к использованию!</strong>';
-                    resultHtml += '<br><br>Теперь можете открыть <strong>index.html</strong> и пользоваться приложением.';
-                    showResult('🎉 Все тесты пройдены!', resultHtml, 'success');
-                } else {
-                    resultHtml += '<br><strong style="color: #ff6b6b;">⚠️ Некоторые тесты не прошли</strong>';
-                    resultHtml += '<br>Проверьте ошибки выше и исправьте проблемы.';
-                    showResult('⚠️ Есть проблемы', resultHtml, 'error');
+                        // Попытка записи (только для основной таблицы)
+                        if (tableName === 'tarot_user_profiles') {
+                            const testId = `rls_test_${Date.now()}`;
+                            
+                            const { error: insertError } = await supabaseClient
+                                .from(tableName)
+                                .insert([{
+                                    telegram_id: testId,
+                                    username: 'rls_test'
+                                }]);
+
+                            if (insertError) {
+                                if (insertError.code === '42501') {
+                                    logger.error(`${tableName}: RLS блокирует запись для анонимных пользователей`);
+                                } else {
+                                    logger.warning(`${tableName}: Ошибка записи - ${insertError.message}`);
+                                }
+                            } else {
+                                logger.success(`${tableName}: Запись разрешена`);
+                                
+                                // Очищаем тестовые данные
+                                await supabaseClient
+                                    .from(tableName)
+                                    .delete()
+                                    .eq('telegram_id', testId);
+                            }
+                        }
+
+                    } catch (error) {
+                        logger.error(`Критическая ошибка проверки RLS для ${tableName}: ${error.message}`);
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
             } catch (error) {
-                showResult('❌ Ошибка тестирования', `Критическая ошибка: ${error.message}`, 'error');
+                logger.error(`Критическая ошибка проверки RLS: ${error.message}`);
             }
+        }
+
+        // Полная диагностика
+        async function runFullDiagnostic() {
+            logger.info('🚀 Запуск полной диагностики...');
+            
+            const results = {
+                connection: false,
+                tables: false,
+                insert: false,
+                rls: false
+            };
+
+            // Шаг 1: Подключение
+            logger.info('--- Шаг 1: Тест подключения ---');
+            results.connection = await testConnection();
+
+            if (!results.connection) {
+                showSolution('Проблема с подключением', [
+                    'Проверьте правильность Supabase URL',
+                    'Убедитесь, что API ключ введен корректно',
+                    'Проверьте интернет соединение',
+                    'Убедитесь, что Supabase проект активен'
+                ]);
+                return;
+            }
+
+            // Шаг 2: Таблицы
+            logger.info('--- Шаг 2: Проверка таблиц ---');
+            results.tables = await checkTables();
+
+            // Шаг 3: Тест записи
+            logger.info('--- Шаг 3: Тест записи ---');
+            results.insert = await testInsert();
+
+            // Шаг 4: RLS политики
+            logger.info('--- Шаг 4: Проверка RLS ---');
+            await checkRLS();
+
+            // Анализ результатов
+            logger.info('--- Анализ результатов ---');
+            
+            const successCount = Object.values(results).filter(Boolean).length;
+            logger.info(`Успешно: ${successCount}/4 тестов`);
+
+            if (successCount === 4) {
+                logger.success('🎉 Все тесты пройдены! Supabase настроен корректно.');
+            } else {
+                logger.warning('⚠️ Обнаружены проблемы, см. рекомендации ниже');
+                
+                const issues = [];
+                if (!results.connection) issues.push('Проблема подключения');
+                if (!results.tables) issues.push('Проблемы с таблицами');
+                if (!results.insert) issues.push('Проблемы с записью данных');
+                
+                showSolution('Обнаружены проблемы', issues);
+            }
+        }
+
+        // Показать решения
+        function showSolution(title, solutions) {
+            const panel = document.getElementById('solutionPanel');
+            const content = document.getElementById('solutionContent');
+
+            let html = `<p><strong>${title}</strong></p><ul>`;
+            solutions.forEach(solution => {
+                html += `<li>${solution}</li>`;
+            });
+            html += `</ul>`;
+
+            // Добавляем типовые решения
+            html += `<br><h5>🔧 Типовые решения:</h5>`;
+            html += `<div class="code-block">-- В Supabase SQL Editor выполните:
+
+-- 1. Включить RLS для всех таблиц
+ALTER TABLE tarot_user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tarot_daily_cards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tarot_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tarot_answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tarot_reviews ENABLE ROW LEVEL SECURITY;
+
+-- 2. Создать политики для анонимного доступа
+CREATE POLICY "Allow anonymous access to tarot_user_profiles" ON tarot_user_profiles
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow anonymous access to tarot_daily_cards" ON tarot_daily_cards
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow anonymous access to tarot_questions" ON tarot_questions
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow anonymous access to tarot_answers" ON tarot_answers
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow anonymous access to tarot_reviews" ON tarot_reviews
+  FOR ALL TO anon USING (true) WITH CHECK (true);</div>`;
+
+            content.innerHTML = html;
+            panel.classList.remove('hidden');
         }
 
         // Обработчики событий
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('testSupabase').addEventListener('click', async () => {
-                try {
-                    await testSupabaseConnection();
-                    showResult('✅ Supabase тест пройден', 'Подключение к базе данных работает!', 'success');
-                } catch (error) {
-                    showResult('❌ Ошибка Supabase', error.message, 'error');
-                }
+            document.getElementById('testConnection').addEventListener('click', testConnection);
+            document.getElementById('checkTables').addEventListener('click', checkTables);
+            document.getElementById('testInsert').addEventListener('click', testInsert);
+            document.getElementById('checkRLS').addEventListener('click', checkRLS);
+            document.getElementById('runFullDiagnostic').addEventListener('click', runFullDiagnostic);
+            
+            document.getElementById('clearLogs').addEventListener('click', () => {
+                document.getElementById('logContainer').innerHTML = '';
+                document.getElementById('solutionPanel').classList.add('hidden');
+                logger.info('Логи очищены');
             });
 
-            document.getElementById('testCards').addEventListener('click', async () => {
-                try {
-                    const result = await testCardsLoading();
-                    showResult('✅ Карты загружены', `Найдено ${result.cardsCount} карт. Изображения загружаются корректно.`, 'success');
-                } catch (error) {
-                    showResult('❌ Ошибка загрузки карт', error.message, 'error');
-                }
-            });
-
-            document.getElementById('testDatabase').addEventListener('click', async () => {
-                try {
-                    await testDatabase();
-                    showResult('✅ База данных работает', 'CRUD операции выполняются успешно!', 'success');
-                } catch (error) {
-                    showResult('❌ Ошибка базы данных', error.message, 'error');
-                }
-            });
-
-            document.getElementById('runAllTests').addEventListener('click', runAllTests);
+            // Обновляем статус при изменении полей
+            document.getElementById('supabaseKey').addEventListener('input', updateStatus);
+            
+            updateStatus();
+            logger.info('Диагностика готова к работе');
         });
 
         // Экспорт для консоли
-        window.FinalCheck = {
-            runAllTests,
-            testSupabaseConnection,
-            testCardsLoading,
-            testDatabase,
-            testMainApp
+        window.SupabaseDiagnostic = {
+            testConnection,
+            checkTables,
+            testInsert,
+            checkRLS,
+            runFullDiagnostic,
+            supabaseClient: () => supabaseClient
         };
-
-        console.log('🎉 Финальная проверка готова!');
-        console.log('Используйте кнопку "Запустить все тесты" или FinalCheck.runAllTests() в консоли');
     </script>
 </body>
 </html>
