@@ -37,7 +37,6 @@ let spreadAnimationContainer, spreadIntroText, spreadCardsContainer, spreadCards
 let spreadAnswerContainer, spreadAnswerText;
 
 // 🔮 ВРЕМЕННАЯ СИМУЛЯЦИЯ ИИ-ОТВЕТА
-const simulatedAiText = "Глубокое погружение в энергии дня показывает, что перед вами открываются новые возможности для творчества и самовыражения. Используйте этот период для развития своих скрытых талантов и проявления уникальности. Избегайте сомнений и смело идите вперед, доверяя своей интуиции. Сегодняшний день благоприятен для начала новых проектов и установления гармоничных отношений с окружающими. Помните, что истинная сила исходит изнутри, и, проявляя ее, вы сможете преодолеть любые препятствия.";
 
 // 📝 РАНДОМНЫЕ ТЕКСТЫ ПЕРЕД ИИ-ИНТЕРПРЕТАЦИЕЙ
 const preInterpretationPhrases = [
@@ -142,7 +141,7 @@ async function saveAppState() {
                 // Fallback к старой логике
                 await window.TarotDB.updateUserProfile(getUserId(), {
                     last_card_day: appState.lastCardDate,
-                    total_questions: appState.questionsUsed,
+                    questions_used: appState.questionsUsed, // Исправлено с total_questions на questions_used
                     is_subscribed: appState.isPremium,
                     free_predictions_left: Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed)
                 });
@@ -994,7 +993,7 @@ async function handleDailyCardClick() {
         } catch (error) {
             console.error('❌ Ошибка генерации интерпретации карты дня:', error);
             // Fallback к локальной интерпретации
-            interpretationText = randomCard.description || simulatedAiText;
+            interpretationText = randomCard.description || 'Карта показывает важную информацию для размышления';
         }
         
         await typeText(aiInterpretationTextElement, interpretationText);
@@ -1004,6 +1003,23 @@ async function handleDailyCardClick() {
             afterDailyCardBanner?.classList.remove('hidden');
             afterDailyCardBanner?.classList.add('show');
         }, 500);
+
+        // Сохраняем карту дня в Supabase
+        try {
+            if (window.TarotDB && window.TarotDB.isConnected()) {
+                const cardData = {
+                    id: randomCard.id,
+                    name: randomCard.name,
+                    image: randomCard.displayImage,
+                    description: randomCard.description,
+                    interpretation: interpretationText
+                };
+                await window.TarotDB.saveDailyCard(getUserId(), cardData);
+                console.log('✅ Карта дня сохранена в Supabase');
+            }
+        } catch (error) {
+            console.error('❌ Ошибка сохранения карты дня:', error);
+        }
 
         // Сохраняем в историю
         await addToHistory('daily-card', randomCard.name, interpretationText);
@@ -1210,7 +1226,7 @@ async function handleAskQuestion() {
                 console.error('❌ Ошибка генерации предсказания:', error);
                 // Fallback к локальной генерации
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
             }
             
             // Печатаем текст
@@ -1233,6 +1249,25 @@ async function handleAskQuestion() {
                 appState.questionsUsed++;
                 await saveAppState();
                 updateQuestionsCounter();
+            }
+            
+            // Сохраняем вопрос и ответ в Supabase
+            try {
+                if (window.TarotDB && window.TarotDB.isConnected()) {
+                    const savedQuestion = await window.TarotDB.saveQuestion(getUserId(), question);
+                    if (savedQuestion && savedQuestion.id) {
+                        const cardData = {
+                            id: randomCard.id,
+                            name: randomCard.name,
+                            image: randomCard.displayImage,
+                            description: randomCard.description
+                        };
+                        await window.TarotDB.saveAnswer(savedQuestion.id, cardData, answer);
+                        console.log('✅ Вопрос и ответ сохранены в Supabase');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Ошибка сохранения вопроса и ответа:', error);
             }
             
             // Сохраняем в историю
@@ -1387,7 +1422,7 @@ async function handleClarifyingQuestion() {
             
             // Формируем ответ
             const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-            const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || simulatedAiText}`;
+            const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
             
             // Печатаем текст
             if (questionAnswerText) {
@@ -1725,18 +1760,18 @@ async function addToHistory(type, title, content) {
     try {
         if (window.TarotDB && window.TarotDB.isConnected()) {
             console.log('💾 Сохранение чтения в Supabase...');
-            // Сохраняем в Supabase через универсальный метод saveReading
-            const readingData = {
-                user_id: telegramId,
-                type: type,
-                title: title,
-                content: content,
-                cards: [], // В будущем можно добавить информацию о картах
-                timestamp: new Date().toISOString()
-            };
             
-            await window.TarotDB.saveReading(readingData);
-            console.log('✅ Чтение сохранено в Supabase:', type);
+            // Сохраняем в зависимости от типа записи
+            if (type === 'daily-card') {
+                // Карта дня уже сохранена в handleDailyCardClick, не дублируем
+                console.log('✅ Карта дня уже сохранена');
+            } else if (type === 'question' || type === 'clarifying-question') {
+                // Сохраняем вопрос через saveQuestion
+                await window.TarotDB.saveQuestion(telegramId, title);
+                console.log('✅ Вопрос сохранен в Supabase:', type);
+            } else {
+                console.log('ℹ️ Тип записи не требует отдельного сохранения:', type);
+            }
         } else {
             console.log('📱 TarotDB недоступен для сохранения чтения, используем только localStorage');
         }
@@ -2074,42 +2109,6 @@ function updateSubscriptionStatus(isPremium = false) {
     }
 }
 
-async function handlePremiumTestToggle() {
-    const isPremium = premiumTestToggle.checked;
-    const userId = getTelegramUserId();
-
-    try {
-        // Если TarotDB подключен, обновляем профиль пользователя
-        if (window.TarotDB && window.TarotDB.isConnected()) {
-            // Сначала проверяем существование профиля
-            let userProfile = await window.TarotDB.getUserProfile(userId);
-            
-            // Если профиль не существует, создаем его
-            if (!userProfile) {
-                console.log('🆕 Создаем новый профиль пользователя');
-                userProfile = await window.TarotDB.createUserProfile(userId, {
-                    username: getTelegramUserName(),
-                    is_subscribed: false
-                });
-            }
-
-            // Обновляем профиль
-            await window.TarotDB.updateUserProfile(userId, {
-                is_subscribed: isPremium
-            });
-        }
-
-        // Обновляем локальное состояние
-        appState.isPremium = isPremium;
-        await saveAppState();
-        updateSubscriptionStatus(isPremium);
-        updateQuestionsCounter();
-        showMessage(`Режим изменен на ${isPremium ? 'Premium' : 'Базовый'}`, 'info');
-    } catch (error) {
-        console.error('❌ Ошибка обновления статуса Premium:', error);
-        showMessage('Не удалось обновить статус Premium', 'error');
-    }
-}
 
 async function handlePremiumPurchase() {
     const userId = getTelegramUserId();
@@ -2419,8 +2418,6 @@ function setupEventListeners() {
     const premiumBuyBtn = document.getElementById('premiumBuyBtn');
     premiumBuyBtn?.addEventListener('click', handlePremiumPurchase);
 
-    // Test Toggle
-    premiumTestToggle?.addEventListener('change', handlePremiumTestToggle);
     
     // Расклады
     spreadsGrid?.addEventListener('click', (e) => {
