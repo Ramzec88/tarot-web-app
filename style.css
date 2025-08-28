@@ -1784,3 +1784,35 @@ input:checked + .slider:before {
 #cardImage {
   display: none !important;
 }
+
+/* ===== АНИМАЦИЯ ЗАГРУЗКИ ПРЕДСКАЗАНИЙ ===== */
+.prediction-loading {
+    text-align: center;
+    padding: 20px;
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.6); /* Бледнее основного текста */
+    font-size: 16px;
+    min-height: 1.5em;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.loading-text::after {
+    content: '|';
+    animation: typing-cursor 1s infinite;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes typing-cursor {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Стили для разных контейнеров */
+.ai-answer-container .loading-text,
+.question-answer-container .loading-text,
+.spread-answer-container .loading-text {
+    color: rgba(255, 255, 255, 0.6); /* Бледнее основного текста предсказания */
+}
