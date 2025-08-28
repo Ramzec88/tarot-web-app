@@ -47,6 +47,17 @@ const preInterpretationPhrases = [
     "Погружаемся в глубины мудрости Таро, чтобы узнать ваше будущее..."
 ];
 
+// 🔮 МИСТИЧЕСКИЕ ФРАЗЫ ДЛЯ АНИМАЦИИ ЗАГРУЗКИ
+const mysticalLoadingPhrases = [
+    "Карты шепчут свои секреты...",
+    "Расшифровываем послание Вселенной...",
+    "Звезды складываются в предсказание...",
+    "Древние силы открывают будущее...",
+    "Магия Таро творит ваш ответ...",
+    "Мистические энергии собираются воедино...",
+    "Тайные символы раскрывают смысл..."
+];
+
 // 🔮 РАНДОМНЫЕ ТЕКСТЫ ДЛЯ ВОПРОСОВ
 const questionPreInterpretationPhrases = [
     "Сейчас почувствуем, что скажут карты...",
@@ -65,6 +76,60 @@ const mysticalNames = [
     "Ночной путешественник", "Следопыт судьбы", "Странник миров", "Мистик",
     "Душа-скиталец", "Познающий", "Вечный странник", "Искатель знаний"
 ];
+
+// 🔧 УТИЛИТЫ
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 📝 АНИМАЦИЯ ПЕЧАТАЮЩЕГОСЯ ТЕКСТА
+let typingAnimationActive = false;
+
+async function showTypingAnimation(element, phrases) {
+    if (typingAnimationActive) return;
+    typingAnimationActive = true;
+    
+    let currentPhraseIndex = 0;
+    
+    while (currentPhraseIndex < phrases.length && typingAnimationActive) {
+        const phrase = phrases[currentPhraseIndex];
+        element.innerHTML = '';
+        
+        // Печатаем по одной букве
+        for (let i = 0; i < phrase.length && typingAnimationActive; i++) {
+            element.innerHTML = phrase.substring(0, i + 1);
+            await sleep(50); // 50мс между буквами
+        }
+        
+        if (typingAnimationActive) {
+            await sleep(1500); // Пауза между фразами
+            currentPhraseIndex++;
+        }
+    }
+    
+    typingAnimationActive = false;
+}
+
+function stopTypingAnimation() {
+    typingAnimationActive = false;
+}
+
+// 🔮 ПОКАЗ АНИМАЦИИ ЗАГРУЗКИ ПРЕДСКАЗАНИЯ
+function showPredictionLoadingAnimation(container) {
+    container.innerHTML = `
+        <div class="prediction-loading">
+            <div class="loading-text"></div>
+        </div>
+    `;
+    
+    const textElement = container.querySelector('.loading-text');
+    showTypingAnimation(textElement, mysticalLoadingPhrases);
+}
+
+function hidePredictionLoadingAnimation(container, finalText) {
+    stopTypingAnimation();
+    container.innerHTML = finalText;
+}
 
 // 🎴 КОНФИГУРАЦИЯ РАСКЛАДОВ
 const SPREAD_CONFIGS = {
@@ -1212,6 +1277,9 @@ async function handleAskQuestion() {
             questionAnswerContainer?.classList.remove('hidden');
             questionAnswerContainer?.classList.add('show');
             
+            // Показываем анимацию загрузки
+            showPredictionLoadingAnimation(questionAnswerContainer);
+            
             // Генерируем ответ через API
             let answer;
             try {
@@ -1226,6 +1294,13 @@ async function handleAskQuestion() {
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
                 answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
             }
+            
+            // Убираем анимацию загрузки и показываем результат
+            questionAnswerContainer.innerHTML = `
+                <h3 class="ai-interpretation-title">🔮 Ответ карт</h3>
+                <div class="ai-interpretation-text" id="questionAnswerText"></div>
+            `;
+            questionAnswerText = document.getElementById('questionAnswerText');
             
             // Печатаем текст
             if (questionAnswerText) {
@@ -1418,6 +1493,9 @@ async function handleClarifyingQuestion() {
             questionAnswerContainer?.classList.remove('hidden');
             questionAnswerContainer?.classList.add('show');
             
+            // Показываем анимацию загрузки
+            showPredictionLoadingAnimation(questionAnswerContainer);
+            
             // Генерируем предсказание через API
             let answer;
             try {
@@ -1430,6 +1508,13 @@ async function handleClarifyingQuestion() {
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
                 answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
             }
+            
+            // Убираем анимацию загрузки и показываем результат
+            questionAnswerContainer.innerHTML = `
+                <h3 class="ai-interpretation-title">🔮 Уточняющий ответ</h3>
+                <div class="ai-interpretation-text" id="questionAnswerText"></div>
+            `;
+            questionAnswerText = document.getElementById('questionAnswerText');
             
             // Печатаем текст
             if (questionAnswerText) {
@@ -1700,6 +1785,9 @@ async function showSpreadInterpretation(spreadType) {
     spreadAnswerContainer?.classList.remove('hidden');
     spreadAnswerContainer?.classList.add('show');
     
+    // Показываем анимацию загрузки
+    showPredictionLoadingAnimation(spreadAnswerContainer);
+    
     // Собираем карты для API запроса
     const selectedCards = [];
     cardPositions?.forEach((cardPosition) => {
@@ -1736,6 +1824,13 @@ async function showSpreadInterpretation(spreadType) {
         
         interpretation += "Это ваш персональный расклад. Прислушайтесь к своей интуиции при интерпретации символов.";
     }
+    
+    // Убираем анимацию загрузки и показываем результат
+    spreadAnswerContainer.innerHTML = `
+        <h3 class="ai-interpretation-title">🔮 Толкование расклада</h3>
+        <div class="ai-interpretation-text" id="spreadAnswerText"></div>
+    `;
+    spreadAnswerText = document.getElementById('spreadAnswerText');
     
     // Печатаем интерпретацию
     if (spreadAnswerText) {
