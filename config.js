@@ -1,7 +1,6 @@
 // config.js - Исправленная конфигурация для Шёпот карт
 // ========================================================================
 
-console.log('🔧 Загрузка config.js...');
 
 // 🌐 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ КОНФИГУРАЦИИ
 window.SUPABASE_CONFIG = null;
@@ -25,7 +24,6 @@ window.SPREADS_CONFIG = {};
 
 // 🚀 ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
 async function initializeConfig() {
-    console.log('🔧 Инициализация конфигурации...');
 
     try {
         // 1. Сначала устанавливаем fallback конфигурации
@@ -37,7 +35,6 @@ async function initializeConfig() {
         // 3. Настраиваем дополнительные конфигурации
         setupAdditionalConfigs();
         
-        console.log('✅ Конфигурация успешно инициализирована');
         return true;
         
     } catch (error) {
@@ -69,7 +66,6 @@ async function loadConfigFromAPI() {
 
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ Конфигурация загружена из API');
 
             // Проверяем успешность ответа
             if (data.success === false) {
@@ -105,7 +101,6 @@ function setupConfigFromData(data) {
             url: data.supabase.url,
             anonKey: data.supabase.anonKey
         };
-        console.log('✅ Supabase конфигурация загружена:', data.supabase.url);
     } else {
         console.warn('⚠️ Supabase конфигурация неполная');
     }
@@ -119,7 +114,6 @@ function setupConfigFromData(data) {
             timeout: 10000,
             retryAttempts: 3
         };
-        console.log('✅ API конфигурация загружена');
     }
 
     // Устанавливаем n8n конфигурацию
@@ -131,7 +125,6 @@ function setupConfigFromData(data) {
             timeout: data.n8n.timeout || 30000,
             fallbackEnabled: data.n8n.fallbackEnabled !== false
         };
-        console.log('✅ N8N конфигурация загружена');
     }
 
     // Устанавливаем конфигурацию приложения
@@ -143,13 +136,11 @@ function setupConfigFromData(data) {
             version: data.app.version || '1.0.0',
             supportBot: data.app.supportBot || '@Helppodarok_bot'
         };
-        console.log('✅ App конфигурация загружена');
     }
 }
 
 // 🛡️ УСТАНОВКА FALLBACK КОНФИГУРАЦИЙ
 function setupFallbackConfigs() {
-    console.log('🛡️ Установка fallback конфигураций...');
 
     // Fallback Supabase конфигурация (рабочие значения)
     if (!window.SUPABASE_CONFIG) {
@@ -196,13 +187,11 @@ function setupFallbackConfigs() {
         window.SPREADS_CONFIG = getDefaultSpreads();
     }
 
-    console.log('✅ Fallback конфигурации установлены');
 }
 
 // 🎨 ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
 function setupAdditionalConfigs() {
     // Здесь можно добавить дополнительную логику настройки
-    console.log('🎨 Настройка дополнительных конфигураций...');
 }
 
 // 📋 ПОЛУЧЕНИЕ КОНФИГУРАЦИИ ПО УМОЛЧАНИЮ
@@ -459,9 +448,6 @@ window.debugConfig = debugConfig;
 
 // 🏁 АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ - запускаем немедленно
 (async () => {
-    console.log('🏁 Инициализирую конфигурацию...');
     await initializeConfig();
-    console.log('✅ Конфигурация готова');
 })();
 
-console.log('✅ Config.js загружен');
