@@ -1,1786 +1,2999 @@
-/* style.css - Очищенные стили для Tarot Web App */
+// ========================================================================
+// ИСПРАВЛЕННЫЙ SCRIPT.JS - Шёпот карт (с корректной загрузкой изображений)
+// ========================================================================
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+// 🌟 СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+let appState = {
+    dailyCardUsed: false,
+    lastCardDate: null,
+    questionsUsed: 0,
+    isPremium: false,
+    freeQuestionsLimit: 3,
+    history: [],
+    reviews: []
+};
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-    color: #fff;
-    min-height: 100vh;
-    min-height: 100svh; /* Use small viewport height for mobile keyboards */
-    padding: 10px;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    overflow-x: hidden;
+// 📦 ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+let allCards = [];
+let isInitialized = false;
+let currentRating = 0;
+let initAppCalled = false; // Prevent double initialization
 
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-}
+// 🎯 DOM ЭЛЕМЕНТЫ
+let mainNav, secondaryNav, tabContents;
+let tarotCard, cardBack, cardFront;
+let cardInfoAfterFlip, flippedCardName, cardIntroText;
+let aiAnswerContainer, aiInterpretationTitle, aiInterpretationTextElement;
+let afterDailyCardBanner, askMoreQuestionsBtn, premiumBannerBtn;
+let starAnimationContainer, questionsLeftElement;
+let questionTextarea, submitQuestionBtn, charCounter;
+let loadingState, questionAnswerContainer, questionAnswerText;
+let premiumTestToggle, premiumTestLabel;
+let clarifyingQuestionContainer, clarifyingQuestionTextarea, submitClarifyingQuestionBtn, clarifyingQuestionWarning;
+let questionAnimationContainer, questionStarAnimationContainer, questionIntroText;
+let questionCardContainer, questionTarotCard, questionCardInfoAfterFlip, questionFlippedCardName;
+let spreadsGrid, spreadResult, spreadResultTitle, backToSpreadsBtn;
+let spreadAnimationContainer, spreadIntroText, spreadCardsContainer, spreadCardsLayout;
+let spreadAnswerContainer, spreadAnswerText;
 
-.container {
-    max-width: 400px;
-    width: calc(100% - 20px);
-    margin: 0 auto;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    min-height: calc(100vh - 20px);
-    overflow-y: auto;
-    flex-shrink: 0;
-}
+// 🔮 ВРЕМЕННАЯ СИМУЛЯЦИЯ ИИ-ОТВЕТА
 
-/* ===== HEADER ===== */
-.header {
-    text-align: center;
-    margin-bottom: 15px;
-    padding: 15px 16px 0px 16px;
-}
+// 📝 РАНДОМНЫЕ ТЕКСТЫ ПЕРЕД ИИ-ИНТЕРПРЕТАЦИЕЙ
+const preInterpretationPhrases = [
+    "Сейчас узнаем, что ждет тебя сегодня...",
+    "Приоткрываем завесу тайны дня...",
+    "Давайте расшифруем послание Вселенной...",
+    "Готовы к предсказанию, которое раскроет ваш потенциал?",
+    "Погружаемся в глубины мудрости Таро, чтобы узнать ваше будущее..."
+];
 
-.logo {
-    font-size: 24px;
-    font-weight: bold;
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 2px;
-}
+// 🔮 РАНДОМНЫЕ ТЕКСТЫ ДЛЯ ВОПРОСОВ
+const questionPreInterpretationPhrases = [
+    "Сейчас почувствуем, что скажут карты...",
+    "Карты готовятся дать вам ответ...",
+    "Тайные силы собираются воедино...",
+    "Вселенная приготовила для вас послание...",
+    "Энергии карт концентрируются на вашем вопросе...",
+    "Мистические символы раскрывают свои секреты..."
+];
 
-.subtitle {
-    color: #b0b0b0;
-    font-size: 13px;
-    margin-bottom: 4px;
-}
+// 👤 МИСТИЧЕСКИЕ ИМЕНА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ
+const mysticalNames = [
+    "Странник", "Путник", "Искатель", "Таинственный гость", "Звездный путешественник",
+    "Мистический странник", "Ищущий истину", "Странствующий мудрец", "Тайный искатель",
+    "Лунный путник", "Звездочет", "Хранитель тайн", "Мудрый странник", "Искатель света",
+    "Ночной путешественник", "Следопыт судьбы", "Странник миров", "Мистик",
+    "Душа-скиталец", "Познающий", "Вечный странник", "Искатель знаний"
+];
 
-.subscription-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 4px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    font-size: 12px;
-}
-
-.status-icon {
-    margin-right: 6px;
-    font-size: 14px;
-}
-
-.status-text {
-    color: #b0b0b0;
-}
-
-.subscription-status.premium {
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    color: #1a1a2e;
-}
-
-.subscription-status.premium .status-text {
-    color: #1a1a2e;
-    font-weight: bold;
-}
-
-/* ===== НАВИГАЦИЯ ===== */
-.nav-tabs {
-    display: flex;
-    margin: 0 16px 8px 16px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 4px;
-    gap: 2px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    flex-wrap: nowrap;
-    position: relative;
-    z-index: 10;
-}
-
-.nav-tabs::-webkit-scrollbar {
-    display: none;
-}
-
-.nav-tabs-secondary {
-    display: flex;
-    margin: 0 16px 20px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 15px;
-    padding: 4px;
-    gap: 2px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    flex-wrap: nowrap;
-    width: calc(100% - 32px);
-    align-self: center;
-    position: relative;
-    z-index: 9;
-}
-
-.nav-tabs-secondary::-webkit-scrollbar {
-    display: none;
-}
-
-.nav-tab {
-    flex: 1;
-    padding: 10px 8px;
-    text-align: center;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-    min-width: fit-content;
-    background: transparent;
-    color: #b0b0b0;
-    
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    box-sizing: border-box;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-basis: 0;
-    flex-grow: 1;
-    max-width: none;
-}
-
-.nav-tab:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    transform: none; 
-}
-
-.nav-tab.active {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    color: #fff;
-}
-
-.nav-tab.secondary {
-    background: rgba(255, 255, 255, 0.05);
-    font-size: 12px;
-    padding: 8px 12px;
-}
-
-.nav-tab.secondary:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
-}
-
-.nav-tab.secondary.active {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    color: #fff;
-}
-
-.nav-tab.premium-tab {
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    color: #1a1a2e;
-    font-weight: bold;
-    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-}
-
-.nav-tab.premium-tab:hover {
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
-    transform: none; 
-}
-
-.nav-tab.premium-tab.active {
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    color: #1a1a2e;
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.6);
-}
-
-/* ===== TAB CONTENT ===== */
-.tab-content {
-    display: none;
-    animation: fadeIn 0.3s ease;
-    overflow-y: visible; 
-    padding: 16px;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* ===== CARDS ===== */
-.card-container {
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-.tarot-card {
-    position: relative;
-    width: 180px;
-    height: 270px;
-    margin: 0 auto 20px;
-    cursor: pointer;
-    transition: all 0.5s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border: 2px solid #ffd700;
-    border-radius: 15px;
-    overflow: hidden;
-    
-    /* 3D-контекст на контейнере карты */
-    perspective: 1000px;
-    -webkit-perspective: 1000px;
-    -moz-perspective: 1000px;
-    transform-style: preserve-3d;
-    -webkit-transform-style: preserve-3d;
-    -moz-transform-style: preserve-3d;
-}
-
-.tarot-card.flipped {
-    transform: rotateY(180deg);
-    -webkit-transform: rotateY(180deg);
-    -moz-transform: rotateY(180deg);
-    animation: cardFlip 0.8s ease-in-out forwards;
-    -webkit-animation: cardFlip 0.8s ease-in-out forwards;
-    -moz-animation: cardFlip 0.8s ease-in-out forwards;
-}
-
-@keyframes cardFlip {
-    0% { 
-        transform: rotateY(0deg);
-        -webkit-transform: rotateY(0deg);
-        -moz-transform: rotateY(0deg);
+// 🎴 КОНФИГУРАЦИЯ РАСКЛАДОВ
+const SPREAD_CONFIGS = {
+    success: {
+        name: "Расклад «Путь к успеху»",
+        description: "Показывает препятствия и возможности на пути к цели",
+        cards: [
+            { position: "top", label: "Цель", description: "Чего вы хотите достичь" },
+            { position: "left", label: "Препятствие", description: "Что мешает вам" },
+            { position: "center", label: "Настоящее", description: "Ваше текущее положение" },
+            { position: "right", label: "Помощь", description: "Что поможет вам" },
+            { position: "bottom", label: "Результат", description: "К чему это приведет" }
+        ],
+        layout: "success-layout"
+    },
+    love: {
+        name: "Расклад «Отношения»",
+        description: "Раскрывает динамику отношений между партнерами",
+        cards: [
+            { position: "me", label: "Вы", description: "Ваши чувства и состояние" },
+            { position: "partner", label: "Партнер", description: "Чувства и состояние партнера" },
+            { position: "relationship", label: "Отношения", description: "Общая динамика и перспективы" }
+        ],
+        layout: "love-layout"
+    },
+    money: {
+        name: "Расклад «Финансы»",
+        description: "Анализирует финансовые перспективы и денежные потоки",
+        cards: [
+            { position: "current", label: "Текущие финансы", description: "Ваше финансовое положение сейчас" },
+            { position: "opportunities", label: "Возможности", description: "Способы улучшить финансы" },
+            { position: "advice", label: "Совет", description: "Как управлять деньгами" },
+            { position: "future", label: "Будущее", description: "Финансовые перспективы" }
+        ],
+        layout: "money-layout"
+    },
+    growth: {
+        name: "Расклад «Личный рост»", 
+        description: "Помогает в развитии личности и раскрытии потенциала",
+        cards: [
+            { position: "past", label: "Прошлое", description: "Что сформировало вас" },
+            { position: "present", label: "Настоящее", description: "Ваше текущее состояние" },
+            { position: "potential", label: "Потенциал", description: "Ваши скрытые возможности" },
+            { position: "future", label: "Будущее", description: "Куда ведет ваш путь развития" }
+        ],
+        layout: "growth-layout"
     }
-    50% { 
-        transform: rotateY(90deg);
-        -webkit-transform: rotateY(90deg);
-        -moz-transform: rotateY(90deg);
-    }
-    100% { 
-        transform: rotateY(180deg);
-        -webkit-transform: rotateY(180deg);
-        -moz-transform: rotateY(180deg);
+};
+
+// ========================================================================
+// 💾 УПРАВЛЕНИЕ СОСТОЯНИЕМ
+// ========================================================================
+
+async function saveAppState() {
+    try {
+        console.log('🔄 saveAppState: проверка TarotDB...', {
+            tarotDBExists: !!window.TarotDB,
+            isConnected: window.TarotDB ? window.TarotDB.isConnected() : false,
+            connectionStatus: window.TarotDB ? window.TarotDB.getStatus() : null
+        });
+        
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            console.log('💾 Сохранение в Supabase через TarotDB...');
+            // Сохранение в базе данных
+            // Используем новую логику синхронизации если доступна
+            if (window.TarotDB.syncUserDataToSupabase) {
+                await window.TarotDB.syncUserDataToSupabase(getUserId(), {
+                    questionsUsed: appState.questionsUsed,
+                    isPremium: appState.isPremium,
+                    dailyCardUsed: appState.dailyCardUsed,
+                    lastCardDay: appState.lastCardDate
+                });
+            } else {
+                // Fallback к старой логике
+                await window.TarotDB.updateUserProfile(getUserId(), {
+                    last_card_day: appState.lastCardDate,
+                    questions_used: appState.questionsUsed, // Исправлено с total_questions на questions_used
+                    is_subscribed: appState.isPremium,
+                    free_predictions_left: Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed)
+                });
+            }
+            console.log('✅ Состояние сохранено в Supabase');
+        } else {
+            console.log('📱 TarotDB недоступен, используем localStorage');
+            // Резервное сохранение в localStorage
+            saveAppStateLocally();
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сохранения состояния:', error);
+        // Fallback к localStorage при ошибке
+        saveAppStateLocally();
     }
 }
 
-@-webkit-keyframes cardFlip {
-    0% { -webkit-transform: rotateY(0deg); }
-    50% { -webkit-transform: rotateY(90deg); }
-    100% { -webkit-transform: rotateY(180deg); }
+function getUserId() {
+    const telegramId = getTelegramUserId();
+    // Обеспечиваем, что возвращается чистая строка
+    const userId = telegramId ? String(telegramId).trim() : 'anonymous_user';
+    console.log('🆔 getUserId:', { telegramId, userId: userId });
+    return userId;
 }
 
-@-moz-keyframes cardFlip {
-    0% { -moz-transform: rotateY(0deg); }
-    50% { -moz-transform: rotateY(90deg); }
-    100% { -moz-transform: rotateY(180deg); }
-}
-
-.card-back, .card-front {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    box-sizing: border-box;
-    
-    /* Убираем backface-visibility для предотвращения проблем с рендерингом */
-    /* backface-visibility: hidden; */
-    /* -webkit-backface-visibility: hidden; */
-    /* -moz-backface-visibility: hidden; */
-}
-
-.card-back {
-    transform: rotateY(0deg);
-    -webkit-transform: rotateY(0deg);
-    -moz-transform: rotateY(0deg);
-    background: linear-gradient(145deg, #2d1b69, #4b0082);
-    border-radius: 15px;
-    overflow: hidden;
-    z-index: 1;
-}
-
-.card-front {
-    transform: rotateY(180deg);
-    -webkit-transform: rotateY(180deg);
-    -moz-transform: rotateY(180deg);
-    /* Убираем градиент, чтобы не конфликтовал с background-image */
-    background: transparent;
-    border-radius: 15px;
-    overflow: hidden;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    z-index: 2;
-}
-
-/* Удалено - конфликтующее правило */
-
-.card-image {
-    max-width: 90%;
-    max-height: 90%;
-    object-fit: contain; 
-    border-radius: 10px; 
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-}
-
-.card-symbol {
-    font-size: 50px;
-    margin-bottom: 15px;
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.card-text {
-    font-size: 14px;
-    text-align: center;
-    color: #e0e0e0;
-    line-height: 1.4;
-}
-
-/* Надписи под картой */
-.card-info-after-flip {
-    margin-top: 15px;
-    text-align: center;
-}
-
-.card-name {
-    font-size: 20px;
-    font-weight: bold;
-    color: #ffd700;
-    margin-bottom: 8px;
-}
-
-.card-intro-text {
-    font-size: 15px;
-    color: #a0a0a0;
-    margin-bottom: 20px;
-    line-height: 1.4;
-    font-style: italic;
-}
-
-/* ===== ЗВЕЗДОЧКИ АНИМАЦИЯ (ВНУТРИ КАРТЫ) ===== */
-#starAnimationContainer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 2;
-    overflow: hidden;
-}
-
-.sparkle-star {
-    position: absolute;
-    color: #ffd700;
-    font-size: 20px;
-    opacity: 0;
-    animation: starburst 1.0s forwards;
-    transform: translate(-50%, -50%);
-}
-
-@keyframes starburst {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.5);
-    }
-    50% {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1.2);
-    }
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.8);
+function saveAppStateLocally() {
+    try {
+        localStorage.setItem('tarotAppState', JSON.stringify(appState));
+        console.log('✅ Состояние сохранено локально');
+    } catch (error) {
+        console.error('❌ Ошибка локального сохранения состояния:', error);
     }
 }
 
-/* ===== AI ANSWERS ===== */
-.ai-answer-container {
-    margin-top: 20px;
-    opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-}
-
-.ai-answer-container.hidden {
-    display: none;
-}
-
-.ai-answer-container.show {
-    display: block;
-    opacity: 1;
-}
-
-.ai-answer-box {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 16px;
-    line-height: 1.6;
-    font-size: 14px;
-    position: relative;
-}
-
-.ai-answer-header h4 {
-    color: #ffd700;
-    font-size: 16px;
-    margin-bottom: 8px;
-    display: block;
-    font-weight: bold;
-}
-
-/* Анимация печатания текста */
-.ai-answer-content {
-    white-space: pre-wrap;
-    overflow: hidden;
-    font-family: inherit;
-}
-
-.ai-answer-content.finished-typing {
-    border-right: none;
-    animation: none;
-}
-
-/* ===== БАННЕРЫ ===== */
-.subscription-banner {
-    background: rgba(255, 215, 0, 0.1);
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    border-radius: 15px;
-    padding: 20px;
-    margin-top: 25px; 
-    color: #e0e0e0; 
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    
-    opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-}
-
-.subscription-banner.hidden {
-    display: none;
-}
-
-.subscription-banner.show {
-    display: flex;
-    opacity: 1;
-}
-
-.banner-icon {
-    font-size: 30px;
-    margin-bottom: 10px;
-    color: #ffd700; 
-}
-
-.banner-content h4 {
-    margin: 0 0 10px 0;
-    font-size: 16px;
-    font-weight: bold;
-    color: #ffd700; 
-}
-
-.banner-content p {
-    margin: 0 0 15px 0;
-    font-size: 13px; 
-    line-height: 1.4;
-    color: #b0b0b0; 
-}
-
-.banner-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.banner-btn {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 20px;
-    font-size: 13px; 
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, 0.1); 
-    color: white;
-}
-
-.banner-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-}
-
-.banner-btn.premium {
-    background: linear-gradient(45deg, #667eea, #764ba2); 
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); 
-}
-
-.banner-btn.premium:hover {
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
-}
-
-/* ===== QUESTIONS ===== */
-.questions-left {
-    text-align: center;
-    margin-bottom: 20px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-    font-size: 14px;
-    color: #b0b0b0;
-}
-
-.question-form {
-    margin-bottom: 20px;
-}
-
-.question-form h3 {
-    margin-bottom: 15px;
-    color: #ffd700;
-    text-align: center;
-}
-
-.question-textarea {
-    width: 100%;
-    min-height: 100px;
-    padding: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    font-size: 16px; /* Prevent zoom on iOS */
-    line-height: 1.4;
-    resize: vertical;
-    font-family: inherit;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-}
-
-.question-textarea:focus {
-    outline: none;
-    border-color: rgba(255, 215, 0, 0.5);
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.1);
-}
-
-.question-textarea::placeholder {
-    color: #888;
-}
-
-.char-counter {
-    text-align: right;
-    font-size: 12px;
-    color: #b0b0b0;
-    margin: 5px 0 15px 0;
-}
-
-.question-btn {
-    width: 100%;
-    padding: 12px 20px;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    border: none;
-    border-radius: 10px;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.question-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    transform: translateY(-1px);
-}
-
-.question-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* ===== АНИМАЦИЯ ВОПРОСОВ ===== */
-#questionAnimationContainer {
-    position: relative;
-    width: 100%;
-    margin: 20px 0;
-    text-align: center;
-}
-
-.question-intro-text {
-    font-size: 16px;
-    color: #ffd700;
-    text-align: center;
-    line-height: 1.4;
-    font-style: italic;
-    margin-bottom: 20px;
-}
-
-/* Звездочки для карты вопросов (внутри рубашки) */
-#questionStarAnimationContainer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 2;
-    overflow: hidden;
-}
-
-/* ===== КАРТА ДЛЯ ВОПРОСОВ ===== */
-.question-card-container {
-    position: relative;
-    width: 100%;
-    margin: 20px 0;
-    text-align: center;
-}
-
-.question-card-container .tarot-card {
-    width: 150px;
-    height: 225px;
-    margin: 0 auto 20px;
-}
-
-.question-card-container .card-info-after-flip {
-    margin-top: 15px;
-}
-
-.question-card-container .card-name {
-    font-size: 18px;
-    font-weight: bold;
-    color: #ffd700;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-/* ===== LOADING ===== */
-.loading {
-    text-align: center;
-    padding: 40px 20px;
-}
-
-.magic-sparkles {
-    font-size: 40px;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-}
-
-.magic-messages {
-    margin-top: 20px;
-}
-
-.magic-message {
-    font-size: 14px;
-    color: #b0b0b0;
-    margin: 10px 0;
-    animation: fadeInOut 3s infinite;
-}
-
-.magic-message:nth-child(2) { animation-delay: 1s; }
-.magic-message:nth-child(3) { animation-delay: 2s; }
-
-@keyframes fadeInOut {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-}
-
-/* ===== SPREADS ===== */
-.spreads-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-top: 20px;
-}
-
-.spread-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    position: relative;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.spread-card:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-}
-
-.premium-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    color: #1a1a2e;
-    padding: 4px 8px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: bold;
-}
-
-.spread-icon {
-    font-size: 30px;
-    margin-bottom: 10px;
-}
-
-.spread-name {
-    font-size: 14px;
-    font-weight: bold;
-    color: #ffd700;
-    margin-bottom: 8px;
-}
-
-.spread-description {
-    font-size: 12px;
-    color: #b0b0b0;
-    line-height: 1.3;
-}
-
-/* ===== РЕЗУЛЬТАТЫ РАСКЛАДА ===== */
-.spread-result-container {
-    margin-top: 20px;
-}
-
-.spread-back-button {
-    margin-bottom: 10px;
-}
-
-.spread-result-header {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.back-to-spreads-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    color: #fff;
-    padding: 6px 10px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-#spreadResultTitle {
-    margin: 0;
-    font-size: 20px;
-    color: #ffd700;
-}
-
-.back-to-spreads-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateX(-2px);
-}
-
-.spread-intro-text {
-    font-size: 16px;
-    color: #ffd700;
-    text-align: center;
-    line-height: 1.4;
-    font-style: italic;
-    margin: 20px 0;
-}
-
-/* ===== МАКЕТЫ РАСКЛАДОВ ===== */
-.spread-cards-container {
-    margin: 30px 0;
-    text-align: center;
-}
-
-.spread-cards-layout {
-    position: relative;
-    min-height: 350px;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 15px;
-    padding: 20px 0;
-}
-
-/* Расклад "Путь к успеху" - крестом */
-.spread-cards-layout.success-layout {
-    display: grid;
-    grid-template-areas: 
-        ". top ."
-        "left center right"
-        ". bottom .";
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: repeat(3, 150px);
-    gap: 20px;
-    max-width: 300px;
-    margin: 0 auto;
-    min-height: 450px;
-}
-
-.success-layout .spread-card-position:nth-child(1) { grid-area: top; }
-.success-layout .spread-card-position:nth-child(2) { grid-area: left; }
-.success-layout .spread-card-position:nth-child(3) { grid-area: center; }
-.success-layout .spread-card-position:nth-child(4) { grid-area: right; }
-.success-layout .spread-card-position:nth-child(5) { grid-area: bottom; }
-
-/* Расклад "Отношения" - треугольником */
-.spread-cards-layout.love-layout {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 30px;
-    max-width: 250px;
-    margin: 0 auto;
-    min-height: 400px;
-}
-
-.love-layout .spread-row {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-}
-
-/* Расклад "Финансы" - горизонтально */
-.spread-cards-layout.money-layout {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    flex-wrap: wrap;
-    max-width: 400px;
-    margin: 0 auto;
-    min-height: 200px;
-}
-
-/* Расклад "Личный рост" - вертикально */
-.spread-cards-layout.growth-layout {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    max-width: 150px;
-    margin: 0 auto;
-    min-height: 600px;
-}
-
-/* Карты в раскладе */
-.spread-card-position {
-    position: relative;
-    width: 80px;
-    height: 120px;
-    margin-bottom: 30px; /* Отступ для подписи */
-}
-
-.spread-card-position .tarot-card {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-}
-
-.spread-card-position .card-label {
-    position: absolute;
-    bottom: -25px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 11px;
-    color: #ffd700;
-    text-align: center;
-    white-space: nowrap;
-    font-weight: 500;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-    background: rgba(0, 0, 0, 0.3);
-    padding: 2px 6px;
-    border-radius: 4px;
-    backdrop-filter: blur(5px);
-}
-
-/* ===== HISTORY ===== */
-.history-container {
-    margin-top: 20px;
-}
-
-.history-section-header {
-    text-align: center;
-}
-
-.history-section-header h3 {
-    color: #ffd700;
-    margin-bottom: 5px;
-    text-align: center;
-}
-
-.history-notice {
-    color: #888;
-    font-size: 0.8rem;
-    text-align: center;
-    margin: 0 0 20px 0;
-    font-style: italic;
-}
-
-.history-empty {
-    text-align: center;
-    padding: 40px 20px;
-    color: #666;
-}
-
-.empty-icon {
-    font-size: 40px;
-    display: block;
-    margin-bottom: 15px;
-}
-
-.history-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 10px;
-}
-
-.history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.history-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.delete-history-item {
-    background: none;
-    border: none;
-    color: #ff6b6b;
-    font-size: 16px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: background-color 0.3s ease;
-}
-
-.delete-history-item:hover {
-    background-color: rgba(255, 107, 107, 0.1);
-}
-
-.delete-history-item:active {
-    transform: scale(0.95);
-}
-
-.history-type {
-    font-size: 12px;
-    color: #ffd700;
-    font-weight: bold;
-}
-
-.history-date {
-    font-size: 11px;
-    color: #888;
-}
-
-.history-title {
-    font-size: 14px;
-    font-weight: bold;
-    color: #fff;
-    margin-bottom: 5px;
-}
-
-.history-content {
-    font-size: 13px;
-    color: #b0b0b0;
-    line-height: 1.4;
-}
-
-/* ===== REVIEWS ===== */
-.reviews-container {
-    margin-top: 20px;
-}
-
-.reviews-header h3 {
-    color: #ffd700;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.review-form {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-.review-form h4 {
-    color: #ffd700;
-    margin-bottom: 10px;
-    font-size: 14px;
-}
-
-.rating-input {
-    margin-bottom: 15px;
-}
-
-.stars {
-    display: flex;
-    gap: 5px;
-    justify-content: center;
-}
-
-.star {
-    font-size: 24px;
-    color: #444;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    user-select: none;
-}
-
-.star:hover,
-.star.active {
-    color: #ffd700;
-    transform: scale(1.1);
-}
-
-.review-textarea {
-    width: 100%;
-    min-height: 80px;
-    padding: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    font-size: 14px;
-    resize: vertical;
-    margin-bottom: 15px;
-    font-family: inherit;
-}
-
-.review-textarea::placeholder {
-    color: #888;
-}
-
-.submit-review-btn {
-    width: 100%;
-    padding: 10px 20px;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.submit-review-btn:hover {
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    transform: translateY(-1px);
-}
-
-.reviews-list {
-    margin-top: 20px;
-}
-
-.reviews-empty {
-    text-align: center;
-    padding: 40px 20px;
-    color: #666;
-}
-
-.review-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease;
-}
-
-.review-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.review-item.expanded {
-    min-height: auto;
-}
-
-.review-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-}
-
-.review-user-info {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.review-username {
-    font-size: 14px;
-    font-weight: bold;
-    color: #ffd700;
-}
-
-.review-rating {
-    display: flex;
-    gap: 2px;
-}
-
-.review-star {
-    color: #666;
-    font-size: 16px;
-}
-
-.review-star.filled {
-    color: #ffd700;
-}
-
-.review-date {
-    font-size: 11px;
-    color: #888;
-}
-
-.review-text {
-    font-size: 14px;
-    color: #b0b0b0;
-    line-height: 1.4;
-    flex-grow: 1;
-    margin-bottom: 5px;
-}
-
-.review-expand-hint {
-    font-size: 12px;
-    color: #888;
-    font-style: italic;
-    text-align: center;
-    margin-top: auto;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.review-item[style*="cursor: pointer"] .review-expand-hint:hover {
-    color: #ffd700;
-}
-
-/* ===== PREMIUM ===== */
-.premium-container {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.premium-header {
-    margin-bottom: 30px;
-}
-
-.premium-icon {
-    font-size: 50px;
-    margin-bottom: 15px;
-}
-
-.premium-header h2 {
-    color: #ffd700;
-    margin-bottom: 10px;
-    font-size: 22px;
-}
-
-.premium-header p {
-    color: #b0b0b0;
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.premium-features {
-    margin-bottom: 30px;
-}
-
-.feature-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    margin-bottom: 20px;
-    text-align: left;
-}
-
-.feature-icon {
-    font-size: 24px;
-    margin-top: 2px;
-    flex-shrink: 0;
-}
-
-.feature-text strong {
-    color: #ffd700;
-    font-size: 14px;
-    display: block;
-    margin-bottom: 5px;
-}
-
-.feature-text p {
-    color: #b0b0b0;
-    font-size: 13px;
-    line-height: 1.4;
-    margin: 0;
-}
-
-.premium-pricing {
-    margin-bottom: 20px;
-}
-
-.price-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid #ffd700;
-    border-radius: 15px;
-    padding: 25px;
-    position: relative;
-    max-width: 280px;
-    margin: 0 auto;
-}
-
-.price-label {
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    color: #1a1a2e;
-    padding: 5px 15px;
-    border-radius: 15px;
-    font-size: 12px;
-    font-weight: bold;
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.price-value {
-    font-size: 36px;
-    font-weight: bold;
-    color: #ffd700;
-    margin: 15px 0 5px 0;
-}
-
-.price-period {
-    color: #b0b0b0;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
-
-.price-benefits {
-    list-style: none;
-    margin-bottom: 25px;
-}
-
-.price-benefit {
-    padding: 5px 0;
-    font-size: 13px;
-    color: #e0e0e0;
-    text-align: left;
-}
-
-.premium-buy-btn {
-    width: 100%;
-    padding: 15px 20px;
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
-    border: none;
-    border-radius: 10px;
-    color: #1a1a2e;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.premium-buy-btn:hover {
-    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
-    transform: translateY(-2px);
-}
-
-/* Test Toggle */
-.test-toggle-container {
-    margin-top: 30px;
-    padding: 15px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 10px;
-    text-align: center;
-}
-
-.test-toggle-container h4 {
-    font-size: 14px;
-    color: #ffd700;
-    margin-bottom: 10px;
-}
-
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 34px;
-    margin-right: 10px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-}
-
-input:checked + .slider {
-    background-color: #667eea;
-}
-
-input:checked + .slider:before {
-    transform: translateX(26px);
-}
-
-.slider.round {
-    border-radius: 34px;
-}
-
-.slider.round:before {
-    border-radius: 50%;
-}
-
-#premiumTestLabel {
-    vertical-align: middle;
-}
-
-/* Test Button */
-.test-button {
-    display: block;
-    margin: 15px auto 0;
-    padding: 8px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.test-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.test-button:active {
-    transform: translateY(0);
-}
-
-
-/* ===== TOAST NOTIFICATIONS ===== */
-.toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 12px 20px;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 1000;
-    max-width: 300px;
-    word-wrap: break-word;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-    transform: translateX(350px);
-}
-
-.toast:not(.hidden) {
-    transform: translateX(0);
-}
-
-.toast.info {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-}
-
-.toast.success {
-    background: linear-gradient(45deg, #48bb78, #38a169);
-}
-
-.toast.error {
-    background: linear-gradient(45deg, #f56565, #e53e3e);
-}
-
-.toast.warning {
-    background: linear-gradient(45deg, #ed8936, #dd6b20);
-}
-
-/* ===== MOBILE ADAPTATIONS ===== */
-@media (max-width: 480px) {
-    body {
-        justify-content: flex-start; 
-    }
-
-    .container {
-        max-width: 100%;
-        width: calc(100% - 32px); 
-        padding: 15px; 
-        margin: 0 auto; 
-        border-radius: 0;
-        min-height: calc(100vh - 32px); 
-        height: auto; 
-    }
-
-    .header {
-        padding: 12px 0 10px 0;
-    }
-
-    .logo {
-        font-size: 20px;
-    }
-
-    .tab-content {
-        padding: 12px 0; 
-    }
-
-    .nav-tabs, .nav-tabs-secondary {
-        margin-left: 0; 
-        margin-right: 0;
-        padding: 3px;
-        height: auto; 
-        min-height: auto;
-    }
-
-    .nav-tab {
-        font-size: 11px;
-        padding: 8px 6px;
-        height: auto; 
-    }
-
-    .nav-tab.secondary {
-        font-size: 10px;
-        padding: 6px 8px;
-        height: auto; 
-    }
-
-    .tarot-card {
-        width: 160px;
-        height: 240px;
-    }
-
-    .spreads-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .feature-item {
-        flex-direction: column;
-        text-align: center;
-        gap: 8px;
-    }
-
-    .banner-buttons {
-        flex-direction: column;
-    }
-
-    .premium-buy-btn {
-        width: 100%;
-    }
-
-    .price-card {
-        max-width: none;
-    }
-
-    .toast {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-        transform: translateY(-100px);
-    }
-
-    .toast:not(.hidden) {
-        transform: translateY(0);
+async function loadAppState() {
+    try {
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Загрузка из базы данных
+            const userProfile = await window.TarotDB.getUserProfile(getUserId());
+            if (userProfile) {
+                appState.dailyCardUsed = userProfile.last_card_day === new Date().toISOString().split('T')[0];
+                appState.lastCardDate = userProfile.last_card_day;
+                appState.questionsUsed = userProfile.total_questions || 0;
+                appState.isPremium = userProfile.is_subscribed || false;
+                appState.freeQuestionsLimit = 3; // Базовый лимит
+                
+                console.log('✅ Состояние загружено из Supabase:', {
+                    dailyCardUsed: appState.dailyCardUsed,
+                    questionsUsed: appState.questionsUsed,
+                    isPremium: appState.isPremium,
+                    historyLength: appState.history.length,
+                    reviewsLength: appState.reviews.length
+                });
+            } else {
+                console.warn('⚠️ Профиль пользователя не найден в базе данных');
+                await loadAppStateLocally();
+            }
+        } else {
+            // Резервная загрузка из localStorage
+            await loadAppStateLocally();
+        }
+        
+        // Очищаем старые записи истории при загрузке
+        await cleanOldHistoryItems();
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки состояния:', error);
+        // Fallback к localStorage
+        await loadAppStateLocally();
     }
 }
 
-@media (max-width: 390px) {
-    .nav-tabs, .nav-tabs-secondary {
-        margin-left: 0; 
-        margin-right: 0;
+async function loadAppStateLocally() {
+    try {
+        const saved = localStorage.getItem('tarotAppState');
+        if (saved) {
+            const parsedState = JSON.parse(saved);
+            
+            // Глубокое слияние состояний с приоритетом загруженного состояния
+            appState = {
+                ...appState,
+                ...parsedState,
+                history: parsedState.history || appState.history,
+                reviews: parsedState.reviews || appState.reviews
+            };
+            
+            console.log('✅ Состояние загружено из локального хранилища');
+        } else {
+            console.warn('⚠️ Локальное состояние не найдено');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка локальной загрузки состояния:', error);
+        // Сохраняем текущее состояние по умолчанию
+        await saveAppState();
+    }
+}
+
+async function cleanOldHistoryItems() {
+    if (!appState.history || appState.history.length === 0) {
+        return;
     }
     
-    .nav-tab {
-        font-size: 10px;
-        padding: 6px 4px;
-    }
-
-    .nav-tab.secondary {
-        font-size: 9px;
-        padding: 4px 6px;
-    }
-
-    .nav-tabs {
-        height: auto; 
-        min-height: auto;
-    }
-
-    .nav-tabs-secondary {
-        height: auto; 
-        min-height: auto;
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000); // 30 дней в миллисекундах
+    const initialCount = appState.history.length;
+    
+    // Фильтруем записи новее 30 дней
+    appState.history = appState.history.filter(item => {
+        // Если нет timestamp (старые записи), сохраняем их пока что
+        if (!item.timestamp) {
+            return true;
+        }
+        
+        return item.timestamp > thirtyDaysAgo;
+    });
+    
+    const removedCount = initialCount - appState.history.length;
+    
+    if (removedCount > 0) {
+        console.log(`🗑️ Удалено ${removedCount} записей истории старше 30 дней`);
+        await saveAppState(); // Сохраняем обновленное состояние
     }
 }
 
-@media (max-width: 380px) {
-    .spreads-grid {
-        grid-template-columns: 1fr;
+// ========================================================================
+// 🔔 СИСТЕМА УВЕДОМЛЕНИЙ
+// ========================================================================
+
+function showMessage(message, type = 'info', duration = 3000) {
+    console.log(`${type.toUpperCase()}: ${message}`);
+    
+    const toast = document.getElementById('toast');
+    if (!toast) {
+        console.warn('Toast элемент не найден');
+        return;
+    }
+
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    toast.classList.remove('hidden');
+
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, duration);
+}
+
+// ========================================================================
+// 🃏 ЗАГРУЗКА ДАННЫХ КАРТ (ИСПРАВЛЕНО)
+// ========================================================================
+
+async function loadCards() {
+    try {
+        console.log('🃏 Загрузка карт через API...');
+        
+        // 1. Пытаемся загрузить через наш API
+        try {
+            const response = await fetch('/api/cards', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const apiData = await response.json();
+                
+                if (apiData.success && apiData.cards && Array.isArray(apiData.cards) && apiData.cards.length > 0) {
+                    // Обрабатываем карты из API
+                    allCards = apiData.cards.map(card => {
+                        const processedCard = { ...card };
+                        
+                        // Нормализуем пути к изображениям
+                        if (card.image) {
+                            processedCard.image = normalizeImagePath(card.image);
+                        }
+                        if (card.imageUpright) {
+                            processedCard.imageUpright = normalizeImagePath(card.imageUpright);
+                        }
+                        if (card.imageReversed) {
+                            processedCard.imageReversed = normalizeImagePath(card.imageReversed);
+                        }
+                        
+                        return processedCard;
+                    });
+                    
+                    console.log(`✅ Карты загружены через API (${apiData.source}):`, allCards.length);
+                    console.log('📊 Статус кэша:', apiData.cached ? 'HIT' : 'MISS');
+                    if (apiData.stale) {
+                        console.warn('⚠️ Использованы устаревшие кэшированные данные');
+                    }
+                    
+                    return; // Успешно загружены через API
+                }
+            }
+            
+            console.warn('⚠️ API карт недоступен, пробуем прямую загрузку');
+        } catch (apiError) {
+            console.warn('⚠️ Ошибка API карт:', apiError.message);
+        }
+        
+        // 2. Fallback - прямая загрузка из файла
+        const possiblePaths = [
+            './cards.json',
+            '/cards.json',
+            'cards.json'
+        ];
+        
+        let cardsLoaded = false;
+        
+        for (const path of possiblePaths) {
+            try {
+                console.log(`Fallback загрузка из: ${path}`);
+                const response = await fetch(path);
+                
+                if (response.ok) {
+                    const cardsData = await response.json();
+                    
+                    if (cardsData && Array.isArray(cardsData) && cardsData.length > 0) {
+                        // Обрабатываем загруженные карты
+                        allCards = cardsData.map(card => {
+                            const processedCard = { ...card };
+                            
+                            // Нормализуем пути к изображениям
+                            if (card.image) {
+                                processedCard.image = normalizeImagePath(card.image);
+                            }
+                            if (card.imageUpright) {
+                                processedCard.imageUpright = normalizeImagePath(card.imageUpright);
+                            }
+                            if (card.imageReversed) {
+                                processedCard.imageReversed = normalizeImagePath(card.imageReversed);
+                            }
+                            
+                            return processedCard;
+                        });
+                        
+                        console.log(`✅ Карты загружены из ${path}:`, allCards.length);
+                        
+                        cardsLoaded = true;
+                        break;
+                    }
+                }
+            } catch (error) {
+                console.warn(`Не удалось загрузить из ${path}:`, error.message);
+            }
+        }
+        
+        if (!cardsLoaded) {
+            throw new Error('Все пути загрузки карт не удались');
+        }
+        
+    } catch (error) {
+        console.warn('⚠️ Не удалось загрузить карты из файла, используем встроенные:', error);
+        allCards = getBuiltInCards();
+        console.log('✅ Встроенные карты загружены:', allCards.length);
+    }
+}
+
+// Нормализация путей к изображениям
+function normalizeImagePath(imagePath) {
+    if (!imagePath) return null;
+    
+    // Если путь уже полный URL, возвращаем как есть
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
     }
     
-    .tarot-card {
-        width: 160px;
-        height: 240px;
+    // Если путь начинается с /, убираем его для относительных путей
+    if (imagePath.startsWith('/')) {
+        imagePath = imagePath.substring(1);
     }
     
-    .nav-tab {
-        font-size: 12px;
-        padding: 8px 6px;
-    }
-}
-
-/* ===== DESKTOP VERSION ===== */
-@media (min-width: 481px) {
-    body {
-        padding: 20px;
-        display: flex;
-        align-items: center; 
-        justify-content: center; 
-        min-height: 100vh;
-        overflow-y: hidden; 
+    // Добавляем ./ для относительных путей если нужно
+    if (!imagePath.startsWith('./')) {
+        imagePath = './' + imagePath;
     }
     
-    .container {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        min-height: auto; 
-        max-height: 90vh; 
-        overflow-y: auto; 
-        padding: 20px;
-        width: 400px; 
-    }
-
-    .toast {
-        top: 20px;
-        right: 20px;
-        transform: translateX(350px);
-    }
-
-    .toast:not(.hidden) {
-        transform: translateX(0);
-    }
+    return imagePath;
 }
 
-/* ===== TELEGRAM SPECIFIC (для узких, но высоких экранов) ===== */
-@media (max-height: 600px) {
-    .container {
-        min-height: auto;
-        height: auto; 
-        padding: 15px;
+// Создание красивого placeholder для карты
+function createCardPlaceholder(card) {
+    const symbol = card.symbol || '🔮';
+    const name = encodeURIComponent(card.name || 'Карта');
+    const colors = [
+        '4B0082/FFD700', // Фиолетовый/Золотой
+        '663399/FF69B4', // Пурпурный/Розовый  
+        '2E8B57/98FB98', // Зеленый/Светло-зеленый
+        '8B0000/FFA500', // Темно-красный/Оранжевый
+        '191970/87CEEB', // Темно-синий/Голубой
+        '800080/DDA0DD'  // Пурпурный/Сливовый
+    ];
+    
+    const colorPair = colors[Math.floor(Math.random() * colors.length)];
+    
+    return `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='270' viewBox='0 0 180 270'><rect width='180' height='270' fill='%238A2BE2'/><text x='90' y='120' text-anchor='middle' fill='white' font-size='32'>${symbol}</text><text x='90' y='160' text-anchor='middle' fill='white' font-size='14' font-family='Arial'>${card.name || 'Карта'}</text></svg>`;
+}
+
+// Встроенные карты с правильными изображениями
+function getBuiltInCards() {
+    const baseCards = [
+        {
+            id: "built_in_1",
+            name: "Звезда",
+            symbol: "⭐",
+            meaningUpright: "Надежда, вдохновение, исцеление",
+            description: "Карта надежды и вдохновения. Сегодня звезды благоволят вашим начинаниям и открывают новые горизонты возможностей."
+        },
+        {
+            id: "built_in_2", 
+            name: "Солнце",
+            symbol: "☀️",
+            meaningUpright: "Радость, успех, жизненная сила",
+            description: "Символ радости и успеха. Впереди светлые времена, полные энергии и достижений."
+        },
+        {
+            id: "built_in_3",
+            name: "Луна", 
+            symbol: "🌙",
+            meaningUpright: "Иллюзии, интуиция, страхи",
+            description: "Карта интуиции и тайн. Доверьтесь внутреннему голосу и будьте внимательны к знакам судьбы."
+        },
+        {
+            id: "built_in_4",
+            name: "Маг",
+            symbol: "🔮",
+            meaningUpright: "Сила воли, проявление, вдохновение",
+            description: "У вас есть все необходимые инструменты для достижения цели. Время действовать с уверенностью."
+        },
+        {
+            id: "built_in_5",
+            name: "Дурак",
+            symbol: "🃏",
+            meaningUpright: "Начало, невинность, спонтанность",
+            description: "Карта новых начинаний. Смело идите навстречу неизвестному - впереди вас ждут удивительные открытия."
+        },
+        {
+            id: "built_in_6",
+            name: "Сила",
+            symbol: "🦁",
+            meaningUpright: "Мужество, сострадание, внутренняя сила",
+            description: "Истинная сила в мягкости. Сегодня вы сможете преодолеть любые препятствия благодаря силе духа."
+        },
+        {
+            id: "built_in_7",
+            name: "Колесо Фортуны",
+            symbol: "🎡",
+            meaningUpright: "Удача, циклы, судьба",
+            description: "Колесо судьбы поворачивается в вашу пользу. Время благоприятных перемен и новых возможностей."
+        },
+        {
+            id: "built_in_8",
+            name: "Императрица",
+            symbol: "👑",
+            meaningUpright: "Изобилие, материнство, природа",
+            description: "Время творчества и изобилия. Позвольте себе расцвести и наслаждаться красотой жизни."
+        },
+        {
+            id: "built_in_9",
+            name: "Башня",
+            symbol: "🏗️",
+            meaningUpright: "Разрушение, потрясение, истина",
+            description: "Старые структуры рушатся, чтобы освободить место для нового. Примите перемены как возможность роста."
+        },
+        {
+            id: "built_in_10",
+            name: "Смерть",
+            symbol: "💀",
+            meaningUpright: "Конец, трансформация, перерождение",
+            description: "Время трансформации и обновления. Отпустите прошлое, чтобы открыть дорогу будущему."
+        }
+    ];
+    
+    // Добавляем изображения для всех карт
+    return baseCards.map(card => ({
+        ...card,
+        image: createCardPlaceholder(card)
+    }));
+}
+
+// Асинхронная загрузка изображения с Promise
+async function loadImageAsync(imageSrc) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            console.log('✅ Изображение успешно загружено:', imageSrc);
+            resolve(img);
+        };
+        img.onerror = () => {
+            console.warn('❌ Ошибка загрузки изображения:', imageSrc);
+            reject(new Error(`Не удалось загрузить изображение: ${imageSrc}`));
+        };
+        // Устанавливаем таймаут для медленных соединений
+        setTimeout(() => {
+            reject(new Error(`Таймаут загрузки изображения: ${imageSrc}`));
+        }, 5000);
+        
+        img.src = encodeURI(imageSrc);
+    });
+}
+
+// Функция проверки доступности изображения
+async function checkImageAvailability(imagePath) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        // ИСПРАВЛЕНИЕ: кодируем URL для корректной работы с кириллицей
+        img.src = encodeURI(imagePath);
+        
+        // Таймаут для медленных соединений
+        setTimeout(() => resolve(false), 3000);
+    });
+}
+
+// Получение случайной карты (исправлено)
+function getRandomCard() {
+    if (!allCards || allCards.length === 0) {
+        console.warn('⚠️ Карты не загружены, используем встроенные');
+        allCards = getBuiltInCards();
     }
     
-    .header {
-        margin-bottom: 20px;
+    // Получаем копию карты, чтобы не изменять оригинал
+    const baseCard = allCards[Math.floor(Math.random() * allCards.length)];
+    const randomCard = { ...baseCard };
+
+    // Определяем ориентацию
+    randomCard.isReversed = Math.random() < 0.5;
+
+    // Выбираем изображение для отображения
+    if (randomCard.isReversed && randomCard.imageReversed) {
+        randomCard.displayImage = randomCard.imageReversed;
+    } else if (!randomCard.isReversed && randomCard.imageUpright) {
+        randomCard.displayImage = randomCard.imageUpright;
+    } else if (randomCard.image) {
+        randomCard.displayImage = randomCard.image;
+    } else {
+        // Fallback к placeholder
+        randomCard.displayImage = createCardPlaceholder(randomCard);
     }
     
-    .nav-tabs {
-        margin-bottom: 20px;
+    console.log(`🎯 Выбранная карта: ${randomCard.name} (${randomCard.isReversed ? 'Перевернутая' : 'Прямая'})`);
+    console.log(`🖼️ Изображение: ${randomCard.displayImage}`);
+    
+    return randomCard;
+}
+
+// ========================================================================
+// 🎨 АНИМАЦИИ И ЭФФЕКТЫ
+// ========================================================================
+
+function animateStars(count = 3, container = starAnimationContainer) {
+    if (!container) return;
+    
+    container.innerHTML = '';
+    const stars = ['✨', '🌟', '💫'];
+    const positions = [
+        { x: '10%', y: '20%' },
+        { x: '15%', y: '80%' },
+        { x: '80%', y: '50%' }
+    ];
+
+    for (let i = 0; i < count; i++) {
+        const star = document.createElement('span');
+        star.textContent = stars[i % stars.length];
+        star.classList.add('sparkle-star');
+        
+        star.style.left = positions[i].x;
+        star.style.top = positions[i].y;
+        star.style.animationDelay = `${i * 0.1}s`;
+        star.style.animationDuration = `${0.8 + Math.random() * 0.4}s`;
+        
+        container.appendChild(star);
     }
 }
 
-/* ===== FIX FOR VIRTUAL KEYBOARD SPACING ISSUE ===== */
-@media screen and (max-height: 500px) {
-    .nav-tabs {
-        margin-bottom: 6px;
-        position: sticky;
-        top: 0;
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+function typeText(element, text, speed = 15) {
+    if (!element) return Promise.resolve();
+    
+    let i = 0;
+    element.textContent = '';
+    element.classList.remove('finished-typing');
+
+    return new Promise(resolve => {
+        function typeChar() {
+            if (i < text.length) {
+                element.textContent += text.charAt(i);
+                i++;
+                setTimeout(typeChar, speed);
+            } else {
+                element.classList.add('finished-typing');
+                resolve();
+            }
+        }
+        typeChar();
+    });
+}
+
+// ========================================================================
+// 🔄 НАВИГАЦИЯ
+// ========================================================================
+
+function switchTab(tabId) {
+    console.log('🔄 Переключение на вкладку:', tabId);
+    console.log('🔧 tabContents:', tabContents);
+    console.log('🔧 document.getElementById(tabId):', document.getElementById(tabId));
+    
+    // Скрываем все вкладки
+    tabContents.forEach(content => {
+        content.classList.remove('active');
+        content.classList.add('hidden');
+    });
+    
+    // Показываем выбранную вкладку
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) {
+        targetTab.classList.add('active');
+        targetTab.classList.remove('hidden');
+    }
+
+    // Обновляем активную кнопку навигации
+    const allNavTabs = document.querySelectorAll('.nav-tab');
+    allNavTabs.forEach(tab => tab.classList.remove('active'));
+
+    const targetNavTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+    if (targetNavTab) {
+        targetNavTab.classList.add('active');
+    }
+
+    // Сбрасываем состояние карты дня при переходе на другие вкладки
+    if (tabId !== 'daily-card') {
+        resetDailyCardVisualState();
     }
     
-    .nav-tabs-secondary {
-        margin-bottom: 15px;
-        position: sticky;
-        top: 54px;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-}
-
-/* ===== ADDITIONAL FIX FOR NAVIGATION SPACING ===== */
-/* Prevents gap increase when virtual keyboard appears */
-@media screen and (max-height: 400px) {
-    .nav-tabs {
-        margin-bottom: 4px !important;
+    // Сбрасываем состояние вопросов при переходе на другие вкладки
+    if (tabId !== 'question') {
+        resetQuestionState();
     }
     
-    .nav-tabs-secondary {
-        margin-bottom: 8px !important;
-        margin-top: -2px;
+    // Сбрасываем состояние раскладов при переходе на другие вкладки
+    if (tabId !== 'spreads') {
+        resetSpreadState();
     }
     
-    .container {
-        padding: 10px 15px;
-    }
-}
-
-/* ===== PREVENT LAYOUT SHIFT WHEN FOCUSING ON INPUTS ===== */
-/* Lock navigation position when form elements are focused */
-.nav-tabs,
-.nav-tabs-secondary {
-    contain: layout style paint;
-    transform: translateZ(0); /* Force hardware acceleration */
-    backface-visibility: hidden;
-}
-
-/* Specific fix for iOS Safari focus behavior */
-@supports (-webkit-touch-callout: none) {
-    .nav-tabs {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        margin-bottom: 8px !important;
+    // Обновляем счетчик вопросов при переходе на вкладку вопросов
+    if (tabId === 'question') {
+        updateQuestionsCounter();
     }
     
-    .nav-tabs-secondary {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 52px;
-        z-index: 99;
-        margin-bottom: 20px !important;
-        margin-top: 0 !important;
-    }
-}
-
-/* Additional containment for mobile browsers */
-@media screen and (max-width: 480px) {
-    body {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        -webkit-overflow-scrolling: touch;
+    // Обновляем историю при переходе на вкладку истории
+    if (tabId === 'history') {
+        updateHistoryDisplay();
     }
     
-    .container {
-        min-height: 100vh;
-        min-height: 100svh;
+    // Обновляем отзывы при переходе на вкладку отзывов
+    if (tabId === 'reviews') {
+        updateReviewsDisplay();
+    }
+}
+
+function resetDailyCardVisualState() {
+    if (!tarotCard) return;
+    
+    tarotCard.classList.remove('flipped');
+    cardFront?.classList.add('hidden');
+    cardBack?.classList.remove('hidden');
+    cardInfoAfterFlip?.classList.add('hidden');
+    
+    if (cardIntroText) cardIntroText.textContent = '';
+    
+    aiAnswerContainer?.classList.remove('show');
+    aiAnswerContainer?.classList.add('hidden');
+    
+    afterDailyCardBanner?.classList.remove('show');
+    afterDailyCardBanner?.classList.add('hidden');
+    
+    if (aiInterpretationTextElement) {
+        aiInterpretationTextElement.textContent = '';
+        aiInterpretationTextElement.classList.remove('finished-typing');
     }
     
-    /* Force consistent spacing regardless of keyboard */
-    .nav-tabs {
-        margin: 0 16px 8px 16px !important;
-        flex-shrink: 0;
+    if (starAnimationContainer) {
+        starAnimationContainer.innerHTML = '';
+    }
+}
+
+async function resetDailyCardState() {
+    resetDailyCardVisualState();
+    
+    // Проверяем, нужно ли сбросить использование карты дня для нового дня
+    const today = new Date().toDateString();
+    if (appState.lastCardDate !== today) {
+        appState.dailyCardUsed = false;
+        await saveAppState();
+        console.log('✅ Карта дня сброшена для нового дня');
+    }
+}
+
+function resetQuestionState() {
+    console.log('🔄 Сброс состояния вопросов');
+    
+    // Скрываем анимацию
+    questionAnimationContainer?.classList.add('hidden');
+    
+    // Скрываем карту
+    questionCardContainer?.classList.add('hidden');
+    
+    // Сбрасываем карту
+    if (questionTarotCard) {
+        questionTarotCard.classList.remove('flipped');
+        questionTarotCard.querySelector('.card-front')?.classList.add('hidden');
+        questionTarotCard.querySelector('.card-back')?.classList.remove('hidden');
     }
     
-    .nav-tabs-secondary {
-        margin: 0 16px 20px 16px !important;
-        flex-shrink: 0;
+    // Скрываем информацию о карте
+    questionCardInfoAfterFlip?.classList.add('hidden');
+    
+    // Скрываем ответ
+    questionAnswerContainer?.classList.remove('show');
+    questionAnswerContainer?.classList.add('hidden');
+    
+    // Скрываем уточняющий вопрос
+    clarifyingQuestionContainer?.classList.add('hidden');
+    clarifyingQuestionWarning?.classList.add('hidden');
+    
+    // Очищаем тексты
+    if (questionIntroText) questionIntroText.textContent = '';
+    if (questionFlippedCardName) questionFlippedCardName.textContent = '';
+    if (questionAnswerText) {
+        questionAnswerText.textContent = '';
+        questionAnswerText.classList.remove('finished-typing');
+    }
+    
+    // Очищаем анимации
+    if (questionStarAnimationContainer) {
+        questionStarAnimationContainer.innerHTML = '';
+    }
+    
+    // Скрываем старую загрузку
+    loadingState?.classList.add('hidden');
+}
+
+function resetQuestionAnswerOnly() {
+    console.log('🔄 Сброс только ответа на вопрос');
+    
+    // Скрываем ответ
+    questionAnswerContainer?.classList.remove('show');
+    questionAnswerContainer?.classList.add('hidden');
+    
+    // Очищаем текст ответа
+    if (questionAnswerText) {
+        questionAnswerText.textContent = '';
+        questionAnswerText.classList.remove('finished-typing');
+    }
+    
+    // Скрываем информацию о карте (но оставляем саму карту видимой)
+    questionCardInfoAfterFlip?.classList.add('hidden');
+    
+    // Очищаем названия карт
+    if (questionFlippedCardName) questionFlippedCardName.textContent = '';
+}
+
+// ========================================================================
+// ========================================================================
+// 🤖 ГЕНЕРАЦИЯ ПРЕДСКАЗАНИЙ ЧЕРЕЗ API
+
+async function generatePredictionAPI(card, question) {
+    try {
+        const userData = {
+            user_id: appState.telegramUser?.id || 'webapp_user',
+            userName: appState.telegramUser?.first_name || 'Гость'
+        };
+
+        const response = await fetch('/api/generate-prediction', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: userData.user_id,
+                userName: userData.userName,
+                question: question,
+                cards: card, // Поддерживаем как одну карту, так и массив
+                type: 'single_card'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        
+        if (!result.success || !result.prediction) {
+            throw new Error('Некорректный ответ от API');
+        }
+
+        return result.prediction;
+
+    } catch (error) {
+        console.error('❌ Ошибка API генерации предсказания:', error);
+        throw error;
     }
 }
 
-/* ===== HIDDEN ELEMENTS ===== */
-.hidden {
-    display: none !important;
+// 🃏 ОБРАБОТКА КАРТЫ ДНЯ (ИСПРАВЛЕНО С УЛУЧШЕННОЙ ЗАГРУЗКОЙ ИЗОБРАЖЕНИЙ)
+// ========================================================================
+
+async function handleDailyCardClick() {
+    console.log('🃏 Обработка клика по карте дня');
+    
+    if (appState.dailyCardUsed) {
+        showMessage('Карта дня уже была получена сегодня! Вы можете получить новую карту завтра.', 'info');
+        return;
+    }
+
+    // Сбрасываем состояние для нового переворота
+    await resetDailyCardState();
+    
+    // Показываем звездочки прямо на рубашке карты
+    animateStars(3, starAnimationContainer);
+
+    // Ждем анимацию звездочек, потом переворачиваем карту
+    setTimeout(() => {
+        tarotCard.classList.add('flipped');
+    }, 1000);
+
+    // Выбираем случайную карту
+    const randomCard = getRandomCard();
+
+    // Обновляем содержимое карты через половину анимации
+    setTimeout(async () => {
+        starAnimationContainer.innerHTML = '';
+        
+        if (randomCard.displayImage) {
+            // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
+            const cardFront = tarotCard?.querySelector('.card-front');
+            const cardBack = tarotCard?.querySelector('.card-back');
+            
+            if (cardFront && cardBack) {
+                try {
+                    console.log('🖼️ Начинаем загрузку изображения:', randomCard.displayImage);
+                    
+                    // Асинхронно загружаем изображение перед анимацией
+                    await loadImageAsync(randomCard.displayImage);
+                    
+                    // Устанавливаем изображение как фон только после успешной загрузки
+                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    console.log('🎨 Background-image установлен после загрузки:', cardFront.style.backgroundImage);
+                    
+                    // Запускаем анимацию переворота только после загрузки изображения
+                    tarotCard.classList.add('flipped');
+                    console.log('🔄 Карта перевернута, flipped класс добавлен');
+                    
+                    // Ждем завершения анимации, затем переключаем видимость
+                    setTimeout(() => {
+                        cardFront.classList.remove('hidden');
+                        cardBack.classList.add('hidden');
+                        
+                        console.log('👁️ Состояние видимости - cardFront hidden:', cardFront.classList.contains('hidden'));
+                        console.log('👁️ Состояние видимости - cardBack hidden:', cardBack.classList.contains('hidden'));
+                        console.log('🔍 Computed styles - display:', window.getComputedStyle(cardFront).display);
+                        console.log('🔍 Computed styles - background-image:', window.getComputedStyle(cardFront).backgroundImage);
+                    }, 400); // Ждем завершения анимации cardFlip (0.8s / 2 = 0.4s)
+                    
+                } catch (error) {
+                    console.warn('❌ Ошибка загрузки изображения, используем placeholder:', error);
+                    // Используем placeholder при ошибке загрузки
+                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    // Запускаем анимацию с placeholder
+                    tarotCard.classList.add('flipped');
+                    
+                    setTimeout(() => {
+                        cardFront.classList.remove('hidden');
+                        cardBack.classList.add('hidden');
+                    }, 400);
+                }
+            }
+        }
+        
+        console.log('🔄 Показываем переднюю сторону карты');
+        
+        // Берём контейнер и стороны
+        const card = tarotCard;                          // #tarotCard
+        const front = card?.querySelector('.card-front');
+        const back  = card?.querySelector('.card-back');
+
+        if (!card || !front || !back) return;
+
+        // Управляем видимостью только через CSS-классы
+        front.classList.remove('hidden');
+        back.classList.add('hidden');
+
+        // Принудительный reflow для WebKit
+        void front.offsetHeight;
+
+        // Применяем 3D-трансформацию для корректного отображения
+        requestAnimationFrame(() => {
+            card.classList.add('flipped');
+            // Микро-сдвиг для WebKit 3D-слоя
+            front.style.transform = 'rotateY(180deg) translateZ(0)';
+        });
+        
+        console.log('✅ [КАРТА ДНЯ] Классы обновлены - cardFront hidden:', front?.classList.contains('hidden'));
+        console.log('✅ [КАРТА ДНЯ] Классы обновлены - cardBack hidden:', back?.classList.contains('hidden'));
+        console.log('🎨 [КАРТА ДНЯ] Background-image:', front?.style.backgroundImage || 'не установлен');
+    }, 400);
+
+    // После полной анимации показываем информацию
+    setTimeout(async () => {
+        // Показываем имя карты
+        if (flippedCardName) {
+            const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+            flippedCardName.textContent = `${randomCard.name}${orientationText} ${randomCard.symbol || ''}`;
+        }
+        cardInfoAfterFlip?.classList.remove('hidden');
+
+        // Показываем вводный текст
+        const randomPrePhrase = preInterpretationPhrases[Math.floor(Math.random() * preInterpretationPhrases.length)];
+        if (cardIntroText) {
+            cardIntroText.textContent = randomPrePhrase;
+            cardIntroText.classList.remove('hidden');
+        }
+
+        // Показываем контейнер ИИ-интерпретации
+        if (aiInterpretationTitle) {
+            aiInterpretationTitle.textContent = 'ИИ-интерпретация 🔮';
+        }
+
+        aiAnswerContainer?.classList.remove('hidden');
+        aiAnswerContainer?.classList.add('show');
+
+        // Генерируем интерпретацию через API
+        let interpretationText;
+        try {
+            console.log('🤖 Генерируем интерпретацию карты дня через API...');
+            interpretationText = await generatePredictionAPI(randomCard, 'карта дня');
+            console.log('✅ Интерпретация карты дня получена:', interpretationText.substring(0, 100) + '...');
+        } catch (error) {
+            console.error('❌ Ошибка генерации интерпретации карты дня:', error);
+            // Fallback к локальной интерпретации
+            interpretationText = randomCard.description || 'Карта показывает важную информацию для размышления';
+        }
+        
+        await typeText(aiInterpretationTextElement, interpretationText);
+
+        // Показываем баннер
+        setTimeout(() => {
+            afterDailyCardBanner?.classList.remove('hidden');
+            afterDailyCardBanner?.classList.add('show');
+        }, 500);
+
+        // Сохраняем карту дня в Supabase
+        try {
+            if (window.TarotDB && window.TarotDB.isConnected()) {
+                const cardData = {
+                    id: randomCard.id,
+                    name: randomCard.name,
+                    image: randomCard.displayImage,
+                    description: randomCard.description,
+                    interpretation: interpretationText
+                };
+                await window.TarotDB.saveDailyCard(getUserId(), cardData);
+                console.log('✅ Карта дня сохранена в Supabase');
+            }
+        } catch (error) {
+            console.error('❌ Ошибка сохранения карты дня:', error);
+        }
+
+        // Сохраняем в историю
+        await addToHistory('daily-card', randomCard.name, interpretationText);
+        
+    }, 800);
+
+    // Обновляем состояние
+    appState.dailyCardUsed = true;
+    appState.lastCardDate = new Date().toDateString();
+    await saveAppState();
 }
 
-.show {
-    display: block !important;
+// ========================================================================
+// ❓ ОБРАБОТКА ВОПРОСОВ
+// ========================================================================
+
+function updateQuestionsCounter() {
+    if (!questionsLeftElement) return;
+
+    if (appState.isPremium) {
+        questionsLeftElement.textContent = 'Вопросы: неограниченно';
+        questionsLeftElement.style.color = 'var(--accent-gold)';
+        return;
+    }
+    
+    const remaining = Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed);
+    questionsLeftElement.textContent = `Осталось бесплатных вопросов: ${remaining}`;
+    
+    if (remaining === 0) {
+        questionsLeftElement.textContent = 'Бесплатные вопросы закончились. Получите Premium!';
+        questionsLeftElement.style.color = '#ff6b6b';
+    } else {
+        questionsLeftElement.style.color = 'var(--primary-text)';
+    }
 }
 
-/* Специальные правила для flex-контейнеров */
-.subscription-banner.show {
-    display: flex !important;
+function handleQuestionInput() {
+    if (!questionTextarea || !charCounter || !submitQuestionBtn) return;
+    
+    const text = questionTextarea.value;
+    const length = text.length;
+    
+    charCounter.textContent = `${length}/200`;
+    
+    // Проверяем лимиты
+    const canAsk = length > 0 && length <= 200 && 
+                  (appState.isPremium || appState.questionsUsed < appState.freeQuestionsLimit);
+    
+    submitQuestionBtn.disabled = !canAsk;
+    
+    if (length > 200) {
+        charCounter.style.color = '#ff6b6b';
+    } else {
+        charCounter.style.color = '#b0b0b0';
+    }
 }
 
-/* Настройки для отображения изображений карт как background-image */
-.card-front {
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  /* Принудительное отображение для WebKit */
-  -webkit-background-size: cover !important;
-  -webkit-background-position: center !important;
-  /* Убираем возможные конфликты */
-  background-color: transparent !important;
-  /* Гарантируем видимость */
-  opacity: 1 !important;
-  visibility: visible !important;
+async function handleAskQuestion() {
+    if (!questionTextarea) return;
+    
+    const question = questionTextarea.value.trim();
+    
+    if (!question) {
+        showMessage('Пожалуйста, введите ваш вопрос', 'error');
+        return;
+    }
+    
+    if (!appState.isPremium && appState.questionsUsed >= appState.freeQuestionsLimit) {
+        showMessage('Бесплатные вопросы закончились. Получите Premium для безлимитных вопросов!', 'error');
+        return;
+    }
+    
+    console.log('🔮 Обработка вопроса:', question);
+    
+    // Скрываем предыдущие результаты
+    resetQuestionState();
+    
+    // Отключаем кнопку
+    submitQuestionBtn.disabled = true;
+    
+    // Выбираем случайную карту для ответа
+    const randomCard = getRandomCard();
+    
+    // 1. Показываем вводный текст
+    questionAnimationContainer?.classList.remove('hidden');
+    const randomPrePhrase = questionPreInterpretationPhrases[Math.floor(Math.random() * questionPreInterpretationPhrases.length)];
+    if (questionIntroText) {
+        questionIntroText.textContent = randomPrePhrase;
+        questionIntroText.classList.remove('hidden');
+    }
+    
+    // Ждем немного для показа текста
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    try {
+        // 2. Скрываем текст и показываем карту рубашкой с звездочками
+        questionAnimationContainer?.classList.add('hidden');
+        questionCardContainer?.classList.remove('hidden');
+        
+        // Показываем звездочки на рубашке карты
+        animateStars(3, questionStarAnimationContainer);
+        
+        // 3. Переворачиваем карту через 1200ms (время для звездочек)
+        setTimeout(async () => {
+            // Переворачиваем карту
+            questionTarotCard?.classList.add('flipped');
+            
+            // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
+            const cardFront = questionTarotCard?.querySelector('.card-front');
+            const cardBack = questionTarotCard?.querySelector('.card-back');
+            
+            if (cardFront && cardBack) {
+                try {
+                    console.log('🖼️ Начинаем асинхронную загрузку изображения для вопроса:', randomCard.displayImage);
+                    
+                    // Асинхронно загружаем изображение перед показом
+                    await loadImageAsync(randomCard.displayImage);
+                    
+                    console.log('✅ Изображение карты для вопроса успешно загружено');
+                    
+                    // Устанавливаем изображение как фон только после успешной загрузки
+                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    console.log('🎨 Background-image установлен после загрузки:', cardFront.style.backgroundImage);
+                    
+                    // Показываем лицевую сторону только после загрузки изображения
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                    
+                    console.log('👁️ [ВОПРОС] Состояние видимости - cardFront hidden:', cardFront.classList.contains('hidden'));
+                    console.log('👁️ [ВОПРОС] Состояние видимости - cardBack hidden:', cardBack.classList.contains('hidden'));
+                    console.log('🔍 [ВОПРОС] Computed styles - display:', window.getComputedStyle(cardFront).display);
+                    console.log('🔍 [ВОПРОС] Computed styles - background-image:', window.getComputedStyle(cardFront).backgroundImage);
+                    
+                } catch (error) {
+                    console.warn('❌ Ошибка загрузки изображения для вопроса, используем placeholder:', error);
+                    // Используем placeholder при ошибке загрузки
+                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                }
+            }
+            
+            // Обновляем лицевую сторону карты
+            setTimeout(() => {
+                console.log('🔄 [ВОПРОС] Показываем переднюю сторону карты');
+                console.log('📍 questionTarotCard element:', questionTarotCard);
+                
+                const cardFront = questionTarotCard?.querySelector('.card-front');
+                const cardBack = questionTarotCard?.querySelector('.card-back');
+                
+                console.log('📍 cardFront element:', cardFront);
+                console.log('📍 cardBack element:', cardBack);
+                
+                // Управляем видимостью только через CSS-классы
+                if (cardFront) {
+                    cardFront.classList.remove('hidden');
+                }
+                if (cardBack) {
+                    cardBack.classList.add('hidden');
+                }
+                
+                // ОСТАВЛЯЕМ класс flipped для корректного показа лицевой стороны
+                // (НЕ снимаем flipped, т.к. .card-front повернут на 180°)
+                
+                console.log('✅ [ВОПРОС] Классы обновлены - cardFront hidden:', cardFront?.classList.contains('hidden'));
+                console.log('✅ [ВОПРОС] Классы обновлены - cardBack hidden:', cardBack?.classList.contains('hidden'));
+                
+                // Показываем название карты
+                if (questionFlippedCardName) {
+                    const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                    questionFlippedCardName.textContent = `${randomCard.name}${orientationText} ${randomCard.symbol || ''}`;
+                }
+                questionCardInfoAfterFlip?.classList.remove('hidden');
+            }, 400);
+            
+        }, 800);
+        
+        // 4. Через 2 секунды после переворота показываем ответ и начинаем печать
+        setTimeout(async () => {
+            questionAnswerContainer?.classList.remove('hidden');
+            questionAnswerContainer?.classList.add('show');
+            
+            // Генерируем ответ через API
+            let answer;
+            try {
+                console.log('🤖 Отправляем запрос на генерацию предсказания...');
+                const prediction = await generatePredictionAPI(randomCard, question);
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${prediction}`;
+                console.log('✅ Предсказание получено:', prediction.substring(0, 100) + '...');
+            } catch (error) {
+                console.error('❌ Ошибка генерации предсказания:', error);
+                // Fallback к локальной генерации
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
+            }
+            
+            // Печатаем текст
+            if (questionAnswerText) {
+                await typeText(questionAnswerText, answer);
+            }
+            
+            // 5. После завершения печати показываем уточняющий вопрос
+            setTimeout(() => {
+                clarifyingQuestionContainer?.classList.remove('hidden');
+                if (!appState.isPremium) {
+                    clarifyingQuestionWarning?.classList.remove('hidden');
+                } else {
+                    clarifyingQuestionWarning?.classList.add('hidden');
+                }
+            }, 500);
+
+            // Обновляем счетчики
+            if (!appState.isPremium) {
+                appState.questionsUsed++;
+                await saveAppState();
+                updateQuestionsCounter();
+            }
+            
+            // Сохраняем вопрос и ответ в Supabase
+            try {
+                if (window.TarotDB && window.TarotDB.isConnected()) {
+                    const savedQuestion = await window.TarotDB.saveQuestion(getUserId(), question);
+                    if (savedQuestion && savedQuestion.id) {
+                        const cardData = {
+                            id: randomCard.id,
+                            name: randomCard.name,
+                            image: randomCard.displayImage,
+                            description: randomCard.description
+                        };
+                        await window.TarotDB.saveAnswer(savedQuestion.id, cardData, answer);
+                        console.log('✅ Вопрос и ответ сохранены в Supabase');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Ошибка сохранения вопроса и ответа:', error);
+            }
+            
+            // Сохраняем в историю
+            await addToHistory('question', question, answer);
+            
+            // Очищаем форму
+            questionTextarea.value = '';
+            handleQuestionInput();
+            
+            showMessage('Ответ получен!', 'success');
+            
+        }, 3200); // 1200ms для карты + 2000ms
+        
+    } catch (error) {
+        console.error('❌ Ошибка при обработке вопроса:', error);
+        resetQuestionState();
+        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
+    } finally {
+        setTimeout(() => {
+            submitQuestionBtn.disabled = false;
+        }, 3000);
+    }
 }
 
-/* Дополнительные правила для гарантированного отображения */
-.card-front:not(.hidden) {
-  display: flex !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
+async function handleClarifyingQuestion() {
+    if (!clarifyingQuestionTextarea) return;
+
+    const question = clarifyingQuestionTextarea.value.trim();
+    if (!question) {
+        showMessage('Пожалуйста, введите ваш уточняющий вопрос', 'error');
+        return;
+    }
+
+    if (!appState.isPremium && appState.questionsUsed >= appState.freeQuestionsLimit) {
+        showMessage('Бесплатные вопросы закончились. Получите Premium для безлимитных вопросов!', 'error');
+        return;
+    }
+
+    console.log('🔮 Обработка уточняющего вопроса:', question);
+    
+    // Скрываем уточняющий вопрос и сбрасываем состояние для новой анимации
+    clarifyingQuestionContainer?.classList.add('hidden');
+    resetQuestionAnswerOnly(); // Сбрасываем только ответ, оставляя форму
+    
+    // Отключаем кнопку
+    submitClarifyingQuestionBtn.disabled = true;
+    
+    // Выбираем случайную карту для ответа
+    const randomCard = getRandomCard();
+    
+    // 1. Показываем вводный текст
+    questionAnimationContainer?.classList.remove('hidden');
+    const randomPrePhrase = questionPreInterpretationPhrases[Math.floor(Math.random() * questionPreInterpretationPhrases.length)];
+    if (questionIntroText) {
+        questionIntroText.textContent = randomPrePhrase;
+        questionIntroText.classList.remove('hidden');
+    }
+    
+    // Ждем немного для показа текста
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    try {
+        // 2. Скрываем текст и показываем карту рубашкой с звездочками
+        questionAnimationContainer?.classList.add('hidden');
+        questionCardContainer?.classList.remove('hidden');
+        
+        // Сбрасываем состояние карты перед анимацией
+        if (questionTarotCard) {
+            questionTarotCard.classList.remove('flipped');
+            questionTarotCard.querySelector('.card-front')?.classList.add('hidden');
+            questionTarotCard.querySelector('.card-back')?.classList.remove('hidden');
+        }
+        
+        // Показываем звездочки на рубашке карты
+        animateStars(3, questionStarAnimationContainer);
+        
+        // 3. Переворачиваем карту через 1200ms (время для звездочек)
+        setTimeout(async () => {
+            // Переворачиваем карту
+            questionTarotCard?.classList.add('flipped');
+            
+            // Подготавливаем изображение как background-image для совместимости с 3D трансформациями
+            const cardFront = questionTarotCard?.querySelector('.card-front');
+            const cardBack = questionTarotCard?.querySelector('.card-back');
+            
+            if (cardFront && cardBack) {
+                try {
+                    console.log('🖼️ Начинаем асинхронную загрузку изображения для уточняющего вопроса:', randomCard.displayImage);
+                    
+                    // Асинхронно загружаем изображение перед показом
+                    await loadImageAsync(randomCard.displayImage);
+                    
+                    console.log('✅ Изображение карты для уточняющего вопроса успешно загружено');
+                    
+                    // Устанавливаем изображение как фон только после успешной загрузки
+                    cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    // Показываем лицевую сторону только после загрузки изображения
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                    
+                } catch (error) {
+                    console.warn('❌ Ошибка загрузки изображения для уточняющего вопроса, используем placeholder:', error);
+                    // Используем placeholder при ошибке загрузки
+                    cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                    cardFront.style.backgroundSize = 'cover';
+                    cardFront.style.backgroundPosition = 'center';
+                    cardFront.style.backgroundRepeat = 'no-repeat';
+                    cardFront.style.opacity = '1';
+                    cardFront.style.visibility = 'visible';
+                    
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                }
+            }
+            
+            // Обновляем лицевую сторону карты
+            setTimeout(() => {
+                const cardFront = questionTarotCard?.querySelector('.card-front');
+                const cardBack = questionTarotCard?.querySelector('.card-back');
+                
+                // Управляем видимостью только через CSS-классы
+                if (cardFront) {
+                    cardFront.classList.remove('hidden');
+                }
+                if (cardBack) {
+                    cardBack.classList.add('hidden');
+                }
+                
+                // ОСТАВЛЯЕМ класс flipped для корректного показа лицевой стороны
+                // (НЕ снимаем flipped, т.к. .card-front повернут на 180°)
+                
+                // Показываем название карты
+                if (questionFlippedCardName) {
+                    const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                    questionFlippedCardName.textContent = `${randomCard.name}${orientationText} ${randomCard.symbol || ''}`;
+                }
+                questionCardInfoAfterFlip?.classList.remove('hidden');
+            }, 400);
+            
+        }, 800);
+        
+        // 4. Через 2 секунды после переворота показываем ответ и начинаем печать
+        setTimeout(async () => {
+            questionAnswerContainer?.classList.remove('hidden');
+            questionAnswerContainer?.classList.add('show');
+            
+            // Генерируем предсказание через API
+            let answer;
+            try {
+                console.log('🤖 Генерируем предсказание для уточняющего вопроса через API...');
+                const prediction = await generatePredictionAPI(randomCard, question);
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${prediction}`;
+            } catch (error) {
+                console.warn('❌ Ошибка генерации предсказания через API, используем базовое описание:', error);
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
+            }
+            
+            // Печатаем текст
+            if (questionAnswerText) {
+                await typeText(questionAnswerText, answer);
+            }
+            
+            // 5. После завершения печати показываем уточняющий вопрос снова
+            setTimeout(() => {
+                clarifyingQuestionContainer?.classList.remove('hidden');
+                if (!appState.isPremium) {
+                    clarifyingQuestionWarning?.classList.remove('hidden');
+                } else {
+                    clarifyingQuestionWarning?.classList.add('hidden');
+                }
+            }, 500);
+
+            // Обновляем счетчики
+            if (!appState.isPremium) {
+                appState.questionsUsed++;
+                await saveAppState();
+                updateQuestionsCounter();
+            }
+            
+            // Сохраняем в историю
+            await addToHistory('clarifying-question', question, answer);
+            
+            // Очищаем форму
+            clarifyingQuestionTextarea.value = '';
+            
+            showMessage('Уточнение получено!', 'success');
+            
+        }, 3200); // 1200ms для карты + 2000ms
+        
+    } catch (error) {
+        console.error('❌ Ошибка при обработке уточняющего вопроса:', error);
+        resetQuestionState();
+        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
+    } finally {
+        setTimeout(() => {
+            submitClarifyingQuestionBtn.disabled = false;
+        }, 3000);
+    }
 }
 
-/* Убираем старые правила для img элементов */
-#questionCardImage,
-#cardImage {
-  display: none !important;
+// ========================================================================
+// 🎴 ОБРАБОТКА РАСКЛАДОВ
+// ========================================================================
+
+async function handleSpreadClick(spreadType) {
+    console.log('🎴 Начинаем расклад:', spreadType);
+    
+    // Проверяем Premium доступ
+    if (!appState.isPremium) {
+        showMessage('Расклады доступны только в Premium версии!', 'error');
+        return;
+    }
+    
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    if (!spreadConfig) {
+        showMessage('Неизвестный тип расклада', 'error');
+        return;
+    }
+    
+    // Переходим к результатам расклада
+    showSpreadResult(spreadType);
 }
+
+function showSpreadResult(spreadType) {
+    // Скрываем сетку раскладов и показываем результат
+    spreadsGrid?.classList.add('hidden');
+    spreadResult?.classList.remove('hidden');
+    
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    
+    // Обновляем заголовок
+    if (spreadResultTitle) {
+        spreadResultTitle.textContent = spreadConfig.name;
+    }
+    
+    // Запускаем анимацию расклада
+    performSpread(spreadType);
+}
+
+async function performSpread(spreadType) {
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    
+    try {
+        // 1. Показываем вводный текст
+        spreadAnimationContainer?.classList.remove('hidden');
+        
+        const spreadPhrase = `Раскладываем карты для "${spreadConfig.name.replace('Расклад «', '').replace('»', '')}"...`;
+        if (spreadIntroText) {
+            spreadIntroText.textContent = spreadPhrase;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 2. Скрываем текст и показываем карты
+        spreadAnimationContainer?.classList.add('hidden');
+        spreadCardsContainer?.classList.remove('hidden');
+        
+        // 3. Создаем макет карт
+        createSpreadLayout(spreadType);
+        
+        // 4. Анимированно показываем карты одну за другой
+        await animateSpreadCards();
+        
+        // 5. Показываем интерпретацию
+        await showSpreadInterpretation(spreadType);
+        
+    } catch (error) {
+        console.error('❌ Ошибка выполнения расклада:', error);
+        showMessage('Произошла ошибка при выполнении расклада', 'error');
+    }
+}
+
+function createSpreadLayout(spreadType) {
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    
+    if (!spreadCardsLayout) return;
+    
+    // Очищаем предыдущий макет
+    spreadCardsLayout.innerHTML = '';
+    spreadCardsLayout.className = `spread-cards-layout ${spreadConfig.layout}`;
+    
+    // Создаем позиции для карт в зависимости от типа расклада
+    if (spreadType === 'love') {
+        // Расклад "Отношения" - специальная структура
+        const topRow = document.createElement('div');
+        topRow.className = 'spread-row';
+        topRow.appendChild(createSpreadCardPosition(spreadConfig.cards[0], 0));
+        
+        const bottomRow = document.createElement('div'); 
+        bottomRow.className = 'spread-row';
+        bottomRow.appendChild(createSpreadCardPosition(spreadConfig.cards[1], 1));
+        bottomRow.appendChild(createSpreadCardPosition(spreadConfig.cards[2], 2));
+        
+        spreadCardsLayout.appendChild(topRow);
+        spreadCardsLayout.appendChild(bottomRow);
+    } else {
+        // Остальные расклады - простая структура
+        spreadConfig.cards.forEach((cardConfig, index) => {
+            const cardPosition = createSpreadCardPosition(cardConfig, index);
+            spreadCardsLayout.appendChild(cardPosition);
+        });
+    }
+}
+
+function createSpreadCardPosition(cardConfig, index) {
+    const position = document.createElement('div');
+    position.className = 'spread-card-position';
+    position.style.opacity = '0'; // Скрываем для анимации
+    
+    const tarotCard = document.createElement('div');
+    tarotCard.className = 'tarot-card';
+    
+    const cardBack = document.createElement('div');
+    cardBack.className = 'card-back';
+    cardBack.innerHTML = `
+        <span class="card-symbol">🔮</span>
+        <div id="spreadStars${index}"></div>
+    `;
+    
+    const cardFront = document.createElement('div');
+    cardFront.className = 'card-front hidden';
+    
+    // Изображение будет установлено как background-image
+    
+    const cardLabel = document.createElement('div');
+    cardLabel.className = 'card-label';
+    cardLabel.textContent = cardConfig.label;
+    tarotCard.appendChild(cardBack);
+    tarotCard.appendChild(cardFront);
+    position.appendChild(tarotCard);
+    position.appendChild(cardLabel);
+    
+    // Сохраняем конфигурацию карты
+    position.cardConfig = cardConfig;
+    position.cardIndex = index;
+    
+    return position;
+}
+
+async function animateSpreadCards() {
+    const cardPositions = spreadCardsLayout?.querySelectorAll('.spread-card-position');
+    if (!cardPositions) return;
+    
+    // Показываем карты по очереди с задержкой
+    for (let i = 0; i < cardPositions.length; i++) {
+        const cardPosition = cardPositions[i];
+        
+        // 1. Показываем позицию
+        cardPosition.style.opacity = '1';
+        
+        // 2. Показываем звездочки на рубашке
+        const starsContainer = cardPosition.querySelector(`#spreadStars${i}`);
+        if (starsContainer) {
+            animateStars(2, starsContainer);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // 3. Переворачиваем карту
+        const tarotCard = cardPosition.querySelector('.tarot-card');
+        const randomCard = getRandomCard();
+        
+        // Подготавливаем изображение как background-image для раскладов
+        const cardFront = cardPosition.querySelector('.card-front');
+        const cardBack = cardPosition.querySelector('.card-back');
+        
+        if (cardFront && cardBack) {
+            try {
+                console.log('🖼️ Начинаем асинхронную загрузку изображения для расклада:', randomCard.displayImage);
+                
+                // Асинхронно загружаем изображение перед показом
+                await loadImageAsync(randomCard.displayImage);
+                
+                console.log('✅ Изображение для расклада успешно загружено');
+                
+                // Устанавливаем изображение как фон только после успешной загрузки
+                cardFront.style.backgroundImage = `url('${encodeURI(randomCard.displayImage)}')`;
+                cardFront.style.backgroundSize = 'cover';
+                cardFront.style.backgroundPosition = 'center';
+                cardFront.style.backgroundRepeat = 'no-repeat';
+                cardFront.style.opacity = '1';
+                cardFront.style.visibility = 'visible';
+                
+            } catch (error) {
+                console.warn('❌ Ошибка загрузки изображения для расклада, используем placeholder:', error);
+                // Используем placeholder при ошибке загрузки
+                cardFront.style.backgroundImage = `url('${createCardPlaceholder(randomCard)}')`;
+                cardFront.style.backgroundSize = 'cover';
+                cardFront.style.backgroundPosition = 'center';
+                cardFront.style.backgroundRepeat = 'no-repeat';
+                cardFront.style.opacity = '1';
+                cardFront.style.visibility = 'visible';
+            }
+        }
+        
+        // Переворачиваем карту
+        tarotCard?.classList.add('flipped');
+        
+        setTimeout(() => {
+            // Показываем лицевую сторону с изображением
+            if (cardFront && cardBack) {
+                cardFront.classList.remove('hidden');
+                cardBack.classList.add('hidden');
+            }
+            
+            // Снимаем класс flipped после завершения анимации
+            tarotCard?.classList.remove('flipped');
+            requestAnimationFrame(() => {
+                tarotCard?.classList.remove('flipped');
+            });
+        }, 400);
+        
+        // Сохраняем выбранную карту для интерпретации
+        cardPosition.selectedCard = randomCard;
+        
+        await new Promise(resolve => setTimeout(resolve, 600));
+    }
+}
+
+async function showSpreadInterpretation(spreadType) {
+    const spreadConfig = SPREAD_CONFIGS[spreadType];
+    const cardPositions = spreadCardsLayout?.querySelectorAll('.spread-card-position');
+    
+    spreadAnswerContainer?.classList.remove('hidden');
+    spreadAnswerContainer?.classList.add('show');
+    
+    // Собираем карты для API запроса
+    const selectedCards = [];
+    cardPositions?.forEach((cardPosition) => {
+        const selectedCard = cardPosition.selectedCard;
+        if (selectedCard) {
+            selectedCards.push(selectedCard);
+        }
+    });
+    
+    let interpretation;
+    
+    // Генерируем предсказание через API
+    try {
+        console.log('🤖 Генерируем предсказание для расклада через API...');
+        const spreadName = spreadConfig.name.replace('Расклад «', '').replace('»', '');
+        const prediction = await generatePredictionAPI(selectedCards, `расклад ${spreadName}`);
+        interpretation = `${spreadConfig.description}\n\n${prediction}`;
+    } catch (error) {
+        console.warn('❌ Ошибка генерации предсказания через API, используем базовое описание:', error);
+        
+        // Формируем интерпретацию расклада (fallback)
+        interpretation = `${spreadConfig.description}\n\n`;
+        
+        cardPositions?.forEach((cardPosition) => {
+            const cardConfig = cardPosition.cardConfig;
+            const selectedCard = cardPosition.selectedCard;
+            
+            if (selectedCard) {
+                const orientationText = selectedCard.isReversed ? ' (перевернутая)' : '';
+                interpretation += `**${cardConfig.label}${orientationText}**: ${selectedCard.name}\n`;
+                interpretation += `${cardConfig.description}: ${selectedCard.description || selectedCard.meaningUpright}\n\n`;
+            }
+        });
+        
+        interpretation += "Это ваш персональный расклад. Прислушайтесь к своей интуиции при интерпретации символов.";
+    }
+    
+    // Печатаем интерпретацию
+    if (spreadAnswerText) {
+        await typeText(spreadAnswerText, interpretation);
+    }
+    
+    // Сохраняем в историю
+    await addToHistory('spread', spreadConfig.name, interpretation);
+    
+    showMessage('Расклад выполнен!', 'success');
+}
+
+function resetSpreadState() {
+    console.log('🔄 Сброс состояния раскладов');
+    
+    // Скрываем результат и показываем сетку
+    spreadResult?.classList.add('hidden');
+    spreadsGrid?.classList.remove('hidden');
+    
+    // Очищаем контейнеры
+    if (spreadCardsLayout) spreadCardsLayout.innerHTML = '';
+    if (spreadIntroText) spreadIntroText.textContent = '';
+    if (spreadAnswerText) {
+        spreadAnswerText.textContent = '';
+        spreadAnswerText.classList.remove('finished-typing');
+    }
+    
+    // Скрываем все контейнеры анимации
+    spreadAnimationContainer?.classList.add('hidden');
+    spreadCardsContainer?.classList.add('hidden');
+    spreadAnswerContainer?.classList.remove('show');
+    spreadAnswerContainer?.classList.add('hidden');
+}
+
+// ========================================================================
+// 📚 ИСТОРИЯ
+// ========================================================================
+
+async function addToHistory(type, title, content) {
+    const telegramId = getTelegramUserId();
+    
+    console.log('📚 addToHistory вызван:', {
+        type,
+        title: title.substring(0, 50) + '...',
+        telegramId,
+        tarotDBExists: !!window.TarotDB,
+        isConnected: window.TarotDB ? window.TarotDB.isConnected() : false
+    });
+    
+    try {
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            console.log('💾 Сохранение чтения в Supabase...');
+            
+            // Сохраняем в зависимости от типа записи
+            if (type === 'daily-card') {
+                // Карта дня уже сохранена в handleDailyCardClick, не дублируем
+                console.log('✅ Карта дня уже сохранена');
+            } else if (type === 'question' || type === 'clarifying-question') {
+                // Сохраняем вопрос через saveQuestion
+                await window.TarotDB.saveQuestion(telegramId, title);
+                console.log('✅ Вопрос сохранен в Supabase:', type);
+            } else {
+                console.log('ℹ️ Тип записи не требует отдельного сохранения:', type);
+            }
+        } else {
+            console.log('📱 TarotDB недоступен для сохранения чтения, используем только localStorage');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сохранения в Supabase:', error);
+    }
+    
+    // Локальное сохранение как fallback
+    const now = new Date();
+    const historyItem = {
+        id: Date.now(),
+        type: type,
+        title: title,
+        content: content,
+        date: now.toLocaleString('ru-RU'),
+        timestamp: now.getTime() // Добавляем timestamp для проверки возраста
+    };
+    
+    appState.history.unshift(historyItem);
+    
+    // Очищаем старые записи
+    cleanOldHistoryItems();
+    
+    // Ограничиваем количество записей
+    if (appState.history.length > 50) {
+        appState.history = appState.history.slice(0, 50);
+    }
+    
+    await saveAppState();
+    updateHistoryDisplay();
+}
+
+function updateHistoryDisplay() {
+    const historyList = document.getElementById('historyList');
+    const historyEmptyState = document.getElementById('historyEmptyState');
+    
+    if (!historyList) return;
+    
+    if (appState.history.length === 0) {
+        historyEmptyState?.classList.remove('hidden');
+        
+        // Очищаем список если он есть
+        const existingItems = historyList.querySelectorAll('.history-item');
+        existingItems.forEach(item => item.remove());
+        return;
+    }
+    
+    historyEmptyState?.classList.add('hidden');
+    
+    // Очищаем текущий список
+    const existingItems = historyList.querySelectorAll('.history-item');
+    existingItems.forEach(item => item.remove());
+    
+    // Создаем новые элементы истории
+    appState.history.forEach(item => {
+        const historyItemElement = document.createElement('div');
+        historyItemElement.className = 'history-item';
+        
+        // Определяем тип для отображения
+        let typeDisplay = '❓ Вопрос';
+        if (item.type === 'daily-card') {
+            typeDisplay = '🃏 Карта дня';
+        } else if (item.type === 'spread') {
+            typeDisplay = '🎴 Расклад';
+        }
+        
+        historyItemElement.innerHTML = `
+            <div class="history-header">
+                <div class="history-type">${typeDisplay}</div>
+                <div class="history-actions">
+                    <div class="history-date">${item.date}</div>
+                    <button class="delete-history-item" data-id="${item.id}" title="Удалить">🗑️</button>
+                </div>
+            </div>
+            <div class="history-title">${item.title}</div>
+            <div class="history-content">${item.content.length > 100 ? item.content.substring(0, 100) + '...' : item.content}</div>
+        `;
+        
+        // Добавляем обработчик клика для раскрытия полного содержимого
+        historyItemElement.addEventListener('click', (e) => {
+            // Не раскрываем содержимое если кликнули по кнопке удаления
+            if (e.target.classList.contains('delete-history-item')) {
+                return;
+            }
+            
+            const content = historyItemElement.querySelector('.history-content');
+            if (content.textContent.endsWith('...')) {
+                content.textContent = item.content;
+            } else {
+                content.textContent = item.content.length > 100 ? item.content.substring(0, 100) + '...' : item.content;
+            }
+        });
+        
+        // Добавляем обработчик для кнопки удаления
+        const deleteBtn = historyItemElement.querySelector('.delete-history-item');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Предотвращаем всплытие события
+            deleteHistoryItem(item.id);
+        });
+        
+        historyList.appendChild(historyItemElement);
+    });
+}
+
+async function deleteHistoryItem(itemId) {
+    // Ищем элемент в истории
+    const itemIndex = appState.history.findIndex(item => item.id === itemId);
+    
+    if (itemIndex === -1) {
+        console.warn('Элемент истории не найден:', itemId);
+        return;
+    }
+    
+    // Удаляем элемент из массива
+    appState.history.splice(itemIndex, 1);
+    
+    // Сохраняем состояние
+    await saveAppState();
+    
+    // Обновляем отображение
+    updateHistoryDisplay();
+    
+    showMessage('Запись удалена из истории', 'success');
+}
+
+// ========================================================================
+// ⭐ ОТЗЫВЫ
+// ========================================================================
+
+function updateReviewsDisplay() {
+    const reviewsList = document.getElementById('reviewsList');
+    
+    if (!reviewsList) return;
+    
+    // Очищаем текущий список отзывов
+    reviewsList.innerHTML = '';
+    
+    if (appState.reviews.length === 0) {
+        reviewsList.innerHTML = `
+            <div class="reviews-empty">
+                <span class="empty-icon">💬</span>
+                <p>Отзывы пока отсутствуют.</p>
+                <p>Станьте первым, кто оставит отзыв!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Создаем элементы отзывов (показываем последние 10)
+    const recentReviews = appState.reviews.slice(0, 10);
+    
+    recentReviews.forEach(review => {
+        const reviewElement = document.createElement('div');
+        reviewElement.className = 'review-item';
+        
+        // Создаем звездочки для отображения рейтинга
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            starsHtml += `<span class="review-star ${i <= review.rating ? 'filled' : ''}">★</span>`;
+        }
+        
+        // Ограничиваем длину текста для превью
+        const maxLength = 120;
+        const isLongText = review.text.length > maxLength;
+        const truncatedText = isLongText ? review.text.substring(0, maxLength) + '...' : review.text;
+        
+        reviewElement.innerHTML = `
+            <div class="review-header">
+                <div class="review-user-info">
+                    <div class="review-username">${review.username || 'Анонимный пользователь'}</div>
+                    <div class="review-rating">${starsHtml}</div>
+                </div>
+                <div class="review-date">${review.date}</div>
+            </div>
+            <div class="review-text" data-full-text="${encodeURIComponent(review.text)}" data-truncated-text="${encodeURIComponent(truncatedText)}" data-expanded="false">${truncatedText}</div>
+            ${isLongText ? '<div class="review-expand-hint">Нажмите для раскрытия</div>' : ''}
+        `;
+        
+        // Добавляем обработчик клика для раскрытия/скрытия длинного текста
+        if (isLongText) {
+            reviewElement.addEventListener('click', () => {
+                const textElement = reviewElement.querySelector('.review-text');
+                const expandHint = reviewElement.querySelector('.review-expand-hint');
+                const isExpanded = textElement.getAttribute('data-expanded') === 'true';
+                
+                if (isExpanded) {
+                    // Скрываем полный текст
+                    textElement.textContent = decodeURIComponent(textElement.getAttribute('data-truncated-text'));
+                    textElement.setAttribute('data-expanded', 'false');
+                    expandHint.textContent = 'Нажмите для раскрытия';
+                    reviewElement.classList.remove('expanded');
+                } else {
+                    // Показываем полный текст
+                    textElement.textContent = decodeURIComponent(textElement.getAttribute('data-full-text'));
+                    textElement.setAttribute('data-expanded', 'true');
+                    expandHint.textContent = 'Нажмите для скрытия';
+                    reviewElement.classList.add('expanded');
+                }
+            });
+            
+            // Добавляем курсор pointer для интерактивности
+            reviewElement.style.cursor = 'pointer';
+        }
+        
+        reviewsList.appendChild(reviewElement);
+    });
+}
+
+function setupStarRating() {
+    const stars = document.querySelectorAll('.star');
+    
+    stars.forEach((star, index) => {
+        star.addEventListener('click', () => {
+            currentRating = index + 1;
+            updateStarsDisplay(currentRating);
+            console.log('⭐ Выбранный рейтинг:', currentRating);
+        });
+        
+        star.addEventListener('mouseenter', () => {
+            updateStarsDisplay(index + 1);
+        });
+    });
+    
+    const starRating = document.getElementById('starRating');
+    starRating?.addEventListener('mouseleave', () => {
+        updateStarsDisplay(currentRating);
+    });
+    
+    function updateStarsDisplay(rating) {
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('active');
+            } else {
+                star.classList.remove('active');
+            }
+        });
+    }
+}
+
+async function handleSubmitReview() {
+    const reviewText = document.getElementById('reviewText');
+    
+    const rating = currentRating;
+    const text = reviewText?.value.trim();
+    
+    if (!rating || rating === 0) {
+        showMessage('Пожалуйста, поставьте оценку', 'error');
+        return;
+    }
+    
+    if (!text) {
+        showMessage('Пожалуйста, напишите отзыв', 'error');
+        return;
+    }
+    
+    // Создаем объект отзыва
+    const review = {
+        id: Date.now(),
+        rating: rating,
+        text: text,
+        username: getTelegramUserName(),
+        date: new Date().toLocaleString('ru-RU'),
+        timestamp: Date.now()
+    };
+    
+    // Сохраняем в Supabase
+    try {
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            const reviewData = {
+                user_id: getTelegramUserId(),
+                rating: rating,
+                review_text: text,
+                username: getTelegramUserName(),
+                created_at: new Date().toISOString()
+            };
+            
+            await window.TarotDB.saveReview(reviewData);
+            console.log('✅ Отзыв сохранен в Supabase');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка сохранения отзыва в Supabase:', error);
+    }
+    
+    // Добавляем отзыв в начало массива (локальное сохранение как fallback)
+    appState.reviews.unshift(review);
+    
+    // Ограничиваем количество отзывов (храним максимум 50)
+    if (appState.reviews.length > 50) {
+        appState.reviews = appState.reviews.slice(0, 50);
+    }
+    
+    // Сохраняем состояние
+    await saveAppState();
+    
+    // Обновляем отображение отзывов
+    updateReviewsDisplay();
+    
+    console.log('📝 Отзыв сохранен:', review);
+    
+    showMessage('Спасибо за ваш отзыв!', 'success');
+    
+    // Очищаем форму
+    if (reviewText) reviewText.value = '';
+    currentRating = 0;
+    document.querySelectorAll('.star').forEach(star => star.classList.remove('active'));
+}
+
+// ========================================================================
+// 👑 PREMIUM
+// ========================================================================
+
+function updateSubscriptionStatus(isPremium = false) {
+    const statusElement = document.getElementById('subscriptionStatus');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusText = document.getElementById('statusText');
+    
+    if (!statusElement || !statusIcon || !statusText) return;
+    
+    if (isPremium) {
+        statusElement.classList.add('premium');
+        statusIcon.textContent = '👑';
+        statusText.textContent = 'Premium-подписка';
+    } else {
+        statusElement.classList.remove('premium');
+        statusIcon.textContent = '🌑';
+        statusText.textContent = 'Базовый вариант';
+    }
+
+    // Update test toggle
+    if (premiumTestToggle) {
+        premiumTestToggle.checked = isPremium;
+    }
+    if (premiumTestLabel) {
+        premiumTestLabel.textContent = isPremium ? 'Premium режим' : 'Базовый режим';
+    }
+}
+
+
+async function handlePremiumPurchase() {
+    const userId = getTelegramUserId();
+
+    try {
+        // Здесь должна быть реальная интеграция с платежной системой
+        console.log('💰 Покупка Premium');
+        
+        // Если TarotDB подключен, обновляем профиль пользователя
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            // Сначала проверяем существование профиля
+            let userProfile = await window.TarotDB.getUserProfile(userId);
+            
+            // Если профиль не существует, создаем его
+            if (!userProfile) {
+                console.log('🆕 Создаем новый профиль пользователя');
+                userProfile = await window.TarotDB.createUserProfile(userId, {
+                    username: getTelegramUserName(),
+                    is_subscribed: false
+                });
+            }
+
+            // Обновляем профиль
+            await window.TarotDB.updateUserProfile(userId, {
+                is_subscribed: true,
+                subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 дней
+                premium_purchase_date: new Date().toISOString()
+            });
+        }
+
+        // Обновляем локальное состояние
+        appState.isPremium = true;
+        await saveAppState();
+        updateSubscriptionStatus(true);
+        updateQuestionsCounter();
+        
+        showMessage('Premium активирован! Теперь у вас безлимитные возможности!', 'success');
+    } catch (error) {
+        console.error('❌ Ошибка активации Premium:', error);
+        showMessage('Не удалось активировать Premium', 'error');
+    }
+}
+// ========================================================================
+// 🛠️ УТИЛИТЫ
+// ========================================================================
+
+function getTelegramUserId() {
+    // Пытаемся получить ID пользователя из проверенных данных
+    if (window.validatedTelegramUser && window.validatedTelegramUser.id) {
+        console.log('✅ Используем проверенный Telegram ID:', window.validatedTelegramUser.id);
+        return window.validatedTelegramUser.id;
+    }
+    
+    // Проверяем основной API Telegram WebApp
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+        const telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+        if (telegramUser.id) {
+            console.log('📱 Используем Telegram WebApp ID:', telegramUser.id);
+            return telegramUser.id.toString();
+        }
+    }
+    
+    // Проверяем, не является ли это Bot API данными
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+        try {
+            // В реальном приложении здесь должна быть валидация initData на сервере
+            const urlParams = new URLSearchParams(window.Telegram.WebApp.initData);
+            const userParam = urlParams.get('user');
+            if (userParam) {
+                const userData = JSON.parse(decodeURIComponent(userParam));
+                if (userData && userData.id) {
+                    console.log('🔐 Используем данные из initData:', userData.id);
+                    return userData.id.toString();
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Ошибка парсинга initData:', error);
+        }
+    }
+    
+    // Fallback для тестирования - генерируем стабильный числовой ID
+    const testId = localStorage.getItem('tarot_test_user_id');
+    if (testId && !isNaN(parseInt(testId))) {
+        console.log('🧪 Используем сохраненный тестовый ID:', testId);
+        return testId;
+    }
+    
+    // Генерируем числовой тестовый ID (отрицательный, чтобы не пересекаться с реальными Telegram ID)
+    const newTestId = -Math.floor(Math.random() * 1000000000);
+    localStorage.setItem('tarot_test_user_id', newTestId.toString());
+    console.warn('⚠️ Создан новый числовой тестовый ID (старый был текстовым):', newTestId);
+    return newTestId.toString();
+}
+
+function getTelegramUserName() {
+    // Пытаемся получить имя пользователя из проверенных данных
+    if (window.validatedTelegramUser) {
+        const user = window.validatedTelegramUser;
+        
+        // Пробуем получить имя в порядке приоритета
+        if (user.first_name && user.last_name) {
+            return `${user.first_name} ${user.last_name}`;
+        } else if (user.first_name) {
+            return user.first_name;
+        } else if (user.username) {
+            return `@${user.username}`;
+        }
+    }
+    
+    // Для разработки используем initDataUnsafe
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+        console.warn('⚠️ Используются непроверенные данные Telegram (только для разработки)');
+        const user = window.Telegram.WebApp.initDataUnsafe.user;
+        
+        // Пробуем получить имя в порядке приоритета
+        if (user.first_name && user.last_name) {
+            return `${user.first_name} ${user.last_name}`;
+        } else if (user.first_name) {
+            return user.first_name;
+        } else if (user.username) {
+            return `@${user.username}`;
+        }
+    }
+    
+    // Fallback - случайное мистическое имя
+    const userId = getTelegramUserId();
+    // Используем ID для генерации стабильного случайного имени
+    const hash = userId.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+    const index = Math.abs(hash) % mysticalNames.length;
+    return mysticalNames[index];
+}
+
+// Экспортируем функцию в глобальную область видимости для использования в supabase.js
+window.getTelegramUserName = getTelegramUserName;
+
+async function validateTelegramData() {
+    // Проверяем, есть ли Telegram WebApp initData
+    if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.initData) {
+        console.log('📱 Telegram WebApp данные недоступны (вероятно, запуск вне Telegram)');
+        return false;
+    }
+    
+    try {
+        const response = await fetch('/api/validate-telegram', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                initData: window.Telegram.WebApp.initData
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+                window.validatedTelegramUser = data.user;
+                console.log('✅ Telegram данные успешно проверены');
+                return true;
+            }
+        }
+        
+        console.warn('⚠️ Не удалось проверить Telegram данные');
+        return false;
+        
+    } catch (error) {
+        console.warn('⚠️ Ошибка валидации Telegram данных:', error);
+        return false;
+    }
+}
+
+// ========================================================================
+// 🎯 ИНИЦИАЛИЗАЦИЯ DOM ЭЛЕМЕНТОВ
+// ========================================================================
+
+function initializeDOMElements() {
+    console.log('🎯 Инициализация DOM элементов...');
+    
+    // Основные элементы
+    mainNav = document.getElementById('mainNav');
+    secondaryNav = document.getElementById('secondaryNav');
+    tabContents = document.querySelectorAll('.tab-content');
+    
+    // ЗАЩИТА: удаляем дублированные элементы с критическими ID
+    ['tarotCard', 'questionTarotCard'].forEach(id => {
+        document.querySelectorAll(`#${id}`).forEach((node, index, array) => {
+            if (index < array.length - 1) {
+                console.warn(`🚨 Найден дублированный #${id}, удаляем:`, node);
+                node.remove();
+            }
+        });
+    });
+    
+    // Карта дня
+    tarotCard = document.getElementById('tarotCard');
+    cardBack = tarotCard?.querySelector('.card-back');
+    cardFront = tarotCard?.querySelector('.card-front');
+    // cardImage больше не используется - изображения через background-image
+    cardInfoAfterFlip = document.getElementById('cardInfoAfterFlip');
+    flippedCardName = document.getElementById('flippedCardName');
+    cardIntroText = document.getElementById('cardIntroText');
+    
+    // ИИ-ответы
+    aiAnswerContainer = document.getElementById('aiAnswerContainer');
+    aiInterpretationTitle = document.getElementById('aiInterpretationTitle');
+    aiInterpretationTextElement = document.getElementById('aiInterpretationText');
+    
+    // Баннеры и кнопки
+    afterDailyCardBanner = document.getElementById('afterDailyCardBanner');
+    askMoreQuestionsBtn = document.getElementById('askMoreQuestionsBtn');
+    premiumBannerBtn = document.getElementById('premiumBannerBtn');
+    
+    // Анимации
+    starAnimationContainer = document.getElementById('starAnimationContainer');
+    
+    // Вопросы
+    questionsLeftElement = document.getElementById('questionsLeft');
+    questionTextarea = document.getElementById('questionTextarea');
+    submitQuestionBtn = document.getElementById('submitQuestionBtn');
+    charCounter = document.getElementById('charCounter');
+    loadingState = document.getElementById('loadingState');
+    questionAnswerContainer = document.getElementById('questionAnswerContainer');
+    questionAnswerText = document.getElementById('questionAnswerText');
+    // questionCardImage больше не используется - изображения через background-image
+    
+    // Новые элементы для анимации вопросов
+    questionAnimationContainer = document.getElementById('questionAnimationContainer');
+    questionStarAnimationContainer = document.getElementById('questionStarAnimationContainer');
+    questionIntroText = document.getElementById('questionIntroText');
+    questionCardContainer = document.getElementById('questionCardContainer');
+    
+    questionTarotCard = document.getElementById('questionTarotCard');
+    
+    questionCardInfoAfterFlip = document.getElementById('questionCardInfoAfterFlip');
+    questionFlippedCardName = document.getElementById('questionFlippedCardName');
+    
+    // Уточняющий вопрос
+    clarifyingQuestionContainer = document.getElementById('clarifyingQuestionContainer');
+    clarifyingQuestionTextarea = document.getElementById('clarifyingQuestionTextarea');
+    submitClarifyingQuestionBtn = document.getElementById('submitClarifyingQuestionBtn');
+    clarifyingQuestionWarning = document.getElementById('clarifyingQuestionWarning');
+
+    // Test Toggle
+    premiumTestToggle = document.getElementById('premiumTestToggle');
+    premiumTestLabel = document.getElementById('premiumTestLabel');
+    
+    // Расклады
+    spreadsGrid = document.getElementById('spreadsGrid');
+    spreadResult = document.getElementById('spreadResult');
+    spreadResultTitle = document.getElementById('spreadResultTitle');
+    backToSpreadsBtn = document.getElementById('backToSpreadsBtn');
+    spreadAnimationContainer = document.getElementById('spreadAnimationContainer');
+    spreadIntroText = document.getElementById('spreadIntroText');
+    spreadCardsContainer = document.getElementById('spreadCardsContainer');
+    spreadCardsLayout = document.getElementById('spreadCardsLayout');
+    spreadAnswerContainer = document.getElementById('spreadAnswerContainer');
+    spreadAnswerText = document.getElementById('spreadAnswerText');
+
+    console.log('✅ DOM элементы инициализированы');
+}
+
+// ========================================================================
+// 🎮 НАСТРОЙКА ОБРАБОТЧИКОВ СОБЫТИЙ
+// ========================================================================
+
+function setupEventListeners() {
+    console.log('🎮 Настройка обработчиков событий...');
+    console.log('🔧 mainNav:', mainNav);
+    console.log('🔧 secondaryNav:', secondaryNav);
+    
+    // Навигация
+    mainNav?.addEventListener('click', (e) => {
+        console.log('🖱️ Клик по mainNav:', e.target);
+        if (e.target.classList.contains('nav-tab')) {
+            console.log('🎯 Найдена nav-tab:', e.target.dataset.tab);
+            switchTab(e.target.dataset.tab);
+        }
+    });
+
+    secondaryNav?.addEventListener('click', (e) => {
+        if (e.target.classList.contains('nav-tab')) {
+            switchTab(e.target.dataset.tab);
+        }
+    });
+
+    // Карта дня
+    tarotCard?.addEventListener('click', handleDailyCardClick);
+    
+    // Кнопки баннера
+    askMoreQuestionsBtn?.addEventListener('click', () => switchTab('question'));
+    premiumBannerBtn?.addEventListener('click', () => switchTab('premium'));
+    
+    // Вопросы
+    questionTextarea?.addEventListener('input', handleQuestionInput);
+    submitQuestionBtn?.addEventListener('click', handleAskQuestion);
+    submitClarifyingQuestionBtn?.addEventListener('click', handleClarifyingQuestion);
+    
+    // Отзывы
+    setupStarRating();
+    const submitReviewBtn = document.getElementById('submitReviewBtn');
+    submitReviewBtn?.addEventListener('click', handleSubmitReview);
+    
+    // Premium
+    const premiumBuyBtn = document.getElementById('premiumBuyBtn');
+    premiumBuyBtn?.addEventListener('click', handlePremiumPurchase);
+
+    
+    // Расклады
+    spreadsGrid?.addEventListener('click', (e) => {
+        const spreadCard = e.target.closest('.spread-card');
+        if (spreadCard && spreadCard.dataset.spread) {
+            console.log('🎴 Клик по раскладу:', spreadCard.dataset.spread);
+            handleSpreadClick(spreadCard.dataset.spread);
+        }
+    });
+    
+    backToSpreadsBtn?.addEventListener('click', resetSpreadState);
+    
+    console.log('✅ Обработчики событий настроены');
+}
+
+// ========================================================================
+// 🚀 ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
+// ========================================================================
+
+async function initApp() {
+    // Prevent double initialization
+    if (initAppCalled) {
+        console.log('⚠️ initApp уже был вызван, пропускаем повторную инициализацию');
+        return;
+    }
+    
+    initAppCalled = true;
+    console.log('🚀 Инициализация приложения...');
+    
+    try {
+        // 0. Валидируем Telegram данные (только в продакшене)
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            console.log('🔐 Валидация Telegram данных...');
+            await validateTelegramData();
+        }
+        
+        // 1. Ждем готовности конфигурации
+        if (typeof window.isConfigReady === 'function') {
+            let configReady = false;
+            let attempts = 0;
+            const maxAttempts = 50; // 5 секунд
+            
+            while (!configReady && attempts < maxAttempts) {
+                configReady = window.isConfigReady();
+                if (!configReady) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+            }
+            
+            if (!configReady) {
+                console.warn('⚠️ Конфигурация не готова, продолжаем с fallback');
+            }
+        }
+        
+        // 2. Инициализируем DOM
+        initializeDOMElements();
+        
+        // 3. Получаем Telegram ID пользователя 
+        const userId = getTelegramUserId();
+        console.log('👤 Получен пользователь ID:', userId);
+        
+        // Сохраняем данные Telegram пользователя в appState
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            appState.telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
+            console.log('👤 Telegram пользователь сохранен:', appState.telegramUser);
+        } else {
+            // Создаем mock пользователя для тестирования
+            appState.telegramUser = {
+                id: userId || 'webapp_user',
+                first_name: 'Test User',
+                username: 'testuser'
+            };
+            console.log('🧪 Mock пользователь создан:', appState.telegramUser);
+        }
+        
+        // 4. Загружаем локальные данные
+        await loadAppStateLocally();
+        console.log('📱 Локальное состояние загружено');
+        
+        // 5. Синхронизируем данные с TarotDB
+        try {
+            console.log('🔍 Проверка TarotDB при инициализации:', {
+                tarotDBExists: !!window.TarotDB,
+                isConnected: window.TarotDB ? window.TarotDB.isConnected() : false,
+                connectionStatus: window.TarotDB ? window.TarotDB.getStatus() : null
+            });
+            
+            if (window.TarotDB && window.TarotDB.isConnected()) {
+                console.log('🔄 Синхронизация данных с TarotDB');
+                
+                // Выполняем синхронизацию данных
+                if (window.TarotDB.performDataSync) {
+                    const syncedState = await window.TarotDB.performDataSync(userId, appState);
+                    if (syncedState) {
+                        // Обновляем состояние приложения синхронизированными данными
+                        appState.isPremium = syncedState.isPremium;
+                        appState.questionsUsed = syncedState.questionsUsed;
+                        appState.dailyCardUsed = syncedState.dailyCardUsed;
+                        appState.lastCardDate = syncedState.lastCardDay;
+                        console.log('✅ Данные синхронизированы с TarotDB');
+                    }
+                } else {
+                    // Fallback к старой логике если performDataSync недоступен
+                    const userProfile = await window.TarotDB.getUserProfile(userId);
+                    if (userProfile) {
+                        appState.dailyCardUsed = userProfile.last_card_day === new Date().toISOString().split('T')[0];
+                        appState.lastCardDate = userProfile.last_card_day;
+                        appState.questionsUsed = userProfile.total_questions || 0;
+                        appState.isPremium = userProfile.is_subscribed || false;
+                        appState.freeQuestionsLimit = userProfile.free_predictions_left || 3;
+                        console.log('✅ Профиль пользователя загружен из TarotDB (fallback)');
+                    }
+                }
+                
+                // Устанавливаем лимиты
+                appState.freeQuestionsLimit = 3;
+                
+                // Загружаем историю чтений
+                try {
+                    const readings = await window.TarotDB.getUserReadings(userId);
+                    if (readings && readings.length > 0) {
+                        appState.history = readings.map(reading => ({
+                            id: reading.id || Date.now(),
+                            type: reading.type || 'reading',
+                            title: reading.title || 'Чтение',
+                            content: reading.content || '',
+                            date: new Date(reading.created_at).toLocaleString('ru-RU'),
+                            timestamp: new Date(reading.created_at).getTime()
+                        }));
+                        console.log(`✅ История загружена из TarotDB: ${readings.length} записей`);
+                    }
+                } catch (historyError) {
+                    console.error('❌ Ошибка загрузки истории из TarotDB:', historyError);
+                }
+                
+                // Загружаем отзывы пользователя
+                try {
+                    const reviews = await window.TarotDB.getUserReviews(userId);
+                    if (reviews && reviews.length > 0) {
+                        appState.reviews = reviews.map(review => ({
+                            id: review.id || Date.now(),
+                            rating: review.rating,
+                            text: review.review_text || review.text,
+                            username: review.username || getTelegramUserName(),
+                            date: new Date(review.created_at).toLocaleString('ru-RU'),
+                            timestamp: new Date(review.created_at).getTime()
+                        }));
+                        console.log(`✅ Отзывы загружены из TarotDB: ${reviews.length} записей`);
+                    }
+                } catch (reviewsError) {
+                    console.error('❌ Ошибка загрузки отзывов из TarotDB:', reviewsError);
+                }
+            }
+        } catch (cloudError) {
+            console.error('❌ Ошибка загрузки данных из TarotDB:', cloudError);
+        }
+        
+        // Fallback к локальному состоянию
+        await loadAppState();
+        
+        // 4. Загружаем карты
+        await loadCards();
+        
+        // 5. Настраиваем обработчики
+        setupEventListeners();
+        
+        // 6. Обновляем UI
+        updateSubscriptionStatus(appState.isPremium);
+        updateQuestionsCounter();
+        updateHistoryDisplay();
+        updateReviewsDisplay();
+        
+        // 7. Инициализируем Telegram WebApp если доступен
+        initializeTelegramWebApp();
+        
+        isInitialized = true;
+        console.log('✅ Приложение успешно инициализировано');
+        
+        // 7.5. ПРИНУДИТЕЛЬНО ИНИЦИАЛИЗИРУЕМ SUPABASE ЕСЛИ НЕ ИНИЦИАЛИЗИРОВАН
+        if (window.TarotDB && !window.TarotDB.isConnected()) {
+            console.log('🔄 Принудительная инициализация Supabase...');
+            if (window.TarotDB.initialize) {
+                try {
+                    await window.TarotDB.initialize();
+                    console.log('✅ Принудительная инициализация завершена');
+                } catch (error) {
+                    console.error('❌ Ошибка принудительной инициализации:', error);
+                }
+            }
+        }
+        
+        // 7.6. ТЕСТИРУЕМ TAROTDB
+        setTimeout(() => {
+            testTarotDB();
+        }, 1000);
+        
+        // 8. Показываем информацию о загруженных картах
+        if (allCards && allCards.length > 0) {
+            console.log(`🃏 Всего карт загружено: ${allCards.length}`);
+            console.log('🖼️ Примеры изображений карт:', allCards.slice(0, 3).map(c => ({
+                name: c.name,
+                image: c.image,
+                imageUpright: c.imageUpright,
+                imageReversed: c.imageReversed,
+                displayImage: c.displayImage
+            })));
+        }
+        
+        // 9. Синхронизируем состояние с TarotDB
+        try {
+            if (window.TarotDB && window.TarotDB.isConnected()) {
+                const userId = getTelegramUserId();
+                await window.TarotDB.updateUserProfile(userId, {
+                    total_questions: appState.questionsUsed,
+                    is_subscribed: appState.isPremium,
+                    last_card_day: appState.lastCardDate,
+                    free_predictions_left: Math.max(0, appState.freeQuestionsLimit - appState.questionsUsed)
+                });
+                console.log('☁️ Состояние синхронизировано с TarotDB');
+            }
+        } catch (syncError) {
+            console.error('❌ Ошибка синхронизации состояния с TarotDB:', syncError);
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка инициализации приложения:', error);
+        showMessage('Произошла ошибка при загрузке приложения', 'error');
+    }
+}
+
+// ========================================================================
+// 📱 ИНТЕГРАЦИЯ С TELEGRAM WEBAPP
+// ========================================================================
+
+function initializeTelegramWebApp() {
+    try {
+        if (window.Telegram && window.Telegram.WebApp) {
+            console.log('📱 Telegram WebApp обнаружен');
+            
+            // Расширяем на весь экран
+            window.Telegram.WebApp.expand();
+            
+            // Устанавливаем цвета темы с проверкой версии (≥ 6.1)
+            try {
+                const webAppVersion = window.Telegram.WebApp.version;
+                const versionNumber = parseFloat(webAppVersion || '0');
+                
+                if (versionNumber >= 6.1) {
+                    console.log('🎨 Устанавливаем цвета темы (версия WebApp:', webAppVersion, ')');
+                    window.Telegram.WebApp.setHeaderColor('#1a1a2e');
+                    window.Telegram.WebApp.setBackgroundColor('#1a1a2e');
+                } else {
+                    console.log('⚠️ Цвета темы недоступны в версии WebApp:', webAppVersion);
+                }
+            } catch (colorError) {
+                console.warn('⚠️ Ошибка при установке цветов темы:', colorError.message);
+            }
+            
+            // Показываем, что приложение готово
+            window.Telegram.WebApp.ready();
+            
+            console.log('✅ Telegram WebApp инициализирован');
+        } else {
+            console.log('🌐 Работаем в браузере (не в Telegram)');
+        }
+    } catch (error) {
+        console.warn('⚠️ Ошибка инициализации Telegram WebApp:', error);
+    }
+}
+
+// ========================================================================
+// 🧪 ФУНКЦИИ ДЛЯ ОТЛАДКИ
+// ========================================================================
+
+function debugApp() {
+    console.log('🧪 Отладочная информация:');
+    console.log('Состояние приложения:', appState);
+    console.log('Карты загружены:', allCards.length);
+    console.log('Приложение инициализировано:', isInitialized);
+    console.log('Текущий рейтинг:', currentRating);
+    console.log('DOM элементы:', {
+        tarotCard: !!tarotCard,
+        questionTextarea: !!questionTextarea,
+        submitQuestionBtn: !!submitQuestionBtn,
+        historyList: !!document.getElementById('historyList')
+    });
+    
+    if (allCards.length > 0) {
+        console.log('🃏 Примеры карт:');
+        allCards.slice(0, 3).forEach(card => {
+            console.log(`- ${card.name}:`);
+            console.log(`  Основное изображение: ${card.image}`);
+            console.log(`  Прямое изображение: ${card.imageUpright}`);
+            console.log(`  Перевернутое изображение: ${card.imageReversed}`);
+        });
+    }
+}
+
+function resetApp() {
+    console.log('🔄 Сброс приложения...');
+    localStorage.removeItem('tarotAppState');
+    location.reload();
+}
+
+function testNotification() {
+    showMessage('Тестовое уведомление', 'info');
+}
+
+function testCardImage() {
+    if (allCards.length === 0) {
+        console.warn('⚠️ Карты не загружены');
+        return;
+    }
+    
+    const randomCard = getRandomCard();
+    console.log('🧪 Тестирование изображения карты:', randomCard);
+    
+    // Создаем тестовое изображение
+    const testImg = new Image();
+    testImg.onload = () => {
+        console.log('✅ Изображение загружается успешно:', randomCard.displayImage);
+    };
+    testImg.onerror = () => {
+        console.error('❌ Ошибка загрузки изображения:', randomCard.displayImage);
+        console.log('🔄 Попробуем placeholder:', createCardPlaceholder(randomCard));
+    };
+    testImg.src = encodeURI(randomCard.displayImage);
+}
+
+function testAllCardImages() {
+    console.log('🧪 Тестирование всех изображений карт...');
+    
+    if (allCards.length === 0) {
+        console.warn('⚠️ Карты не загружены');
+        return;
+    }
+    
+    allCards.forEach(async (card, index) => {
+        console.log(`Тестирование карты ${index + 1}/${allCards.length}: ${card.name}`);
+        
+        // Тестируем основное изображение
+        if (card.image) {
+            const available = await checkImageAvailability(card.image);
+            console.log(`  Основное изображение: ${available ? '✅' : '❌'} ${card.image}`);
+        }
+        
+        // Тестируем прямое изображение
+        if (card.imageUpright) {
+            const available = await checkImageAvailability(card.imageUpright);
+            console.log(`  Прямое изображение: ${available ? '✅' : '❌'} ${card.imageUpright}`);
+        }
+        
+        // Тестируем перевернутое изображение
+        if (card.imageReversed) {
+            const available = await checkImageAvailability(card.imageReversed);
+            console.log(`  Перевернутое изображение: ${available ? '✅' : '❌'} ${card.imageReversed}`);
+        }
+    });
+}
+
+// ========================================================================
+// 🏁 ЗАПУСК ПРИЛОЖЕНИЯ
+// ========================================================================
+
+// Безопасная инициализация - запускаем только один раз
+function safeInitApp() {
+    console.log('🏁 DOM готов, запускаем приложение...');
+    initApp();
+}
+
+// Единственная точка входа для инициализации
+if (document.readyState === 'loading') {
+    // Если DOM еще не загружен, ждем DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', safeInitApp, { once: true });
+} else {
+    // DOM уже загружен, запускаем сразу
+    safeInitApp();
+}
+
+// 🧪 ТЕСТОВАЯ ФУНКЦИЯ ДЛЯ ОТЛАДКИ TAROTDB
+async function testTarotDB() {
+    console.log('🧪 === ТЕСТ TAROTDB ===');
+    console.log('TarotDB существует:', !!window.TarotDB);
+    
+    if (window.TarotDB) {
+        console.log('TarotDB подключен:', window.TarotDB.isConnected());
+        console.log('Статус подключения:', window.TarotDB.getStatus());
+        
+        if (window.TarotDB.isConnected()) {
+            try {
+                const userId = getUserId();
+                console.log('Попытка создать тестовый профиль для:', userId);
+                
+                const result = await window.TarotDB.createUserProfile(userId, {
+                    username: 'Test User',
+                    is_premium: false
+                });
+                
+                console.log('✅ Тест создания профиля успешен:', result);
+            } catch (error) {
+                console.error('❌ Ошибка теста TarotDB:', error);
+            }
+        } else {
+            console.log('⚠️ TarotDB не подключен, причины:');
+            if (!window.TarotDB.getStatus) {
+                console.log('- getStatus функция не найдена');
+            } else {
+                console.log('- Статус:', window.TarotDB.getStatus());
+            }
+            
+            // Попытка принудительной инициализации
+            if (window.TarotDB.initialize) {
+                console.log('🔄 Пытаемся принудительно инициализировать...');
+                try {
+                    await window.TarotDB.initialize();
+                    console.log('✅ Принудительная инициализация успешна!');
+                    
+                    // Повторный тест после инициализации
+                    if (window.TarotDB.isConnected()) {
+                        console.log('🎉 TarotDB теперь подключен!');
+                        const userId = getUserId();
+                        console.log('Попытка создать тестовый профиль для:', userId);
+                        
+                        const result = await window.TarotDB.createUserProfile(userId, {
+                            username: 'Test User',
+                            is_premium: false
+                        });
+                        
+                        console.log('✅ Тест создания профиля успешен:', result);
+                    }
+                } catch (error) {
+                    console.error('❌ Ошибка принудительной инициализации:', error);
+                }
+            } else {
+                console.log('❌ Функция initialize не найдена');
+            }
+        }
+    } else {
+        console.log('❌ window.TarotDB не существует');
+    }
+    console.log('🧪 === КОНЕЦ ТЕСТА ===');
+}
+
+// Тестирование схемы базы данных
+async function testDatabaseSchema() {
+    console.log('🧪 === ТЕСТ СХЕМЫ БАЗЫ ДАННЫХ ===');
+    
+    if (!window.TarotDB) {
+        console.error('❌ TarotDB недоступен');
+        return;
+    }
+    
+    if (!window.TarotDB.isConnected()) {
+        console.error('❌ TarotDB не подключен');
+        return;
+    }
+    
+    try {
+        const testUserId = getUserId();
+        console.log('🔍 Тестирование с пользователем:', testUserId);
+        
+        // Тест 1: Создание/получение профиля пользователя
+        console.log('📝 Тест 1: Профиль пользователя');
+        const profile = await window.TarotDB.getUserProfile(testUserId);
+        console.log('✅ Профиль получен:', {
+            user_id: profile?.user_id,
+            chat_id: profile?.chat_id,
+            is_subscribed: profile?.is_subscribed,
+            free_predictions_left: profile?.free_predictions_left,
+            total_questions: profile?.total_questions
+        });
+        
+        // Тест 2: Обновление профиля
+        console.log('📝 Тест 2: Обновление профиля');
+        await window.TarotDB.updateUserProfile(testUserId, {
+            total_questions: (profile?.total_questions || 0) + 1,
+            free_predictions_left: Math.max(0, (profile?.free_predictions_left || 3) - 1)
+        });
+        console.log('✅ Профиль обновлен');
+        
+        // Тест 3: Сохранение ежедневной карты
+        console.log('📝 Тест 3: Ежедневная карта');
+        const testCard = {
+            id: 0,
+            name: 'Тест карта',
+            interpretation: 'Тестовая интерпретация карты'
+        };
+        const savedCard = await window.TarotDB.saveDailyCard(testUserId, testCard);
+        console.log('✅ Карта сохранена:', savedCard?.id);
+        
+        // Тест 4: Сохранение вопроса
+        console.log('📝 Тест 4: Вопрос и ответ');
+        const savedQuestion = await window.TarotDB.saveQuestion(testUserId, 'Тестовый вопрос?');
+        console.log('✅ Вопрос сохранен:', savedQuestion?.id);
+        
+        if (savedQuestion?.id) {
+            const savedAnswer = await window.TarotDB.saveAnswer(savedQuestion.id, testCard, 'Тестовый ответ на вопрос');
+            console.log('✅ Ответ сохранен:', savedAnswer?.id);
+        }
+        
+        // Тест 5: Сохранение отзыва
+        console.log('📝 Тест 5: Отзыв');
+        const savedReview = await window.TarotDB.saveReview(testUserId, 5, 'Отличное тестовое приложение!');
+        console.log('✅ Отзыв сохранен:', savedReview?.id);
+        
+        // Тест 6: Получение истории
+        console.log('📝 Тест 6: История пользователя');
+        const history = await window.TarotDB.getUserHistory(testUserId);
+        console.log('✅ История получена:', {
+            questions: history?.questions?.length || 0,
+            dailyCards: history?.dailyCards?.length || 0
+        });
+        
+        // Тест 7: Получение отзывов
+        console.log('📝 Тест 7: Отзывы');
+        const reviews = await window.TarotDB.getReviews(5);
+        console.log('✅ Отзывы получены:', reviews?.length || 0);
+        
+        console.log('🎉 === ВСЕ ТЕСТЫ ЗАВЕРШЕНЫ УСПЕШНО ===');
+        
+    } catch (error) {
+        console.error('❌ Ошибка в тесте схемы:', error);
+    }
+}
+
+// Делаем функцию доступной глобально
+window.testDatabaseSchema = testDatabaseSchema;
+
+// Экспорт для отладки
+window.TarotApp = {
+    appState,
+    allCards,
+    switchTab,
+    showMessage,
+    getRandomCard,
+    debugApp,
+    resetApp,
+    testNotification,
+    testCardImage,
+    testAllCardImages,
+    updateHistoryDisplay,
+    currentRating,
+    createCardPlaceholder,
+    checkImageAvailability,
+    normalizeImagePath,
+    testTarotDB,
+    testDatabaseSchema
+};
