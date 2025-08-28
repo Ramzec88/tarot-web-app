@@ -2625,10 +2625,6 @@ async function initApp() {
             }
         }
         
-        // 7.6. ТЕСТИРУЕМ TAROTDB
-        setTimeout(() => {
-            testTarotDB();
-        }, 1000);
         
         // 8. Показываем информацию о загруженных картах
         if (allCards && allCards.length > 0) {
