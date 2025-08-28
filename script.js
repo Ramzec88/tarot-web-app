@@ -1420,9 +1420,18 @@ async function handleClarifyingQuestion() {
             questionAnswerContainer?.classList.remove('hidden');
             questionAnswerContainer?.classList.add('show');
             
-            // Формируем ответ
-            const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-            const answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
+            // Генерируем предсказание через API
+            let answer;
+            try {
+                console.log('🤖 Генерируем предсказание для уточняющего вопроса через API...');
+                const prediction = await generatePredictionAPI(randomCard, question);
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${prediction}`;
+            } catch (error) {
+                console.warn('❌ Ошибка генерации предсказания через API, используем базовое описание:', error);
+                const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
+                answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
+            }
             
             // Печатаем текст
             if (questionAnswerText) {
@@ -1693,21 +1702,42 @@ async function showSpreadInterpretation(spreadType) {
     spreadAnswerContainer?.classList.remove('hidden');
     spreadAnswerContainer?.classList.add('show');
     
-    // Формируем интерпретацию расклада
-    let interpretation = `${spreadConfig.description}\n\n`;
-    
+    // Собираем карты для API запроса
+    const selectedCards = [];
     cardPositions?.forEach((cardPosition) => {
-        const cardConfig = cardPosition.cardConfig;
         const selectedCard = cardPosition.selectedCard;
-        
         if (selectedCard) {
-            const orientationText = selectedCard.isReversed ? ' (перевернутая)' : '';
-            interpretation += `**${cardConfig.label}${orientationText}**: ${selectedCard.name}\n`;
-            interpretation += `${cardConfig.description}: ${selectedCard.description || selectedCard.meaningUpright}\n\n`;
+            selectedCards.push(selectedCard);
         }
     });
     
-    interpretation += "Это ваш персональный расклад. Прислушайтесь к своей интуиции при интерпретации символов.";
+    let interpretation;
+    
+    // Генерируем предсказание через API
+    try {
+        console.log('🤖 Генерируем предсказание для расклада через API...');
+        const spreadName = spreadConfig.name.replace('Расклад «', '').replace('»', '');
+        const prediction = await generatePredictionAPI(selectedCards, `расклад ${spreadName}`);
+        interpretation = `${spreadConfig.description}\n\n${prediction}`;
+    } catch (error) {
+        console.warn('❌ Ошибка генерации предсказания через API, используем базовое описание:', error);
+        
+        // Формируем интерпретацию расклада (fallback)
+        interpretation = `${spreadConfig.description}\n\n`;
+        
+        cardPositions?.forEach((cardPosition) => {
+            const cardConfig = cardPosition.cardConfig;
+            const selectedCard = cardPosition.selectedCard;
+            
+            if (selectedCard) {
+                const orientationText = selectedCard.isReversed ? ' (перевернутая)' : '';
+                interpretation += `**${cardConfig.label}${orientationText}**: ${selectedCard.name}\n`;
+                interpretation += `${cardConfig.description}: ${selectedCard.description || selectedCard.meaningUpright}\n\n`;
+            }
+        });
+        
+        interpretation += "Это ваш персональный расклад. Прислушайтесь к своей интуиции при интерпретации символов.";
+    }
     
     // Печатаем интерпретацию
     if (spreadAnswerText) {
