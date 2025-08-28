@@ -11,6 +11,7 @@ body {
     background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
     color: #fff;
     min-height: 100vh;
+    min-height: 100svh; /* Use small viewport height for mobile keyboards */
     padding: 10px;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -102,6 +103,8 @@ body {
     scrollbar-width: none;
     -ms-overflow-style: none;
     flex-wrap: nowrap;
+    position: relative;
+    z-index: 10;
 }
 
 .nav-tabs::-webkit-scrollbar {
@@ -121,6 +124,8 @@ body {
     flex-wrap: nowrap;
     width: calc(100% - 32px);
     align-self: center;
+    position: relative;
+    z-index: 9;
 }
 
 .nav-tabs-secondary::-webkit-scrollbar {
@@ -565,10 +570,21 @@ body {
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.05);
     color: #fff;
-    font-size: 14px;
+    font-size: 16px; /* Prevent zoom on iOS */
     line-height: 1.4;
     resize: vertical;
     font-family: inherit;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.question-textarea:focus {
+    outline: none;
+    border-color: rgba(255, 215, 0, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.1);
 }
 
 .question-textarea::placeholder {
@@ -1629,6 +1645,100 @@ input:checked + .slider:before {
     
     .nav-tabs {
         margin-bottom: 20px;
+    }
+}
+
+/* ===== FIX FOR VIRTUAL KEYBOARD SPACING ISSUE ===== */
+@media screen and (max-height: 500px) {
+    .nav-tabs {
+        margin-bottom: 6px;
+        position: sticky;
+        top: 0;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .nav-tabs-secondary {
+        margin-bottom: 15px;
+        position: sticky;
+        top: 54px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+}
+
+/* ===== ADDITIONAL FIX FOR NAVIGATION SPACING ===== */
+/* Prevents gap increase when virtual keyboard appears */
+@media screen and (max-height: 400px) {
+    .nav-tabs {
+        margin-bottom: 4px !important;
+    }
+    
+    .nav-tabs-secondary {
+        margin-bottom: 8px !important;
+        margin-top: -2px;
+    }
+    
+    .container {
+        padding: 10px 15px;
+    }
+}
+
+/* ===== PREVENT LAYOUT SHIFT WHEN FOCUSING ON INPUTS ===== */
+/* Lock navigation position when form elements are focused */
+.nav-tabs,
+.nav-tabs-secondary {
+    contain: layout style paint;
+    transform: translateZ(0); /* Force hardware acceleration */
+    backface-visibility: hidden;
+}
+
+/* Specific fix for iOS Safari focus behavior */
+@supports (-webkit-touch-callout: none) {
+    .nav-tabs {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        margin-bottom: 8px !important;
+    }
+    
+    .nav-tabs-secondary {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 52px;
+        z-index: 99;
+        margin-bottom: 20px !important;
+        margin-top: 0 !important;
+    }
+}
+
+/* Additional containment for mobile browsers */
+@media screen and (max-width: 480px) {
+    body {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .container {
+        min-height: 100vh;
+        min-height: 100svh;
+    }
+    
+    /* Force consistent spacing regardless of keyboard */
+    .nav-tabs {
+        margin: 0 16px 8px 16px !important;
+        flex-shrink: 0;
+    }
+    
+    .nav-tabs-secondary {
+        margin: 0 16px 20px 16px !important;
+        flex-shrink: 0;
     }
 }
 
