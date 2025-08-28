@@ -3,687 +3,392 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Финальный тест Supabase - Tarot App</title>
+    <title>Тест Supabase интеграции</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-            color: #fff;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
+            font-family: Arial, sans-serif;
             max-width: 800px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #51cf66, #4ecdc4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .success-alert {
-            background: rgba(81, 207, 102, 0.2);
-            border: 2px solid #51cf66;
-            border-radius: 12px;
             padding: 20px;
-            margin-bottom: 30px;
-            text-align: center;
+            background-color: #1a1a2e;
+            color: white;
         }
-
         .test-section {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 25px;
-            border-left: 4px solid #4ecdc4;
-        }
-
-        .section-title {
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            color: #4ecdc4;
-            display: flex;
-            align-items: center;
-        }
-
-        .section-icon {
-            margin-right: 10px;
-            font-size: 1.4rem;
-        }
-
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
+            background: #16213e;
+            padding: 20px;
             margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid #333;
         }
-
-        .btn {
-            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+        button {
+            background: #4a5568;
             color: white;
             border: none;
-            padding: 12px 16px;
-            border-radius: 10px;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
             cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
-            text-align: center;
-            font-size: 14px;
         }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
+        button:hover {
+            background: #2d3748;
         }
-
-        .btn.success {
-            background: linear-gradient(135deg, #51cf66, #40c057);
-        }
-
-        .btn.primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-        }
-
-        .btn.warning {
-            background: linear-gradient(135deg, #ffd43b, #fab005);
-            color: #1a1a2e;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        .input-label {
-            display: block;
-            margin-bottom: 5px;
-            color: #b0b0b0;
-            font-weight: 500;
-        }
-
-        .input-field {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #fff;
-            font-size: 14px;
-        }
-
-        .result-panel {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 15px;
-            border-left: 4px solid #4ecdc4;
-        }
-
-        .result-panel.success {
-            border-left-color: #51cf66;
-            background: rgba(81, 207, 102, 0.1);
-        }
-
-        .result-panel.error {
-            border-left-color: #ff6b6b;
-            background: rgba(255, 107, 107, 0.1);
-        }
-
-        .log-container {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-            max-height: 300px;
-            overflow-y: auto;
+        .log {
+            background: #000;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
             font-family: monospace;
-            font-size: 0.9rem;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
         }
-
-        .log-entry {
-            padding: 3px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .log-timestamp {
-            color: #868e96;
-            margin-right: 10px;
-        }
-
-        .log-success { color: #51cf66; }
-        .log-error { color: #ff6b6b; }
-        .log-warning { color: #ffd43b; }
-        .log-info { color: #74c0fc; }
-
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 15px 0;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4ecdc4, #51cf66);
-            width: 0%;
-            transition: width 0.5s ease;
-        }
-
-        .hidden { display: none; }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .data-table th {
-            background: rgba(255, 255, 255, 0.1);
-            font-weight: 600;
-        }
+        .success { color: #48bb78; }
+        .error { color: #f56565; }
+        .warning { color: #ed8936; }
+        .info { color: #4299e1; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>✅ Финальный тест</h1>
-            <p>Проверим, что RLS политики работают и данные сохраняются</p>
-        </div>
+    <h1>🔮 Тест Supabase интеграции для Tarot App</h1>
 
-        <div class="success-alert">
-            <h3 style="color: #51cf66; margin-bottom: 10px;">🎉 Политики RLS созданы!</h3>
-            <p>Ошибка "already exists" означает, что политики успешно применены. Теперь проверим их работу.</p>
-        </div>
-
-        <div class="test-section">
-            <div class="section-title">
-                <span class="section-icon">🔑</span>
-                Подключение к Supabase
-            </div>
-            <div class="input-group">
-                <label class="input-label">Supabase URL:</label>
-                <input type="text" class="input-field" id="supabaseUrl" value="https://jjowuzqfnwcuulcknkxh.supabase.co" readonly>
-            </div>
-            <div class="input-group">
-                <label class="input-label">Anon Key:</label>
-                <input type="password" class="input-field" id="supabaseKey" placeholder="Введите ваш anon key">
-            </div>
-        </div>
-
-        <div class="test-section">
-            <div class="section-title">
-                <span class="section-icon">🧪</span>
-                Тестирование функций приложения
-            </div>
-            
-            <div class="controls">
-                <button class="btn" id="testUserCreation">👤 Создать пользователя</button>
-                <button class="btn" id="testDailyCard">🃏 Сохранить карту дня</button>
-                <button class="btn" id="testQuestion">❓ Сохранить вопрос</button>
-                <button class="btn" id="testReview">⭐ Сохранить отзыв</button>
-            </div>
-
-            <div class="controls">
-                <button class="btn success" id="runAllTests">🚀 Запустить все тесты</button>
-                <button class="btn primary" id="viewData">📊 Посмотреть данные</button>
-                <button class="btn warning" id="clearTestData">🗑️ Очистить тест-данные</button>
-            </div>
-
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-        </div>
-
-        <div class="log-container" id="logContainer"></div>
-
-        <div class="result-panel hidden" id="resultPanel">
-            <h4 id="resultTitle">Результаты</h4>
-            <div id="resultContent"></div>
-        </div>
+    <div class="test-section">
+        <h2>🔧 Статус подключения</h2>
+        <button onclick="checkConnection()">Проверить подключение</button>
+        <button onclick="checkConfig()">Проверить конфигурацию</button>
+        <div id="connection-log" class="log"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <div class="test-section">
+        <h2>👤 Тест пользователей</h2>
+        <button onclick="testCreateUser()">Создать тестового пользователя</button>
+        <button onclick="testGetUser()">Получить пользователя</button>
+        <button onclick="testUpdateUser()">Обновить пользователя</button>
+        <div id="user-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🃏 Тест карт дня</h2>
+        <button onclick="testSaveDailyCard()">Сохранить карту дня</button>
+        <button onclick="testGetDailyCard()">Получить карту дня</button>
+        <div id="card-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>❓ Тест вопросов и ответов</h2>
+        <button onclick="testSaveQuestion()">Сохранить вопрос</button>
+        <button onclick="testSaveAnswer()">Сохранить ответ</button>
+        <div id="question-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>⭐ Тест отзывов</h2>
+        <button onclick="testSaveReview()">Сохранить отзыв</button>
+        <button onclick="testGetReviews()">Получить отзывы</button>
+        <div id="review-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📚 Тест истории</h2>
+        <button onclick="testGetHistory()">Получить историю</button>
+        <div id="history-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🧹 Очистка</h2>
+        <button onclick="clearLogs()">Очистить логи</button>
+        <button onclick="clearTestData()">Удалить тестовые данные</button>
+    </div>
+
+    <!-- Подключаем необходимые скрипты -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="supabase.js"></script>
+
     <script>
-        let supabaseClient = null;
-        let testUserId = null;
+        let testUserId = 'test_webapp_' + Date.now();
+        let testQuestionId = null;
 
-        // Система логирования
-        const logger = {
-            log(message, type = 'info') {
-                const timestamp = new Date().toLocaleTimeString();
-                const logEntry = document.createElement('div');
-                logEntry.className = 'log-entry';
-                logEntry.innerHTML = `
-                    <span class="log-timestamp">[${timestamp}]</span>
-                    <span class="log-${type}">${message}</span>
-                `;
-                document.getElementById('logContainer').appendChild(logEntry);
-                document.getElementById('logContainer').scrollTop = document.getElementById('logContainer').scrollHeight;
-            },
-            
-            success(message) { this.log(`✅ ${message}`, 'success'); },
-            error(message) { this.log(`❌ ${message}`, 'error'); },
-            warning(message) { this.log(`⚠️ ${message}`, 'warning'); },
-            info(message) { this.log(`ℹ️ ${message}`, 'info'); }
-        };
-
-        // Обновление прогресса
-        function updateProgress(percentage) {
-            document.getElementById('progressFill').style.width = `${percentage}%`;
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            container.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            container.scrollTop = container.scrollHeight;
+            console.log(message);
         }
 
-        // Показать результат
-        function showResult(title, content, type = 'success') {
-            const panel = document.getElementById('resultPanel');
-            const titleEl = document.getElementById('resultTitle');
-            const contentEl = document.getElementById('resultContent');
-
-            panel.className = `result-panel ${type}`;
-            panel.classList.remove('hidden');
-            titleEl.textContent = title;
-            contentEl.innerHTML = content;
+        function clearLogs() {
+            const logs = document.querySelectorAll('.log');
+            logs.forEach(log => log.innerHTML = '');
         }
 
-        // Инициализация Supabase
-        async function initSupabase() {
-            const url = document.getElementById('supabaseUrl').value;
-            const key = document.getElementById('supabaseKey').value;
-
-            if (!key) {
-                logger.error('Введите Anon Key');
-                return false;
-            }
+        async function checkConnection() {
+            const logId = 'connection-log';
+            log(logId, '🔍 Проверяем подключение к Supabase...', 'info');
 
             try {
-                supabaseClient = window.supabase.createClient(url, key, {
-                    auth: {
-                        persistSession: false,
-                        autoRefreshToken: false
-                    }
-                });
-
-                // Тест подключения
-                const { error } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .select('count')
-                    .limit(1);
-
-                if (error && error.code !== 'PGRST116') {
-                    throw error;
+                if (!window.TarotDB) {
+                    log(logId, '❌ TarotDB не загружен', 'error');
+                    return;
                 }
 
-                logger.success('Supabase подключен');
-                return true;
+                const status = window.TarotDB.getStatus();
+                log(logId, `📊 Статус: ${JSON.stringify(status)}`, 'info');
 
-            } catch (error) {
-                logger.error(`Ошибка подключения: ${error.message}`);
-                return false;
-            }
-        }
-
-        // Тест 1: Создание пользователя
-        async function testUserCreation() {
-            if (!supabaseClient && !await initSupabase()) return false;
-
-            logger.info('Тест создания пользователя...');
-            
-            try {
-                testUserId = `test_${Date.now()}`;
-                
-                const { data, error } = await supabaseClient
-                    .from('tarot_user_profiles')
-                    .insert([{
-                        telegram_id: testUserId,
-                        username: 'Test User',
-                        is_subscribed: false,
-                        questions_used: 0,
-                        free_predictions_left: 3
-                    }])
-                    .select()
-                    .single();
-
-                if (error) {
-                    logger.error(`Ошибка создания пользователя: ${error.message}`);
-                    return false;
-                }
-
-                logger.success(`Пользователь создан с ID: ${data.id}`);
-                return data;
-
-            } catch (error) {
-                logger.error(`Критическая ошибка: ${error.message}`);
-                return false;
-            }
-        }
-
-        // Тест 2: Карта дня
-        async function testDailyCard() {
-            if (!testUserId) {
-                logger.warning('Сначала создайте пользователя');
-                return false;
-            }
-
-            logger.info('Тест сохранения карты дня...');
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from('tarot_daily_cards')
-                    .insert([{
-                        user_id: testUserId,
-                        card_date: new Date().toISOString().split('T')[0],
-                        card_data: {
-                            name: 'Звезда',
-                            description: 'Тестовая карта дня'
-                        },
-                        ai_prediction: 'Тестовое предсказание для карты дня'
-                    }])
-                    .select()
-                    .single();
-
-                if (error) {
-                    logger.error(`Ошибка сохранения карты дня: ${error.message}`);
-                    return false;
-                }
-
-                logger.success(`Карта дня сохранена с ID: ${data.id}`);
-                return data;
-
-            } catch (error) {
-                logger.error(`Критическая ошибка: ${error.message}`);
-                return false;
-            }
-        }
-
-        // Тест 3: Вопрос и ответ
-        async function testQuestion() {
-            if (!testUserId) {
-                logger.warning('Сначала создайте пользователя');
-                return false;
-            }
-
-            logger.info('Тест сохранения вопроса и ответа...');
-
-            try {
-                // Сначала сохраняем вопрос
-                const { data: question, error: questionError } = await supabaseClient
-                    .from('tarot_questions')
-                    .insert([{
-                        user_id: testUserId,
-                        question_text: 'Тестовый вопрос для проверки сохранения'
-                    }])
-                    .select()
-                    .single();
-
-                if (questionError) {
-                    logger.error(`Ошибка сохранения вопроса: ${questionError.message}`);
-                    return false;
-                }
-
-                logger.success(`Вопрос сохранен с ID: ${question.id}`);
-
-                // Затем сохраняем ответ
-                const { data: answer, error: answerError } = await supabaseClient
-                    .from('tarot_answers')
-                    .insert([{
-                        question_id: question.id,
-                        card_id: 'test_card',
-                        card_name: 'Тестовая карта',
-                        interpretation: 'Тестовый ответ на вопрос',
-                        cards_drawn: [{
-                            name: 'Тестовая карта',
-                            description: 'Описание тестовой карты'
-                        }],
-                        ai_prediction: 'Тестовое предсказание ИИ',
-                        spread_type: 'single_card'
-                    }])
-                    .select()
-                    .single();
-
-                if (answerError) {
-                    logger.error(`Ошибка сохранения ответа: ${answerError.message}`);
-                    return false;
-                }
-
-                logger.success(`Ответ сохранен с ID: ${answer.id}`);
-                return { question, answer };
-
-            } catch (error) {
-                logger.error(`Критическая ошибка: ${error.message}`);
-                return false;
-            }
-        }
-
-        // Тест 4: Отзыв
-        async function testReview() {
-            if (!testUserId) {
-                logger.warning('Сначала создайте пользователя');
-                return false;
-            }
-
-            logger.info('Тест сохранения отзыва...');
-
-            try {
-                const { data, error } = await supabaseClient
-                    .from('tarot_reviews')
-                    .insert([{
-                        user_id: testUserId,
-                        rating: 5,
-                        review_text: 'Отличное приложение для Таро! Тестовый отзыв.',
-                        username: 'Test User',
-                        is_approved: true
-                    }])
-                    .select()
-                    .single();
-
-                if (error) {
-                    logger.error(`Ошибка сохранения отзыва: ${error.message}`);
-                    return false;
-                }
-
-                logger.success(`Отзыв сохранен с ID: ${data.id}`);
-                return data;
-
-            } catch (error) {
-                logger.error(`Критическая ошибка: ${error.message}`);
-                return false;
-            }
-        }
-
-        // Просмотр данных
-        async function viewData() {
-            if (!supabaseClient && !await initSupabase()) return false;
-
-            logger.info('Получение данных из таблиц...');
-
-            try {
-                const tables = [
-                    { name: 'tarot_user_profiles', display: 'Пользователи' },
-                    { name: 'tarot_daily_cards', display: 'Карты дня' },
-                    { name: 'tarot_questions', display: 'Вопросы' },
-                    { name: 'tarot_answers', display: 'Ответы' },
-                    { name: 'tarot_reviews', display: 'Отзывы' }
-                ];
-
-                let resultHtml = '<h5>📊 Данные в таблицах:</h5><br>';
-
-                for (const table of tables) {
-                    const { data, error } = await supabaseClient
-                        .from(table.name)
-                        .select('*')
-                        .limit(5);
-
-                    if (error) {
-                        resultHtml += `<strong>${table.display}:</strong> Ошибка - ${error.message}<br>`;
-                    } else {
-                        resultHtml += `<strong>${table.display}:</strong> ${data.length} записей<br>`;
-                        
-                        if (data.length > 0) {
-                            resultHtml += `<small>Последняя запись: ${JSON.stringify(data[0], null, 2).substring(0, 100)}...</small><br>`;
+                if (window.TarotDB.isConnected()) {
+                    log(logId, '✅ Подключение к Supabase активно', 'success');
+                    
+                    // Проверяем доступ к таблицам
+                    const tables = ['tarot_user_profiles', 'tarot_questions', 'tarot_daily_cards', 'tarot_reviews'];
+                    for (const table of tables) {
+                        try {
+                            const result = await window.TarotDB.checkTableStructure(table);
+                            if (result.exists) {
+                                log(logId, `✅ Таблица ${table} доступна`, 'success');
+                            } else {
+                                log(logId, `❌ Таблица ${table} недоступна`, 'error');
+                            }
+                        } catch (err) {
+                            log(logId, `❌ Ошибка проверки ${table}: ${err.message}`, 'error');
                         }
                     }
-                    resultHtml += '<br>';
+                } else {
+                    log(logId, '❌ Подключение к Supabase неактивно', 'error');
                 }
-
-                showResult('Данные в базе', resultHtml, 'success');
-
             } catch (error) {
-                logger.error(`Ошибка получения данных: ${error.message}`);
+                log(logId, `❌ Ошибка проверки подключения: ${error.message}`, 'error');
             }
         }
 
-        // Очистка тестовых данных
-        async function clearTestData() {
-            if (!supabaseClient) return;
-
-            logger.info('Очистка тестовых данных...');
+        async function checkConfig() {
+            const logId = 'connection-log';
+            log(logId, '🔧 Проверяем конфигурацию...', 'info');
 
             try {
-                // Удаляем все записи с test_ префиксом
-                const tables = ['tarot_reviews', 'tarot_answers', 'tarot_questions', 'tarot_daily_cards', 'tarot_user_profiles'];
-
-                for (const table of tables) {
-                    if (table === 'tarot_user_profiles') {
-                        await supabaseClient
-                            .from(table)
-                            .delete()
-                            .like('telegram_id', 'test_%');
-                    } else if (table === 'tarot_answers') {
-                        await supabaseClient
-                            .from(table)
-                            .delete()
-                            .eq('card_id', 'test_card');
-                    } else {
-                        await supabaseClient
-                            .from(table)
-                            .delete()
-                            .like('user_id', 'test_%');
-                    }
+                if (typeof window.getSupabaseConfig === 'function') {
+                    const config = window.getSupabaseConfig();
+                    log(logId, `📋 Supabase URL: ${config?.url || 'не задан'}`, 'info');
+                    log(logId, `🔑 API Key: ${config?.anonKey ? 'задан' : 'не задан'}`, 'info');
+                } else {
+                    log(logId, '❌ Функция getSupabaseConfig не найдена', 'error');
                 }
 
-                logger.success('Тестовые данные очищены');
-                testUserId = null;
-
+                log(logId, `🔧 Config.js загружен: ${typeof window.initializeConfig === 'function'}`, 'info');
+                log(logId, `🗃️ Supabase.js загружен: ${typeof window.TarotDB === 'object'}`, 'info');
             } catch (error) {
-                logger.error(`Ошибка очистки: ${error.message}`);
+                log(logId, `❌ Ошибка проверки конфигурации: ${error.message}`, 'error');
             }
         }
 
-        // Запуск всех тестов
-        async function runAllTests() {
-            logger.info('🚀 Запуск всех тестов...');
-            updateProgress(0);
+        async function testCreateUser() {
+            const logId = 'user-log';
+            log(logId, `👤 Создаем пользователя с ID: ${testUserId}`, 'info');
 
-            const tests = [
-                { name: 'Создание пользователя', fn: testUserCreation },
-                { name: 'Карта дня', fn: testDailyCard },
-                { name: 'Вопрос и ответ', fn: testQuestion },
-                { name: 'Отзыв', fn: testReview }
-            ];
-
-            let successCount = 0;
-            const results = [];
-
-            for (let i = 0; i < tests.length; i++) {
-                const test = tests[i];
-                logger.info(`--- Тест ${i + 1}/4: ${test.name} ---`);
-
-                try {
-                    const result = await test.fn();
-                    if (result) {
-                        successCount++;
-                        results.push({ name: test.name, success: true });
-                    } else {
-                        results.push({ name: test.name, success: false });
-                    }
-                } catch (error) {
-                    logger.error(`Тест "${test.name}" завершился с ошибкой: ${error.message}`);
-                    results.push({ name: test.name, success: false, error: error.message });
+            try {
+                const result = await window.TarotDB.createUserProfile(testUserId, 'Test WebApp User');
+                if (result) {
+                    log(logId, `✅ Пользователь создан: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Не удалось создать пользователя', 'error');
                 }
-
-                updateProgress(((i + 1) / tests.length) * 100);
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                log(logId, `❌ Ошибка создания пользователя: ${error.message}`, 'error');
             }
-
-            // Результаты
-            let resultHtml = `<strong>Результат: ${successCount}/${tests.length} тестов пройдено</strong><br><br>`;
-            
-            results.forEach(result => {
-                const icon = result.success ? '✅' : '❌';
-                resultHtml += `${icon} ${result.name}<br>`;
-            });
-
-            if (successCount === tests.length) {
-                resultHtml += '<br><strong style="color: #51cf66;">🎉 Все тесты пройдены! Supabase работает корректно!</strong>';
-                resultHtml += '<br><br>Теперь ваше приложение должно корректно сохранять все данные.';
-            } else {
-                resultHtml += '<br><strong style="color: #ff6b6b;">⚠️ Некоторые тесты не прошли</strong>';
-                resultHtml += '<br>Проверьте логи выше для диагностики проблем.';
-            }
-
-            showResult('Результаты тестирования', resultHtml, successCount === tests.length ? 'success' : 'error');
         }
 
-        // Обработчики событий
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('testUserCreation').addEventListener('click', testUserCreation);
-            document.getElementById('testDailyCard').addEventListener('click', testDailyCard);
-            document.getElementById('testQuestion').addEventListener('click', testQuestion);
-            document.getElementById('testReview').addEventListener('click', testReview);
-            document.getElementById('runAllTests').addEventListener('click', runAllTests);
-            document.getElementById('viewData').addEventListener('click', viewData);
-            document.getElementById('clearTestData').addEventListener('click', clearTestData);
+        async function testGetUser() {
+            const logId = 'user-log';
+            log(logId, `🔍 Получаем пользователя с ID: ${testUserId}`, 'info');
 
-            logger.info('Финальный тест готов к работе');
-            logger.info('Введите ваш Supabase Anon Key и запустите тесты');
+            try {
+                const result = await window.TarotDB.getUserProfile(testUserId);
+                if (result) {
+                    log(logId, `✅ Пользователь найден: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Пользователь не найден', 'warning');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка получения пользователя: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUpdateUser() {
+            const logId = 'user-log';
+            log(logId, `📝 Обновляем пользователя с ID: ${testUserId}`, 'info');
+
+            try {
+                const result = await window.TarotDB.updateUserProfile(testUserId, {
+                    is_subscribed: true,
+                    questions_used: 1
+                });
+                if (result) {
+                    log(logId, `✅ Пользователь обновлен: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Не удалось обновить пользователя', 'error');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка обновления пользователя: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSaveDailyCard() {
+            const logId = 'card-log';
+            log(logId, `🃏 Сохраняем карту дня для пользователя: ${testUserId}`, 'info');
+
+            const cardData = {
+                id: 'MA_0',
+                name: 'Дурак',
+                image: 'fool.jpg',
+                description: 'Карта новых начинаний',
+                interpretation: 'Сегодня день новых возможностей'
+            };
+
+            try {
+                const result = await window.TarotDB.saveDailyCard(testUserId, cardData);
+                if (result) {
+                    log(logId, `✅ Карта дня сохранена: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Не удалось сохранить карту дня', 'error');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка сохранения карты дня: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetDailyCard() {
+            const logId = 'card-log';
+            log(logId, `🔍 Получаем карту дня для пользователя: ${testUserId}`, 'info');
+
+            try {
+                const result = await window.TarotDB.getDailyCard(testUserId);
+                if (result) {
+                    log(logId, `✅ Карта дня найдена: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Карта дня не найдена', 'warning');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка получения карты дня: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSaveQuestion() {
+            const logId = 'question-log';
+            log(logId, `❓ Сохраняем вопрос для пользователя: ${testUserId}`, 'info');
+
+            try {
+                const result = await window.TarotDB.saveQuestion(testUserId, 'Что меня ждет в будущем?');
+                if (result) {
+                    testQuestionId = result.id;
+                    log(logId, `✅ Вопрос сохранен: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Не удалось сохранить вопрос', 'error');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка сохранения вопроса: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSaveAnswer() {
+            const logId = 'question-log';
+            if (!testQuestionId) {
+                log(logId, '⚠️ Сначала нужно сохранить вопрос', 'warning');
+                return;
+            }
+
+            log(logId, `💬 Сохраняем ответ для вопроса: ${testQuestionId}`, 'info');
+
+            const cardData = {
+                id: 'MA_17',
+                name: 'Звезда',
+                image: 'star.jpg',
+                description: 'Карта надежды'
+            };
+
+            try {
+                const result = await window.TarotDB.saveAnswer(testQuestionId, cardData, 'Впереди вас ждут светлые перспективы');
+                if (result) {
+                    log(logId, `✅ Ответ сохранен: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Не удалось сохранить ответ', 'error');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка сохранения ответа: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSaveReview() {
+            const logId = 'review-log';
+            log(logId, `⭐ Сохраняем отзыв для пользователя: ${testUserId}`, 'info');
+
+            try {
+                const result = await window.TarotDB.saveReview(testUserId, 5, 'Отличное приложение! Точные предсказания.');
+                if (result) {
+                    log(logId, `✅ Отзыв сохранен: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    log(logId, '❌ Не удалось сохранить отзыв', 'error');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка сохранения отзыва: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetReviews() {
+            const logId = 'review-log';
+            log(logId, '📋 Получаем последние отзывы', 'info');
+
+            try {
+                const result = await window.TarotDB.getReviews(5);
+                if (result && result.length > 0) {
+                    log(logId, `✅ Получено отзывов: ${result.length}`, 'success');
+                    result.forEach((review, index) => {
+                        log(logId, `  ${index + 1}. ⭐${review.rating} "${review.review_text}"`, 'info');
+                    });
+                } else {
+                    log(logId, '❌ Отзывы не найдены', 'warning');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка получения отзывов: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetHistory() {
+            const logId = 'history-log';
+            log(logId, `📚 Получаем историю для пользователя: ${testUserId}`, 'info');
+
+            try {
+                const result = await window.TarotDB.getUserHistory(testUserId);
+                if (result) {
+                    log(logId, `✅ История получена:`, 'success');
+                    log(logId, `  Вопросов: ${result.questions?.length || 0}`, 'info');
+                    log(logId, `  Карт дня: ${result.dailyCards?.length || 0}`, 'info');
+                    
+                    if (result.questions && result.questions.length > 0) {
+                        result.questions.forEach((q, index) => {
+                            log(logId, `    Вопрос ${index + 1}: "${q.question_text}"`, 'info');
+                        });
+                    }
+                } else {
+                    log(logId, '❌ История не найдена', 'warning');
+                }
+            } catch (error) {
+                log(logId, `❌ Ошибка получения истории: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearTestData() {
+            if (confirm('Вы уверены, что хотите удалить все тестовые данные?')) {
+                // Здесь можно добавить код для удаления тестовых данных
+                console.log('Удаление тестовых данных (функция не реализована)');
+            }
+        }
+
+        // Автоматически проверяем подключение при загрузке
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkConnection();
+            }, 2000);
         });
-
-        // Экспорт для консоли
-        window.FinalTest = {
-            runAllTests,
-            viewData,
-            clearTestData,
-            testUserCreation,
-            testDailyCard,
-            testQuestion,
-            testReview
-        };
     </script>
 </body>
 </html>
