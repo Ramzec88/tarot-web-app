@@ -644,8 +644,6 @@ function typeText(element, text, speed = 15) {
 
 function switchTab(tabId) {
     console.log('🔄 Переключение на вкладку:', tabId);
-    console.log('🔧 tabContents:', tabContents);
-    console.log('🔧 document.getElementById(tabId):', document.getElementById(tabId));
     
     // Скрываем все вкладки
     tabContents.forEach(content => {
@@ -2219,18 +2217,8 @@ function getTelegramUserId() {
         }
     }
     
-    // Fallback для тестирования - генерируем стабильный числовой ID
-    const testId = localStorage.getItem('tarot_test_user_id');
-    if (testId && !isNaN(parseInt(testId))) {
-        console.log('🧪 Используем сохраненный тестовый ID:', testId);
-        return testId;
-    }
-    
-    // Генерируем числовой тестовый ID (отрицательный, чтобы не пересекаться с реальными Telegram ID)
-    const newTestId = -Math.floor(Math.random() * 1000000000);
-    localStorage.setItem('tarot_test_user_id', newTestId.toString());
-    console.warn('⚠️ Создан новый числовой тестовый ID (старый был текстовым):', newTestId);
-    return newTestId.toString();
+    // Для пользователей без Telegram - анонимный режим
+    return 'anonymous_user';
 }
 
 function getTelegramUserName() {
@@ -2409,8 +2397,6 @@ function initializeDOMElements() {
 
 function setupEventListeners() {
     console.log('🎮 Настройка обработчиков событий...');
-    console.log('🔧 mainNav:', mainNav);
-    console.log('🔧 secondaryNav:', secondaryNav);
     
     // Навигация
     mainNav?.addEventListener('click', (e) => {
@@ -2518,10 +2504,9 @@ async function initApp() {
             // Создаем mock пользователя для тестирования
             appState.telegramUser = {
                 id: userId || 'webapp_user',
-                first_name: 'Test User',
-                username: 'testuser'
+                first_name: 'Анонимный пользователь',
+                username: null
             };
-            console.log('🧪 Mock пользователь создан:', appState.telegramUser);
         }
         
         // 4. Загружаем локальные данные
@@ -2815,7 +2800,6 @@ function testAllCardImages() {
 
 // Безопасная инициализация - запускаем только один раз
 function safeInitApp() {
-    console.log('🏁 DOM готов, запускаем приложение...');
     initApp();
 }
 
@@ -2828,154 +2812,7 @@ if (document.readyState === 'loading') {
     safeInitApp();
 }
 
-// 🧪 ТЕСТОВАЯ ФУНКЦИЯ ДЛЯ ОТЛАДКИ TAROTDB
-async function testTarotDB() {
-    console.log('🧪 === ТЕСТ TAROTDB ===');
-    console.log('TarotDB существует:', !!window.TarotDB);
-    
-    if (window.TarotDB) {
-        console.log('TarotDB подключен:', window.TarotDB.isConnected());
-        console.log('Статус подключения:', window.TarotDB.getStatus());
-        
-        if (window.TarotDB.isConnected()) {
-            try {
-                const userId = getUserId();
-                console.log('Попытка создать тестовый профиль для:', userId);
-                
-                const result = await window.TarotDB.createUserProfile(userId, {
-                    username: 'Test User',
-                    is_premium: false
-                });
-                
-                console.log('✅ Тест создания профиля успешен:', result);
-            } catch (error) {
-                console.error('❌ Ошибка теста TarotDB:', error);
-            }
-        } else {
-            console.log('⚠️ TarotDB не подключен, причины:');
-            if (!window.TarotDB.getStatus) {
-                console.log('- getStatus функция не найдена');
-            } else {
-                console.log('- Статус:', window.TarotDB.getStatus());
-            }
-            
-            // Попытка принудительной инициализации
-            if (window.TarotDB.initialize) {
-                console.log('🔄 Пытаемся принудительно инициализировать...');
-                try {
-                    await window.TarotDB.initialize();
-                    console.log('✅ Принудительная инициализация успешна!');
-                    
-                    // Повторный тест после инициализации
-                    if (window.TarotDB.isConnected()) {
-                        console.log('🎉 TarotDB теперь подключен!');
-                        const userId = getUserId();
-                        console.log('Попытка создать тестовый профиль для:', userId);
-                        
-                        const result = await window.TarotDB.createUserProfile(userId, {
-                            username: 'Test User',
-                            is_premium: false
-                        });
-                        
-                        console.log('✅ Тест создания профиля успешен:', result);
-                    }
-                } catch (error) {
-                    console.error('❌ Ошибка принудительной инициализации:', error);
-                }
-            } else {
-                console.log('❌ Функция initialize не найдена');
-            }
-        }
-    } else {
-        console.log('❌ window.TarotDB не существует');
-    }
-    console.log('🧪 === КОНЕЦ ТЕСТА ===');
-}
 
-// Тестирование схемы базы данных
-async function testDatabaseSchema() {
-    console.log('🧪 === ТЕСТ СХЕМЫ БАЗЫ ДАННЫХ ===');
-    
-    if (!window.TarotDB) {
-        console.error('❌ TarotDB недоступен');
-        return;
-    }
-    
-    if (!window.TarotDB.isConnected()) {
-        console.error('❌ TarotDB не подключен');
-        return;
-    }
-    
-    try {
-        const testUserId = getUserId();
-        console.log('🔍 Тестирование с пользователем:', testUserId);
-        
-        // Тест 1: Создание/получение профиля пользователя
-        console.log('📝 Тест 1: Профиль пользователя');
-        const profile = await window.TarotDB.getUserProfile(testUserId);
-        console.log('✅ Профиль получен:', {
-            user_id: profile?.user_id,
-            chat_id: profile?.chat_id,
-            is_subscribed: profile?.is_subscribed,
-            free_predictions_left: profile?.free_predictions_left,
-            total_questions: profile?.total_questions
-        });
-        
-        // Тест 2: Обновление профиля
-        console.log('📝 Тест 2: Обновление профиля');
-        await window.TarotDB.updateUserProfile(testUserId, {
-            total_questions: (profile?.total_questions || 0) + 1,
-            free_predictions_left: Math.max(0, (profile?.free_predictions_left || 3) - 1)
-        });
-        console.log('✅ Профиль обновлен');
-        
-        // Тест 3: Сохранение ежедневной карты
-        console.log('📝 Тест 3: Ежедневная карта');
-        const testCard = {
-            id: 0,
-            name: 'Тест карта',
-            interpretation: 'Тестовая интерпретация карты'
-        };
-        const savedCard = await window.TarotDB.saveDailyCard(testUserId, testCard);
-        console.log('✅ Карта сохранена:', savedCard?.id);
-        
-        // Тест 4: Сохранение вопроса
-        console.log('📝 Тест 4: Вопрос и ответ');
-        const savedQuestion = await window.TarotDB.saveQuestion(testUserId, 'Тестовый вопрос?');
-        console.log('✅ Вопрос сохранен:', savedQuestion?.id);
-        
-        if (savedQuestion?.id) {
-            const savedAnswer = await window.TarotDB.saveAnswer(savedQuestion.id, testCard, 'Тестовый ответ на вопрос');
-            console.log('✅ Ответ сохранен:', savedAnswer?.id);
-        }
-        
-        // Тест 5: Сохранение отзыва
-        console.log('📝 Тест 5: Отзыв');
-        const savedReview = await window.TarotDB.saveReview(testUserId, 5, 'Отличное тестовое приложение!');
-        console.log('✅ Отзыв сохранен:', savedReview?.id);
-        
-        // Тест 6: Получение истории
-        console.log('📝 Тест 6: История пользователя');
-        const history = await window.TarotDB.getUserHistory(testUserId);
-        console.log('✅ История получена:', {
-            questions: history?.questions?.length || 0,
-            dailyCards: history?.dailyCards?.length || 0
-        });
-        
-        // Тест 7: Получение отзывов
-        console.log('📝 Тест 7: Отзывы');
-        const reviews = await window.TarotDB.getReviews(5);
-        console.log('✅ Отзывы получены:', reviews?.length || 0);
-        
-        console.log('🎉 === ВСЕ ТЕСТЫ ЗАВЕРШЕНЫ УСПЕШНО ===');
-        
-    } catch (error) {
-        console.error('❌ Ошибка в тесте схемы:', error);
-    }
-}
-
-// Делаем функцию доступной глобально
-window.testDatabaseSchema = testDatabaseSchema;
 
 // Экспорт для отладки
 window.TarotApp = {
@@ -2994,6 +2831,4 @@ window.TarotApp = {
     createCardPlaceholder,
     checkImageAvailability,
     normalizeImagePath,
-    testTarotDB,
-    testDatabaseSchema
 };
