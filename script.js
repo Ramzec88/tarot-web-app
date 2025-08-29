@@ -115,6 +115,181 @@ const SPREAD_CONFIGS = {
 };
 
 // ========================================================================
+// 🎨 УЛУЧШЕННОЕ ФОРМАТИРОВАНИЕ ОТВЕТОВ ДЛЯ РАСКЛАДОВ
+// ========================================================================
+
+// Эмодзи для разных типов раскладов
+const SPREAD_EMOJIS = {
+    success: {
+        main: '🎯',
+        positions: {
+            'Цель': '⭐',
+            'Препятствие': '🚧',
+            'Настоящее': '🎭',
+            'Помощь': '🤝',
+            'Результат': '🏆'
+        }
+    },
+    love: {
+        main: '💕',
+        positions: {
+            'Вы': '💖',
+            'Партнер': '💗',
+            'Отношения': '💫'
+        }
+    },
+    money: {
+        main: '💰',
+        positions: {
+            'Текущие финансы': '💳',
+            'Возможности': '📈',
+            'Совет': '💡',
+            'Будущее': '💎'
+        }
+    },
+    growth: {
+        main: '🌱',
+        positions: {
+            'Прошлое': '🕰️',
+            'Настоящее': '🌟',
+            'Потенциал': '🔮',
+            'Будущее': '🦋'
+        }
+    }
+};
+
+// Мистические разделители
+const MYSTICAL_SEPARATORS = [
+    '✨ ════════════════════ ✨',
+    '🌟 ═══════════════════ 🌟',
+    '💫 ════════════════════ 💫',
+    '🔮 ═══════════════════ 🔮',
+    '⭐ ════════════════════ ⭐'
+];
+
+// Красивые заголовки для раскладов
+const SPREAD_HEADERS = {
+    success: '🎯 РАСКЛАД «ПУТЬ К УСПЕХУ» 🎯',
+    love: '💕 РАСКЛАД «ОТНОШЕНИЯ» 💕',
+    money: '💰 РАСКЛАД «ФИНАНСЫ» 💰',
+    growth: '🌱 РАСКЛАД «ЛИЧНЫЙ РОСТ» 🌱'
+};
+
+// Мистические фразы для начала и конца
+const MYSTICAL_INTROS = [
+    '🔮 Древние силы раскрывают тайны вашей судьбы...',
+    '✨ Звезды сплетают узор вашего будущего...',
+    '🌙 Лунный свет освещает путь вашей души...',
+    '💫 Космические энергии говорят с вами через карты...',
+    '🎭 Вселенная открывает свои секреты...'
+];
+
+const MYSTICAL_CONCLUSIONS = [
+    '🌟 Пусть мудрость карт освещает ваш путь к достижению цели.',
+    '✨ Доверьтесь голосу интуиции - он никогда не подведет.',
+    '💫 Помните: вы творец своей судьбы, карты лишь показывают возможности.',
+    '🔮 Пусть эти знания помогут вам принять верные решения.',
+    '⭐ Идите вперед с уверенностью - звезды благословляют ваш путь.'
+];
+
+/**
+ * Форматирует ответ для расклада с красивым оформлением
+ * @param {string} spreadType - Тип расклада (success, love, money, growth)
+ * @param {Object} spreadConfig - Конфигурация расклада
+ * @param {Array} cardPositions - Массив позиций карт
+ * @param {string} apiResponse - Ответ от API (если есть)
+ * @returns {string} Отформатированный ответ
+ */
+function formatSpreadResponse(spreadType, spreadConfig, cardPositions, apiResponse = null) {
+    const emojis = SPREAD_EMOJIS[spreadType] || SPREAD_EMOJIS.success;
+    const header = SPREAD_HEADERS[spreadType] || SPREAD_HEADERS.success;
+    const separator = MYSTICAL_SEPARATORS[Math.floor(Math.random() * MYSTICAL_SEPARATORS.length)];
+    const intro = MYSTICAL_INTROS[Math.floor(Math.random() * MYSTICAL_INTROS.length)];
+    const conclusion = MYSTICAL_CONCLUSIONS[Math.floor(Math.random() * MYSTICAL_CONCLUSIONS.length)];
+    
+    let response = '';
+    
+    // 1. Красивый заголовок
+    response += `${header}\n\n`;
+    
+    // 2. Мистическое вступление
+    response += `${intro}\n\n`;
+    response += `${separator}\n\n`;
+    
+    // 3. Описание расклада
+    response += `${emojis.main} ${spreadConfig.description}\n\n`;
+    
+    // 4. Если есть ответ от API, используем его
+    if (apiResponse && apiResponse.trim()) {
+        response += `${apiResponse}\n\n`;
+    } else {
+        // 5. Детальная интерпретация каждой позиции (fallback)
+        response += `📋 ДЕТАЛЬНАЯ ИНТЕРПРЕТАЦИЯ:\n\n`;
+        
+        cardPositions?.forEach((cardPosition, index) => {
+            const cardConfig = cardPosition.cardConfig;
+            const selectedCard = cardPosition.selectedCard;
+            
+            if (selectedCard) {
+                const orientationText = selectedCard.isReversed ? ' (перевернутая)' : '';
+                const positionEmoji = emojis.positions[cardConfig.label] || '🔸';
+                
+                response += `${positionEmoji} **${cardConfig.label.toUpperCase()}${orientationText}**\n`;
+                response += `🃏 Карта: ${selectedCard.name} ${selectedCard.symbol || ''}\n`;
+                response += `📖 Значение: ${cardConfig.description}\n`;
+                response += `✨ Интерпретация: ${selectedCard.description || selectedCard.meaningUpright || 'Символ требует вашего внутреннего понимания'}\n`;
+                
+                // Добавляем дополнительные инсайты в зависимости от ориентации
+                if (selectedCard.isReversed) {
+                    response += `⚠️ Обратная позиция указывает на скрытые аспекты или необходимость внутренней работы.\n`;
+                }
+                
+                // Разделитель между позициями (кроме последней)
+                if (index < cardPositions.length - 1) {
+                    response += `\n• • • • • • • • • • • • • • • • • • •\n\n`;
+                } else {
+                    response += `\n`;
+                }
+            }
+        });
+    }
+    
+    // 6. Финальный разделитель и заключение
+    response += `${separator}\n\n`;
+    response += `💎 ИТОГ:\n`;
+    response += `${conclusion}`;
+    
+    return response;
+}
+
+/**
+ * Создает краткую сводку расклада для истории
+ * @param {string} spreadType - Тип расклада
+ * @param {Array} cardPositions - Позиции карт
+ * @returns {string} Краткая сводка
+ */
+function createSpreadSummary(spreadType, cardPositions) {
+    const emojis = SPREAD_EMOJIS[spreadType] || SPREAD_EMOJIS.success;
+    const header = SPREAD_HEADERS[spreadType] || SPREAD_HEADERS.success;
+    
+    let summary = `${header}\n\n`;
+    
+    cardPositions?.forEach((cardPosition, index) => {
+        const cardConfig = cardPosition.cardConfig;
+        const selectedCard = cardPosition.selectedCard;
+        
+        if (selectedCard) {
+            const orientationText = selectedCard.isReversed ? ' ↺' : '';
+            const positionEmoji = emojis.positions[cardConfig.label] || '🔸';
+            
+            summary += `${positionEmoji} ${cardConfig.label}: ${selectedCard.name}${orientationText}\n`;
+        }
+    });
+    
+    return summary;
+}
+
+// ========================================================================
 // 💾 УПРАВЛЕНИЕ СОСТОЯНИЕМ
 // ========================================================================
 
@@ -1710,40 +1885,30 @@ async function showSpreadInterpretation(spreadType) {
     });
     
     let interpretation;
+    let apiResponse = null;
     
     // Генерируем предсказание через API
     try {
         console.log('🤖 Генерируем предсказание для расклада через API...');
         const spreadName = spreadConfig.name.replace('Расклад «', '').replace('»', '');
-        const prediction = await generatePredictionAPI(selectedCards, `расклад ${spreadName}`);
-        interpretation = `${spreadConfig.description}\n\n${prediction}`;
+        apiResponse = await generatePredictionAPI(selectedCards, `расклад ${spreadName}`);
+        console.log('✅ API ответ получен для расклада');
     } catch (error) {
-        console.warn('❌ Ошибка генерации предсказания через API, используем базовое описание:', error);
-        
-        // Формируем интерпретацию расклада (fallback)
-        interpretation = `${spreadConfig.description}\n\n`;
-        
-        cardPositions?.forEach((cardPosition) => {
-            const cardConfig = cardPosition.cardConfig;
-            const selectedCard = cardPosition.selectedCard;
-            
-            if (selectedCard) {
-                const orientationText = selectedCard.isReversed ? ' (перевернутая)' : '';
-                interpretation += `**${cardConfig.label}${orientationText}**: ${selectedCard.name}\n`;
-                interpretation += `${cardConfig.description}: ${selectedCard.description || selectedCard.meaningUpright}\n\n`;
-            }
-        });
-        
-        interpretation += "Это ваш персональный расклад. Прислушайтесь к своей интуиции при интерпретации символов.";
+        console.warn('❌ Ошибка генерации предсказания через API, используем fallback:', error);
+        apiResponse = null;
     }
     
-    // Печатаем интерпретацию
+    // Используем новый форматтер
+    interpretation = formatSpreadResponse(spreadType, spreadConfig, cardPositions, apiResponse);
+    
+    // Печатаем интерпретацию с эффектом печатной машинки
     if (spreadAnswerText) {
-        await typeText(spreadAnswerText, interpretation);
+        await typeText(spreadAnswerText, interpretation, 8); // Чуть быстрее для длинного текста
     }
     
-    // Сохраняем в историю
-    await addToHistory('spread', spreadConfig.name, interpretation);
+    // Сохраняем в историю с красивой сводкой
+    const historySummary = createSpreadSummary(spreadType, cardPositions);
+    await addToHistory('spread', historySummary, interpretation);
     
     showMessage('Расклад выполнен!', 'success');
 }
