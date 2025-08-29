@@ -18,6 +18,7 @@ let allCards = [];
 let isInitialized = false;
 let currentRating = 0;
 let initAppCalled = false; // Prevent double initialization
+let lastQuestionData = null; // Хранение контекста для уточняющих вопросов
 
 // 🎯 DOM ЭЛЕМЕНТЫ
 let mainNav, secondaryNav, tabContents;
@@ -979,12 +980,14 @@ function resetQuestionAnswerOnly() {
 // ========================================================================
 // 🤖 ГЕНЕРАЦИЯ ПРЕДСКАЗАНИЙ ЧЕРЕЗ API
 
-async function generatePredictionAPI(card, question) {
+async function generatePredictionAPI(cards, question, type = 'question', additionalData = {}) {
     try {
         const userData = {
             user_id: appState.telegramUser?.id || 'webapp_user',
             userName: appState.telegramUser?.first_name || 'Гость'
         };
+
+        console.log(`🤖 Генерируем предсказание типа "${type}" для пользователя ${userData.userName}`);
 
         const response = await fetch('/api/generate-prediction', {
             method: 'POST',
@@ -995,8 +998,9 @@ async function generatePredictionAPI(card, question) {
                 user_id: userData.user_id,
                 userName: userData.userName,
                 question: question,
-                cards: card, // Поддерживаем как одну карту, так и массив
-                type: 'single_card'
+                cards: cards, // Поддерживаем как одну карту, так и массив
+                type: type, // Тип запроса: daily_card, question, clarifying_question, spread
+                additionalData: additionalData // Дополнительные данные (контекст, конфиг расклада)
             })
         });
 
@@ -1010,10 +1014,11 @@ async function generatePredictionAPI(card, question) {
             throw new Error('Некорректный ответ от API');
         }
 
+        console.log(`✅ Получено предсказание типа "${type}":`, result.prediction.substring(0, 100) + '...');
         return result.prediction;
 
     } catch (error) {
-        console.error('❌ Ошибка API генерации предсказания:', error);
+        console.error(`❌ Ошибка API генерации предсказания типа "${type}":`, error);
         throw error;
     }
 }
@@ -1161,7 +1166,7 @@ async function handleDailyCardClick() {
         let interpretationText;
         try {
             console.log('🤖 Генерируем интерпретацию карты дня через API...');
-            interpretationText = await generatePredictionAPI(randomCard, 'карта дня');
+            interpretationText = await generatePredictionAPI(randomCard, 'карта дня', 'daily_card');
             console.log('✅ Интерпретация карты дня получена:', interpretationText.substring(0, 100) + '...');
         } catch (error) {
             console.error('❌ Ошибка генерации интерпретации карты дня:', error);
@@ -1391,7 +1396,7 @@ async function handleAskQuestion() {
             let answer;
             try {
                 console.log('🤖 Отправляем запрос на генерацию предсказания...');
-                const prediction = await generatePredictionAPI(randomCard, question);
+                const prediction = await generatePredictionAPI(randomCard, question, 'question');
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
                 answer = `На ваш вопрос "${question}" отвечает карта ${randomCard.name}${orientationText}:\n\n${prediction}`;
                 console.log('✅ Предсказание получено:', prediction.substring(0, 100) + '...');
@@ -1406,6 +1411,15 @@ async function handleAskQuestion() {
             if (questionAnswerText) {
                 await typeText(questionAnswerText, answer);
             }
+            
+            // Сохраняем контекст для возможных уточняющих вопросов
+            lastQuestionData = {
+                question: question,
+                answer: answer,
+                card: randomCard,
+                timestamp: Date.now()
+            };
+            console.log('💾 Сохранен контекст вопроса для уточнений');
             
             // 5. После завершения печати показываем уточняющий вопрос
             setTimeout(() => {
@@ -1597,7 +1611,19 @@ async function handleClarifyingQuestion() {
             let answer;
             try {
                 console.log('🤖 Генерируем предсказание для уточняющего вопроса через API...');
-                const prediction = await generatePredictionAPI(randomCard, question);
+                
+                // Подготавливаем контекст для уточняющего вопроса
+                const additionalData = {};
+                if (lastQuestionData) {
+                    additionalData.originalQuestion = lastQuestionData.question;
+                    additionalData.originalAnswer = lastQuestionData.answer;
+                    console.log('📝 Передаем контекст предыдущего вопроса:', {
+                        originalQuestion: additionalData.originalQuestion?.substring(0, 50) + '...',
+                        originalAnswer: additionalData.originalAnswer?.substring(0, 50) + '...'
+                    });
+                }
+                
+                const prediction = await generatePredictionAPI(randomCard, question, 'clarifying_question', additionalData);
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
                 answer = `На ваш уточняющий вопрос "${question}" отвечает карта ${randomCard.name}${orientationText}:\n\n${prediction}`;
             } catch (error) {
@@ -1891,7 +1917,14 @@ async function showSpreadInterpretation(spreadType) {
     try {
         console.log('🤖 Генерируем предсказание для расклада через API...');
         const spreadName = spreadConfig.name.replace('Расклад «', '').replace('»', '');
-        apiResponse = await generatePredictionAPI(selectedCards, `расклад ${spreadName}`);
+        
+        // Подготавливаем дополнительные данные для расклада
+        const additionalData = {
+            spreadType: spreadType,
+            spreadConfig: spreadConfig
+        };
+        
+        apiResponse = await generatePredictionAPI(selectedCards, `расклад ${spreadName}`, 'spread', additionalData);
         console.log('✅ API ответ получен для расклада');
     } catch (error) {
         console.warn('❌ Ошибка генерации предсказания через API, используем fallback:', error);
@@ -2954,6 +2987,151 @@ function testAllCardImages() {
         }
     });
 }
+
+// ========================================================================
+// 🧪 ТЕСТИРОВАНИЕ АДАПТИВНОЙ СИСТЕМЫ ПРОМПТОВ  
+// ========================================================================
+
+async function testNewPredictionSystem() {
+    console.log('🧪 Начинаем тестирование новой системы предсказаний...');
+    
+    const testCard = {
+        name: "Маг",
+        symbol: "I",
+        description: "Воля, умение, мастерство, сила воли",
+        meaningUpright: "Творчество, сила воли, концентрация, проявление желаний"
+    };
+    
+    const testResults = [];
+    
+    // Тест 1: Карта дня
+    try {
+        console.log('📅 Тестируем карту дня...');
+        const dailyResult = await generatePredictionAPI(testCard, 'карта дня', 'daily_card');
+        testResults.push({
+            type: 'daily_card',
+            success: true,
+            result: dailyResult.substring(0, 100) + '...'
+        });
+        console.log('✅ Карта дня протестирована');
+    } catch (error) {
+        console.error('❌ Ошибка тестирования карты дня:', error);
+        testResults.push({
+            type: 'daily_card',
+            success: false,
+            error: error.message
+        });
+    }
+    
+    // Тест 2: Обычный вопрос
+    try {
+        console.log('❓ Тестируем обычный вопрос...');
+        const questionResult = await generatePredictionAPI(testCard, 'Когда я найду любовь?', 'question');
+        testResults.push({
+            type: 'question',
+            success: true,
+            result: questionResult.substring(0, 100) + '...'
+        });
+        console.log('✅ Обычный вопрос протестирован');
+        
+        // Сохраняем контекст для следующего теста
+        lastQuestionData = {
+            question: 'Когда я найду любовь?',
+            answer: questionResult,
+            card: testCard,
+            timestamp: Date.now()
+        };
+    } catch (error) {
+        console.error('❌ Ошибка тестирования вопроса:', error);
+        testResults.push({
+            type: 'question',
+            success: false,
+            error: error.message
+        });
+    }
+    
+    // Тест 3: Уточняющий вопрос с контекстом
+    try {
+        console.log('🔍 Тестируем уточняющий вопрос...');
+        const additionalData = {
+            originalQuestion: lastQuestionData?.question,
+            originalAnswer: lastQuestionData?.answer
+        };
+        const clarifyingResult = await generatePredictionAPI(
+            testCard, 
+            'А что мне нужно изменить в себе?', 
+            'clarifying_question', 
+            additionalData
+        );
+        testResults.push({
+            type: 'clarifying_question',
+            success: true,
+            result: clarifyingResult.substring(0, 100) + '...',
+            hasContext: !!(additionalData.originalQuestion)
+        });
+        console.log('✅ Уточняющий вопрос протестирован');
+    } catch (error) {
+        console.error('❌ Ошибка тестирования уточняющего вопроса:', error);
+        testResults.push({
+            type: 'clarifying_question',
+            success: false,
+            error: error.message
+        });
+    }
+    
+    // Тест 4: Расклад
+    try {
+        console.log('🎯 Тестируем расклад...');
+        const spreadCards = [testCard, testCard, testCard]; // Для теста используем одинаковые карты
+        const spreadData = {
+            spreadType: 'success',
+            spreadConfig: SPREAD_CONFIGS.success
+        };
+        const spreadResult = await generatePredictionAPI(
+            spreadCards, 
+            'расклад Путь к успеху', 
+            'spread', 
+            spreadData
+        );
+        testResults.push({
+            type: 'spread',
+            success: true,
+            result: spreadResult.substring(0, 100) + '...'
+        });
+        console.log('✅ Расклад протестирован');
+    } catch (error) {
+        console.error('❌ Ошибка тестирования расклада:', error);
+        testResults.push({
+            type: 'spread',
+            success: false,
+            error: error.message
+        });
+    }
+    
+    // Выводим сводку результатов
+    console.log('📊 РЕЗУЛЬТАТЫ ТЕСТИРОВАНИЯ:');
+    console.table(testResults);
+    
+    const successCount = testResults.filter(r => r.success).length;
+    const totalCount = testResults.length;
+    
+    console.log(`🎯 Успешно протестировано: ${successCount}/${totalCount} функций`);
+    
+    if (successCount === totalCount) {
+        console.log('🎉 Все тесты пройдены успешно! Адаптивная система промптов готова к использованию.');
+        showMessage('🎉 Тестирование завершено успешно!', 'success');
+    } else {
+        console.log('⚠️ Некоторые тесты не прошли. Проверьте настройки API.');
+        showMessage(`⚠️ Тестирование: ${successCount}/${totalCount} успешно`, 'warning');
+    }
+    
+    return testResults;
+}
+
+// Экспортируем функции тестирования
+window.TarotTesting = {
+    testNewPredictionSystem
+};
 
 // ========================================================================
 // 🏁 ЗАПУСК ПРИЛОЖЕНИЯ
