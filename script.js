@@ -1218,13 +1218,13 @@ async function handleAskQuestion() {
                 console.log('🤖 Отправляем запрос на генерацию предсказания...');
                 const prediction = await generatePredictionAPI(randomCard, question);
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${prediction}`;
+                answer = `На ваш вопрос "${question}" отвечает карта ${randomCard.name}${orientationText}:\n\n${prediction}`;
                 console.log('✅ Предсказание получено:', prediction.substring(0, 100) + '...');
             } catch (error) {
                 console.error('❌ Ошибка генерации предсказания:', error);
                 // Fallback к локальной генерации
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-                answer = `На ваш вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
+                answer = `На ваш вопрос "${question}" отвечает карта ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
             }
             
             // Печатаем текст
@@ -1424,11 +1424,11 @@ async function handleClarifyingQuestion() {
                 console.log('🤖 Генерируем предсказание для уточняющего вопроса через API...');
                 const prediction = await generatePredictionAPI(randomCard, question);
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-                answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${prediction}`;
+                answer = `На ваш уточняющий вопрос "${question}" отвечает карта ${randomCard.name}${orientationText}:\n\n${prediction}`;
             } catch (error) {
                 console.warn('❌ Ошибка генерации предсказания через API, используем базовое описание:', error);
                 const orientationText = randomCard.isReversed ? ' (перевернутая)' : '';
-                answer = `На ваш уточняющий вопрос "${question}" карты отвечают через ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
+                answer = `На ваш уточняющий вопрос "${question}" отвечает карта ${randomCard.name}${orientationText}:\n\n${randomCard.description || 'Карты предлагают размышления и новые перспективы'}`;
             }
             
             // Печатаем текст
