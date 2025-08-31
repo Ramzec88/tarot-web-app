@@ -2369,26 +2369,68 @@ async function handleSubscriptionCodeActivation() {
         
         // Проверяем и активируем код через Supabase
         if (window.TarotDB && window.TarotDB.isConnected()) {
-            // Получаем или создаем профиль пользователя
-            let userProfile = await window.TarotDB.getUserProfile(userId);
-            
-            if (!userProfile) {
-                console.log('🆕 Создаем новый профиль пользователя');
-                userProfile = await window.TarotDB.createUserProfile(userId, {
-                    username: getTelegramUserName(),
-                    is_subscribed: false
+            // Проверяем валидность кода
+            if (window.TarotDB.validateSubscriptionCode && window.TarotDB.useSubscriptionCode) {
+                const codeResult = await window.TarotDB.useSubscriptionCode(code, userId);
+                
+                if (!codeResult.success) {
+                    showMessage(`❌ ${codeResult.error}`, 'error');
+                    return;
+                }
+                
+                console.log('✅ Код подписки валиден и использован:', code);
+                
+                // Получаем количество дней подписки из кода
+                const subscriptionDays = codeResult.subscriptionDays || 30;
+                
+                // Получаем или создаем профиль пользователя
+                let userProfile = await window.TarotDB.getUserProfile(userId);
+                
+                if (!userProfile) {
+                    console.log('🆕 Создаем новый профиль пользователя');
+                    userProfile = await window.TarotDB.createUserProfile(userId, {
+                        username: getTelegramUserName(),
+                        is_subscribed: false
+                    });
+                }
+                
+                // Обновляем профиль с премиум статусом
+                await window.TarotDB.updateUserProfile(userId, {
+                    is_subscribed: true,
+                    subscription_code: code,
+                    subscription_expiry_date: new Date(Date.now() + subscriptionDays * 24 * 60 * 60 * 1000).toISOString(),
+                    premium_activation_date: new Date().toISOString()
                 });
+                
+                console.log('✅ Профиль обновлен с кодом подписки:', code);
+            } else {
+                // Fallback для старой логики (без проверки кодов)
+                console.warn('⚠️ Функции проверки кодов недоступны, используем старую логику');
+                
+                // Получаем или создаем профиль пользователя
+                let userProfile = await window.TarotDB.getUserProfile(userId);
+                
+                if (!userProfile) {
+                    console.log('🆕 Создаем новый профиль пользователя');
+                    userProfile = await window.TarotDB.createUserProfile(userId, {
+                        username: getTelegramUserName(),
+                        is_subscribed: false
+                    });
+                }
+                
+                // Обновляем профиль с премиум статусом
+                await window.TarotDB.updateUserProfile(userId, {
+                    is_subscribed: true,
+                    subscription_code: code,
+                    subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    premium_activation_date: new Date().toISOString()
+                });
+                
+                console.log('✅ Профиль обновлен с кодом подписки (fallback):', code);
             }
-            
-            // Обновляем профиль с премиум статусом
-            await window.TarotDB.updateUserProfile(userId, {
-                is_subscribed: true,
-                subscription_code: code,
-                subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                premium_activation_date: new Date().toISOString()
-            });
-            
-            console.log('✅ Профиль обновлен с кодом подписки:', code);
+        } else {
+            showMessage('❌ Сервис временно недоступен. Попробуйте позже', 'error');
+            return;
         }
         
         // Обновляем локальное состояние
