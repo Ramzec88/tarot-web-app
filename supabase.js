@@ -802,6 +802,11 @@ async function validateSubscriptionCode(code) {
                 // Код не найден
                 return { valid: false, error: 'Код не найден' };
             }
+            if (error.code === 'PGRST106' || error.message.includes('does not exist')) {
+                // Таблица не существует
+                console.warn('⚠️ Таблица tarot_subscription_codes не существует');
+                return { valid: false, error: 'Система кодов подписки пока недоступна' };
+            }
             console.error('❌ Ошибка проверки кода:', error);
             return { valid: false, error: 'Ошибка проверки кода' };
         }
@@ -854,6 +859,11 @@ async function useSubscriptionCode(code, userId) {
             .single();
 
         if (error) {
+            if (error.code === 'PGRST106' || error.message.includes('does not exist')) {
+                // Таблица не существует
+                console.warn('⚠️ Таблица tarot_subscription_codes не существует при использовании кода');
+                return { success: false, error: 'Система кодов подписки пока недоступна' };
+            }
             console.error('❌ Ошибка использования кода:', error);
             return { success: false, error: 'Не удалось активировать код' };
         }
