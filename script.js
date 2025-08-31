@@ -2366,105 +2366,75 @@ async function handleSubscriptionCodeActivation() {
     
     try {
         const userId = getTelegramUserId();
+        console.log('🔍 DEBUG: Активация кода:', { code, userId });
         
-        // Проверяем и активируем код через Supabase
-        if (window.TarotDB && window.TarotDB.isConnected()) {
-            // Проверяем валидность кода
-            if (window.TarotDB.validateSubscriptionCode && window.TarotDB.useSubscriptionCode) {
-                const codeResult = await window.TarotDB.useSubscriptionCode(code, userId);
-                
-                if (!codeResult.success) {
-                    showMessage(`❌ ${codeResult.error}`, 'error');
-                    return;
-                }
-                
-                console.log('✅ Код подписки валиден и использован:', code);
-                
-                // Получаем количество дней подписки из кода
-                const subscriptionDays = codeResult.subscriptionDays || 30;
-                
-                // Получаем или создаем профиль пользователя
-                let userProfile = await window.TarotDB.getUserProfile(userId);
-                
-                if (!userProfile) {
-                    console.log('🆕 Создаем новый профиль пользователя');
-                    const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
-                    userProfile = await window.TarotDB.createUserProfile(userId, {
-                        username: getTelegramUserName(),
-                        first_name: telegramUser.first_name || null,
-                        last_name: telegramUser.last_name || null,
-                        is_subscribed: false,
-                        is_premium: false,
-                        questions_used: 0,
-                        total_questions: 0,
-                        free_predictions_left: 3
-                    });
-                }
-                
-                // Обновляем профиль с премиум статусом
-                await window.TarotDB.updateUserProfile(userId, {
-                    is_subscribed: true,
-                    subscription_code: code,
-                    subscription_expiry_date: new Date(Date.now() + subscriptionDays * 24 * 60 * 60 * 1000).toISOString(),
-                    premium_activation_date: new Date().toISOString()
-                });
-                
-                console.log('✅ Профиль обновлен с кодом подписки:', code);
-            } else {
-                // Fallback для старой логики (без проверки кодов)
-                console.warn('⚠️ Функции проверки кодов недоступны, используем старую логику');
-                
-                // Получаем или создаем профиль пользователя
-                let userProfile = await window.TarotDB.getUserProfile(userId);
-                
-                if (!userProfile) {
-                    console.log('🆕 Создаем новый профиль пользователя');
-                    const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
-                    userProfile = await window.TarotDB.createUserProfile(userId, {
-                        username: getTelegramUserName(),
-                        first_name: telegramUser.first_name || null,
-                        last_name: telegramUser.last_name || null,
-                        is_subscribed: false,
-                        is_premium: false,
-                        questions_used: 0,
-                        total_questions: 0,
-                        free_predictions_left: 3
-                    });
-                }
-                
-                // Обновляем профиль с премиум статусом
-                await window.TarotDB.updateUserProfile(userId, {
-                    is_subscribed: true,
-                    subscription_code: code,
-                    subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    premium_activation_date: new Date().toISOString()
-                });
-                
-                console.log('✅ Профиль обновлен с кодом подписки (fallback):', code);
-            }
-        } else {
-            showMessage('❌ Сервис временно недоступен. Попробуйте позже', 'error');
+        // Проверяем подключение к Supabase
+        if (!window.TarotDB || !window.TarotDB.isConnected()) {
+            showMessage('❌ Нет подключения к базе данных', 'error');
             return;
         }
         
-        // Обновляем локальное состояние
-        appState.isPremium = true;
-        saveAppStateLocally();
-        updateSubscriptionStatus(true);
-        updateQuestionsCounter();
+        // Проверяем наличие функций
+        if (!window.TarotDB.validateSubscriptionCode || !window.TarotDB.useSubscriptionCode) {
+            showMessage('❌ Функции активации кода не найдены', 'error');
+            return;
+        }
         
-        // Очищаем поле ввода
-        codeInput.value = '';
+        console.log('🔍 DEBUG: Вызываем useSubscriptionCode...');
+        const codeResult = await window.TarotDB.useSubscriptionCode(code, userId);
+        console.log('🔍 DEBUG: Результат активации:', codeResult);
         
-        showMessage('🎉 Premium успешно активирован! Добро пожаловать в мир безграничных возможностей!', 'success');
+        if (!codeResult.success) {
+            showMessage(`❌ ${codeResult.error}`, 'error');
+            return;
+        }
+        
+        console.log('✅ Код подписки валиден и использован:', code);
+        
+        // Получаем количество дней подписки из кода
+        const subscriptionDays = codeResult.subscriptionDays || 30;
+        
+        // Получаем или создаем профиль пользователя
+        let userProfile = await window.TarotDB.getUserProfile(userId);
+        
+        if (!userProfile) {
+            console.log('🆕 Создаем новый профиль пользователя');
+            const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
+            userProfile = await window.TarotDB.createUserProfile(userId, {
+                username: getTelegramUserName(),
+                first_name: telegramUser.first_name || null,
+                last_name: telegramUser.last_name || null,
+                is_subscribed: false,
+                is_premium: false,
+                questions_used: 0,
+                total_questions: 0,
+                free_predictions_left: 3
+            });
+        }
+        
+        // Обновляем профиль с премиум статусом
+        await window.TarotDB.updateUserProfile(userId, {
+            is_subscribed: true,
+            subscription_code: code,
+            subscription_expiry_date: new Date(Date.now() + subscriptionDays * 24 * 60 * 60 * 1000).toISOString(),
+            premium_activation_date: new Date().toISOString()
+        });
+        
+        console.log('✅ Профиль обновлен с кодом подписки:', code);
+        
+        // Показываем успешное сообщение
+        showMessage('✅ Premium подписка активирована!', 'success');
+        
+        // Обновляем UI
+        await updateUserInterface();
         
     } catch (error) {
-        console.error('❌ Ошибка активации кода подписки:', error);
-        showMessage('Ошибка активации кода. Проверьте код и попробуйте снова', 'error');
+        console.error('❌ Ошибка активации кода:', error);
+        showMessage(`❌ Ошибка: ${error.message}`, 'error');
     } finally {
         activateBtn.disabled = false;
-        activateBtn.textContent = 'Активировать';
-    }
+        activateBtn.textContent = 'Активировать код';
+}
 }
 
 // ========================================================================
