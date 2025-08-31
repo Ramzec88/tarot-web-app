@@ -29,7 +29,6 @@ let afterDailyCardBanner, askMoreQuestionsBtn, premiumBannerBtn;
 let starAnimationContainer, questionsLeftElement;
 let questionTextarea, submitQuestionBtn, charCounter;
 let loadingState, questionAnswerContainer, questionAnswerText;
-let premiumTestToggle, premiumTestLabel;
 let clarifyingQuestionContainer, clarifyingQuestionTextarea, submitClarifyingQuestionBtn, clarifyingQuestionWarning;
 let questionAnimationContainer, questionStarAnimationContainer, questionIntroText;
 let questionCardContainer, questionTarotCard, questionCardInfoAfterFlip, questionFlippedCardName;
@@ -2318,13 +2317,6 @@ function updateSubscriptionStatus(isPremium = false) {
         statusText.textContent = 'Базовый вариант';
     }
 
-    // Update test toggle
-    if (premiumTestToggle) {
-        premiumTestToggle.checked = isPremium;
-    }
-    if (premiumTestLabel) {
-        premiumTestLabel.textContent = isPremium ? 'Premium режим' : 'Базовый режим';
-    }
 }
 
 
@@ -2562,9 +2554,6 @@ function initializeDOMElements() {
     submitClarifyingQuestionBtn = document.getElementById('submitClarifyingQuestionBtn');
     clarifyingQuestionWarning = document.getElementById('clarifyingQuestionWarning');
 
-    // Test Toggle
-    premiumTestToggle = document.getElementById('premiumTestToggle');
-    premiumTestLabel = document.getElementById('premiumTestLabel');
     
     // Расклады
     spreadsGrid = document.getElementById('spreadsGrid');
