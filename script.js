@@ -2809,7 +2809,7 @@ async function initApp() {
                             id: review.id || Date.now(),
                             rating: review.rating,
                             text: review.review_text || review.text,
-                            username: review.username || getTelegramUserName(),
+                            username: review.username || 'Анонимный пользователь',
                             date: new Date(review.created_at).toLocaleString('ru-RU'),
                             timestamp: new Date(review.created_at).getTime()
                         }));
