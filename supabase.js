@@ -864,6 +864,11 @@ async function useSubscriptionCode(code, userId) {
                 console.warn('⚠️ Таблица tarot_subscription_codes не существует при использовании кода');
                 return { success: false, error: 'Система кодов подписки пока недоступна' };
             }
+            if (error.code === '22P02' && error.message.includes('invalid input syntax for type uuid')) {
+                // Проблема с типом поля used_by_user_id
+                console.warn('⚠️ Несоответствие типа данных в поле used_by_user_id');
+                return { success: false, error: 'Требуется обновление структуры базы данных' };
+            }
             console.error('❌ Ошибка использования кода:', error);
             return { success: false, error: 'Не удалось активировать код' };
         }
