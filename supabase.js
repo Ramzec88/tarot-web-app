@@ -655,21 +655,54 @@ async function saveReview(telegramId, rating, reviewText) {
             return saveReviewLocally(telegramId, rating, reviewText);
         }
 
+        // Сначала проверим, есть ли колонка username в таблице
+        const reviewData = {
+            user_id: userProfile.user_id,
+            rating: rating,
+            review_text: reviewText,
+            created_at: new Date().toISOString()
+        };
+        
+        // Пытаемся добавить username, если колонка существует
+        try {
+            reviewData.username = userProfile.username || window.getTelegramUserName();
+            reviewData.telegram_id = telegramId; // Для связи с пользователем
+        } catch (e) {
+            // Если есть проблемы с username, продолжаем без него
+            console.log('⚠️ Не удалось добавить username к отзыву');
+        }
+        
         const { data, error } = await supabaseClient
             .from('tarot_reviews')
-            .insert([
-                {
-                    user_id: userProfile.user_id,
-                    rating: rating,
-                    review_text: reviewText,
-                    username: userProfile.username || window.getTelegramUserName(),
-                    created_at: new Date().toISOString()
-                }
-            ])
+            .insert([reviewData])
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            // Если ошибка связана с отсутствующими колонками, пробуем без них
+            if (error.code === '42703' && (error.message.includes('username') || error.message.includes('telegram_id'))) {
+                console.log('⚠️ Колонки username/telegram_id не существуют, сохраняем базовые данные');
+                
+                const basicReviewData = {
+                    user_id: userProfile.user_id,
+                    rating: rating,
+                    review_text: reviewText,
+                    created_at: new Date().toISOString()
+                };
+                
+                const { data: retryData, error: retryError } = await supabaseClient
+                    .from('tarot_reviews')
+                    .insert([basicReviewData])
+                    .select()
+                    .single();
+                    
+                if (retryError) throw retryError;
+                
+                console.log('✅ Отзыв сохранен (без username):', retryData);
+                return retryData;
+            }
+            throw error;
+        }
         
         console.log('✅ Отзыв сохранен:', data);
         return data;
@@ -685,9 +718,10 @@ async function getReviews(limit = 10, currentPage = 1, perPage = null) {
     }
 
     try {
+        // Сначала пытаемся запросить с username
         let query = supabaseClient
             .from('tarot_reviews')
-            .select('rating, review_text, username, created_at')
+            .select('rating, review_text, username, telegram_id, created_at')
             .order('created_at', { ascending: false });
 
         // If pagination parameters are provided, use them instead of simple limit
@@ -710,7 +744,36 @@ async function getReviews(limit = 10, currentPage = 1, perPage = null) {
 
         const { data, error } = await query;
 
-        if (error) throw error;
+        if (error) {
+            // Если ошибка связана с отсутствующей колонкой username, пробуем без неё
+            if (error.code === '42703' && error.message.includes('username')) {
+                console.log('⚠️ Колонка username не существует, запрашиваем без неё');
+                
+                let fallbackQuery = supabaseClient
+                    .from('tarot_reviews')
+                    .select('rating, review_text, created_at')
+                    .order('created_at', { ascending: false });
+                
+                if (perPage !== null && currentPage !== null && !isNaN(perPage) && !isNaN(currentPage)) {
+                    const page = Math.max(1, Number(currentPage || 1));
+                    const pageSize = Math.max(1, Math.min(100, Number(perPage || 10)));
+                    const from = (page - 1) * pageSize;
+                    const to = from + pageSize - 1;
+                    fallbackQuery = fallbackQuery.range(from, to);
+                } else {
+                    const numericLimit = isNaN(Number(limit)) ? 10 : Number(limit);
+                    const sanitizedLimit = Math.max(1, Math.min(100, numericLimit));
+                    fallbackQuery = fallbackQuery.limit(sanitizedLimit);
+                }
+                
+                const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+                
+                if (fallbackError) throw fallbackError;
+                return fallbackData;
+            }
+            
+            throw error;
+        }
         
         return data;
     } catch (error) {
