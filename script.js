@@ -2388,9 +2388,16 @@ async function handleSubscriptionCodeActivation() {
                 
                 if (!userProfile) {
                     console.log('🆕 Создаем новый профиль пользователя');
+                    const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
                     userProfile = await window.TarotDB.createUserProfile(userId, {
                         username: getTelegramUserName(),
-                        is_subscribed: false
+                        first_name: telegramUser.first_name || null,
+                        last_name: telegramUser.last_name || null,
+                        is_subscribed: false,
+                        is_premium: false,
+                        questions_used: 0,
+                        total_questions: 0,
+                        free_predictions_left: 3
                     });
                 }
                 
@@ -2412,9 +2419,16 @@ async function handleSubscriptionCodeActivation() {
                 
                 if (!userProfile) {
                     console.log('🆕 Создаем новый профиль пользователя');
+                    const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
                     userProfile = await window.TarotDB.createUserProfile(userId, {
                         username: getTelegramUserName(),
-                        is_subscribed: false
+                        first_name: telegramUser.first_name || null,
+                        last_name: telegramUser.last_name || null,
+                        is_subscribed: false,
+                        is_premium: false,
+                        questions_used: 0,
+                        total_questions: 0,
+                        free_predictions_left: 3
                     });
                 }
                 
