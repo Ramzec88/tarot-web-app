@@ -337,7 +337,7 @@ async function saveAppState() {
 function getUserId() {
     const telegramId = getTelegramUserId();
     // Обеспечиваем, что возвращается чистая строка
-    const userId = telegramId ? String(telegramId).trim() : 'anonymous_user';
+    const userId = telegramId ? String(telegramId).trim() : '999999999'; // Используем числовой ID для анонимных пользователей
     console.log('🆔 getUserId:', { telegramId, userId: userId });
     return userId;
 }
@@ -2506,7 +2506,7 @@ function getTelegramUserId() {
     }
     
     // Для пользователей без Telegram - анонимный режим
-    return 'anonymous_user';
+    return '999999999';
 }
 
 function getTelegramUserName() {
