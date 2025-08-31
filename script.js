@@ -2026,7 +2026,7 @@ async function addToHistory(type, title, content) {
         appState.history = appState.history.slice(0, 50);
     }
     
-    await saveAppState();
+    saveAppStateLocally();
     updateHistoryDisplay();
 }
 
@@ -2266,15 +2266,7 @@ async function handleSubmitReview() {
     // Сохраняем в Supabase
     try {
         if (window.TarotDB && window.TarotDB.isConnected()) {
-            const reviewData = {
-                user_id: getTelegramUserId(),
-                rating: rating,
-                review_text: text,
-                username: getTelegramUserName(),
-                created_at: new Date().toISOString()
-            };
-            
-            await window.TarotDB.saveReview(reviewData);
+            await window.TarotDB.saveReview(getTelegramUserId(), rating, text);
             console.log('✅ Отзыв сохранен в Supabase');
         }
     } catch (error) {
@@ -2289,8 +2281,8 @@ async function handleSubmitReview() {
         appState.reviews = appState.reviews.slice(0, 50);
     }
     
-    // Сохраняем состояние
-    await saveAppState();
+    // Сохраняем состояние локально
+    saveAppStateLocally();
     
     // Обновляем отображение отзывов
     updateReviewsDisplay();
