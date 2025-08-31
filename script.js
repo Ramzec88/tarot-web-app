@@ -2412,12 +2412,10 @@ async function handleSubscriptionCodeActivation() {
             });
         }
         
-        // Обновляем профиль с премиум статусом
+        // Обновляем профиль с премиум статусом (только основные поля)
         await window.TarotDB.updateUserProfile(userId, {
             is_subscribed: true,
-            subscription_code: code,
-            subscription_expiry_date: new Date(Date.now() + subscriptionDays * 24 * 60 * 60 * 1000).toISOString(),
-            premium_activation_date: new Date().toISOString()
+            is_premium: true
         });
         
         console.log('✅ Профиль обновлен с кодом подписки:', code);
@@ -2426,7 +2424,8 @@ async function handleSubscriptionCodeActivation() {
         showMessage('✅ Premium подписка активирована!', 'success');
         
         // Обновляем UI
-        await updateUserInterface();
+        updateSubscriptionStatus(true);
+        updateQuestionsCounter();
         
     } catch (error) {
         console.error('❌ Ошибка активации кода:', error);
