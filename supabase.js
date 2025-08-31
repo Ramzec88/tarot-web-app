@@ -624,6 +624,7 @@ async function saveReview(telegramId, rating, reviewText) {
                     user_id: userProfile.user_id,
                     rating: rating,
                     review_text: reviewText,
+                    username: userProfile.username || window.getTelegramUserName(),
                     created_at: new Date().toISOString()
                 }
             ])
@@ -648,7 +649,7 @@ async function getReviews(limit = 10, currentPage = 1, perPage = null) {
     try {
         let query = supabaseClient
             .from('tarot_reviews')
-            .select('rating, review_text, created_at')
+            .select('rating, review_text, username, created_at')
             .order('created_at', { ascending: false });
 
         // If pagination parameters are provided, use them instead of simple limit
