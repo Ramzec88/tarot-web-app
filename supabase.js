@@ -393,7 +393,7 @@ async function createUserProfile(telegramId, profileInfo = {}) {
 
         if (error) {
             console.warn('⚠️ Ошибка Supabase при создании профиля:', error.message);
-            return saveUserProfileLocally(telegramId, username);
+            return saveUserProfileLocally(telegramId, profileInfo.username || profileInfo);
         }
         
         console.log('✅ Профиль пользователя создан в Supabase:', data);
@@ -404,7 +404,7 @@ async function createUserProfile(telegramId, profileInfo = {}) {
         } else {
             console.error('❌ Критическая ошибка создания профиля:', error.message);
         }
-        return saveUserProfileLocally(telegramId, username);
+        return saveUserProfileLocally(telegramId, profileInfo.username || profileInfo);
     }
 }
 
@@ -691,7 +691,7 @@ async function getReviews(limit = 10, currentPage = 1, perPage = null) {
             .order('created_at', { ascending: false });
 
         // If pagination parameters are provided, use them instead of simple limit
-        if (perPage !== null && currentPage !== null) {
+        if (perPage !== null && currentPage !== null && !isNaN(perPage) && !isNaN(currentPage)) {
             // Sanitize pagination parameters to prevent PGRST103 errors
             const page = Math.max(1, Number(currentPage || 1));
             const pageSize = Math.max(1, Math.min(100, Number(perPage || 10))); // Max 100 per page
@@ -701,9 +701,10 @@ async function getReviews(limit = 10, currentPage = 1, perPage = null) {
             console.log('🔍 Sanitized pagination:', { page, pageSize, from, to });
             query = query.range(from, to);
         } else {
-            // Sanitize simple limit
-            const sanitizedLimit = Math.max(1, Math.min(100, Number(limit || 10)));
-            console.log('🔍 Sanitized limit:', sanitizedLimit);
+            // Sanitize simple limit - защита от NaN
+            const numericLimit = isNaN(Number(limit)) ? 10 : Number(limit);
+            const sanitizedLimit = Math.max(1, Math.min(100, numericLimit));
+            console.log('🔍 Sanitized limit:', sanitizedLimit, 'from original:', limit);
             query = query.limit(sanitizedLimit);
         }
 
