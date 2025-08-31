@@ -2321,18 +2321,57 @@ function updateSubscriptionStatus(isPremium = false) {
 
 
 async function handlePremiumPurchase() {
-    const userId = getTelegramUserId();
-
     try {
-        // Здесь должна быть реальная интеграция с платежной системой
-        console.log('💰 Покупка Premium');
+        // Получаем URL для оплаты из конфигурации
+        const paymentUrl = window.API_CONFIG?.paymentUrl || 'https://digital.wildberries.ru/offer/491728';
         
-        // Если TarotDB подключен, обновляем профиль пользователя
+        console.log('💰 Переход на страницу оплаты Premium:', paymentUrl);
+        
+        // Открываем ссылку на оплату в новой вкладке/окне
+        if (window.Telegram && window.Telegram.WebApp) {
+            // Если это Telegram WebApp, используем Telegram API
+            window.Telegram.WebApp.openLink(paymentUrl);
+        } else {
+            // Для обычного браузера
+            window.open(paymentUrl, '_blank');
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка при переходе на страницу оплаты:', error);
+        showMessage('Произошла ошибка при переходе на страницу оплаты. Попробуйте позже', 'error');
+    }
+}
+
+async function handleSubscriptionCodeActivation() {
+    const codeInput = document.getElementById('subscriptionCodeInput');
+    const activateBtn = document.getElementById('activateCodeBtn');
+    
+    if (!codeInput || !activateBtn) return;
+    
+    const code = codeInput.value.trim().toUpperCase();
+    
+    if (!code) {
+        showMessage('Введите код подписки', 'error');
+        return;
+    }
+    
+    // Проверяем формат кода (SUB30-XXXXXX)
+    if (!/^SUB30-[A-Z0-9]{6}$/.test(code)) {
+        showMessage('Неверный формат кода. Используйте формат SUB30-XXXXXX', 'error');
+        return;
+    }
+    
+    activateBtn.disabled = true;
+    activateBtn.textContent = 'Активация...';
+    
+    try {
+        const userId = getTelegramUserId();
+        
+        // Проверяем и активируем код через Supabase
         if (window.TarotDB && window.TarotDB.isConnected()) {
-            // Сначала проверяем существование профиля
+            // Получаем или создаем профиль пользователя
             let userProfile = await window.TarotDB.getUserProfile(userId);
             
-            // Если профиль не существует, создаем его
             if (!userProfile) {
                 console.log('🆕 Создаем новый профиль пользователя');
                 userProfile = await window.TarotDB.createUserProfile(userId, {
@@ -2340,27 +2379,38 @@ async function handlePremiumPurchase() {
                     is_subscribed: false
                 });
             }
-
-            // Обновляем профиль
+            
+            // Обновляем профиль с премиум статусом
             await window.TarotDB.updateUserProfile(userId, {
                 is_subscribed: true,
-                subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 дней
-                premium_purchase_date: new Date().toISOString()
+                subscription_code: code,
+                subscription_expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                premium_activation_date: new Date().toISOString()
             });
+            
+            console.log('✅ Профиль обновлен с кодом подписки:', code);
         }
-
+        
         // Обновляем локальное состояние
         appState.isPremium = true;
-        await saveAppState();
+        saveAppStateLocally();
         updateSubscriptionStatus(true);
         updateQuestionsCounter();
         
-        showMessage('Premium активирован! Теперь у вас безлимитные возможности!', 'success');
+        // Очищаем поле ввода
+        codeInput.value = '';
+        
+        showMessage('🎉 Premium успешно активирован! Добро пожаловать в мир безграничных возможностей!', 'success');
+        
     } catch (error) {
-        console.error('❌ Ошибка активации Premium:', error);
-        showMessage('Не удалось активировать Premium', 'error');
+        console.error('❌ Ошибка активации кода подписки:', error);
+        showMessage('Ошибка активации кода. Проверьте код и попробуйте снова', 'error');
+    } finally {
+        activateBtn.disabled = false;
+        activateBtn.textContent = 'Активировать';
     }
 }
+
 // ========================================================================
 // 🛠️ УТИЛИТЫ
 // ========================================================================
@@ -2612,6 +2662,9 @@ function setupEventListeners() {
     // Premium
     const premiumBuyBtn = document.getElementById('premiumBuyBtn');
     premiumBuyBtn?.addEventListener('click', handlePremiumPurchase);
+    
+    const activateCodeBtn = document.getElementById('activateCodeBtn');
+    activateCodeBtn?.addEventListener('click', handleSubscriptionCodeActivation);
 
     
     // Расклады
