@@ -680,6 +680,94 @@ async function getReviews(limit = 10, currentPage = 1, perPage = null) {
     }
 }
 
+// 🎫 ФУНКЦИИ ДЛЯ РАБОТЫ С КОДАМИ ПОДПИСКИ
+async function validateSubscriptionCode(code) {
+    if (!supabaseClient) {
+        console.warn('⚠️ Supabase недоступен, не можем проверить код подписки');
+        return { valid: false, error: 'Сервис временно недоступен' };
+    }
+
+    try {
+        // Проверяем, существует ли код и не использован ли он
+        const { data, error } = await supabaseClient
+            .from('tarot_subscription_codes')
+            .select('id, code, is_used, used_by_user_id, subscription_duration_days, expires_at')
+            .eq('code', code.toUpperCase())
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                // Код не найден
+                return { valid: false, error: 'Код не найден' };
+            }
+            console.error('❌ Ошибка проверки кода:', error);
+            return { valid: false, error: 'Ошибка проверки кода' };
+        }
+
+        // Проверяем, не использован ли код
+        if (data.is_used) {
+            return { valid: false, error: 'Код уже использован' };
+        }
+
+        // Проверяем срок действия кода (если указан)
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+            return { valid: false, error: 'Срок действия кода истек' };
+        }
+
+        return { 
+            valid: true, 
+            codeData: data,
+            subscriptionDays: data.subscription_duration_days || 30
+        };
+
+    } catch (error) {
+        console.error('❌ Ошибка валидации кода подписки:', error);
+        return { valid: false, error: 'Ошибка проверки кода' };
+    }
+}
+
+async function useSubscriptionCode(code, userId) {
+    if (!supabaseClient) {
+        return { success: false, error: 'Сервис недоступен' };
+    }
+
+    try {
+        // Сначала проверяем код
+        const validation = await validateSubscriptionCode(code);
+        if (!validation.valid) {
+            return { success: false, error: validation.error };
+        }
+
+        // Отмечаем код как использованный
+        const { data, error } = await supabaseClient
+            .from('tarot_subscription_codes')
+            .update({
+                is_used: true,
+                used_by_user_id: userId,
+                used_at: new Date().toISOString()
+            })
+            .eq('code', code.toUpperCase())
+            .eq('is_used', false) // Дополнительная проверка, что код еще не использован
+            .select()
+            .single();
+
+        if (error) {
+            console.error('❌ Ошибка использования кода:', error);
+            return { success: false, error: 'Не удалось активировать код' };
+        }
+
+        return { 
+            success: true, 
+            subscriptionDays: validation.subscriptionDays,
+            codeData: data
+        };
+
+    } catch (error) {
+        console.error('❌ Ошибка использования кода подписки:', error);
+        return { success: false, error: 'Ошибка активации кода' };
+    }
+}
+
 // 📚 ФУНКЦИИ ДЛЯ РАБОТЫ С ИСТОРИЕЙ
 async function getUserHistory(telegramId, limit = 20) {
     if (!supabaseClient) {
@@ -1080,7 +1168,11 @@ window.TarotDB = {
     // Синхронизация
     syncUserDataToSupabase,
     syncUserDataFromSupabase,
-    performDataSync
+    performDataSync,
+    
+    // Коды подписки
+    validateSubscriptionCode,
+    useSubscriptionCode
 };
 
 // Проверяем экспорт
