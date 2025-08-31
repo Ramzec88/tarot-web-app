@@ -292,23 +292,44 @@ function sanitizeUsername(username) {
 // 📝 ФУНКЦИИ ДЛЯ РАБОТЫ С ПОЛЬЗОВАТЕЛЯМИ
 
 // Вспомогательная функция для получения или создания профиля пользователя
-async function getOrCreateUserProfile(telegramId, username = null) {
+async function getOrCreateUserProfile(telegramId, profileInfo = null) {
     console.log('🔍 Получение или создание профиля для ID:', telegramId);
     
     let userProfile = await getUserProfile(telegramId);
     
     if (!userProfile) {
         console.log('👤 Профиль не найден, создаем новый...');
-        userProfile = await createUserProfile(telegramId, username);
+        
+        // Если передана только строка (старый формат), создаем объект
+        let profileData = profileInfo;
+        if (typeof profileInfo === 'string') {
+            profileData = { username: profileInfo };
+        }
+        
+        // Получаем полные данные пользователя Telegram
+        const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
+        const fullProfileData = {
+            username: profileData?.username || window.getTelegramUserName?.() || null,
+            first_name: profileData?.first_name || telegramUser.first_name || null,
+            last_name: profileData?.last_name || telegramUser.last_name || null,
+            is_subscribed: profileData?.is_subscribed || false,
+            is_premium: profileData?.is_premium || false,
+            questions_used: profileData?.questions_used || 0,
+            total_questions: profileData?.total_questions || 0,
+            free_predictions_left: profileData?.free_predictions_left || 3,
+            ...profileData // Добавляем любые другие переданные поля
+        };
+        
+        userProfile = await createUserProfile(telegramId, fullProfileData);
     }
     
     return userProfile;
 }
 
-async function createUserProfile(telegramId, username = null) {
+async function createUserProfile(telegramId, profileInfo = {}) {
     if (!supabaseClient) {
         console.warn('⚠️ Supabase недоступен, сохраняем локально');
-        return saveUserProfileLocally(telegramId, username);
+        return saveUserProfileLocally(telegramId, profileInfo.username || profileInfo);
     }
 
     try {
@@ -322,18 +343,35 @@ async function createUserProfile(telegramId, username = null) {
         const sanitizedTelegramId = sanitizeTelegramId(telegramId);
         if (!sanitizedTelegramId) {
             console.warn('⚠️ Неверный Telegram ID, используем локальное сохранение:', telegramId);
-            return saveUserProfileLocally(telegramId, username);
+            return saveUserProfileLocally(telegramId, profileInfo.username || profileInfo);
         }
         
-        const sanitizedUsername = sanitizeUsername(username);
+        // Поддерживаем старый формат (только username как строка) и новый (объект)
+        let userData = {};
+        if (typeof profileInfo === 'string') {
+            userData.username = sanitizeUsername(profileInfo);
+        } else if (typeof profileInfo === 'object' && profileInfo !== null) {
+            userData = { ...profileInfo };
+            if (userData.username) {
+                userData.username = sanitizeUsername(userData.username);
+            }
+        }
+        
+        // Получаем данные Telegram пользователя для полного профиля
+        const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
         
         const profileData = {
             telegram_id: sanitizedTelegramId,
-            username: sanitizedUsername,
-            is_subscribed: false,
-            questions_used: 0,
-            free_predictions_left: 3,
-            last_card_day: null
+            chat_id: telegramUser.id || sanitizedTelegramId, // Используем как chat_id
+            username: userData.username || sanitizeUsername(telegramUser.username) || null,
+            first_name: userData.first_name || telegramUser.first_name || null,
+            last_name: userData.last_name || telegramUser.last_name || null,
+            is_subscribed: userData.is_subscribed || false,
+            questions_used: userData.questions_used || 0,
+            total_questions: userData.total_questions || userData.questions_used || 0,
+            free_predictions_left: userData.free_predictions_left || 3,
+            last_card_day: userData.last_card_day || null,
+            is_premium: userData.is_premium || userData.is_subscribed || false
         };
 
         // Добавляем user_id только если пользователь аутентифицирован
