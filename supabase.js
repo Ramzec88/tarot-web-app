@@ -1202,9 +1202,24 @@ async function syncUserDataToSupabase(telegramId, localData) {
             updates.total_questions = localData.questionsUsed;
         }
         
-        if (localData.isPremium !== currentProfile.is_subscribed) {
-            updates.is_subscribed = localData.isPremium;
+        // Обновляем статус подписки только если локальные данные показывают премиум
+        // и в базе данных статус false, или наоборот. Но приоритет отдаем базе данных.
+        // НЕ сбрасываем премиум статус если он установлен в базе данных
+        console.log('🔍 DEBUG: Сравниваем статус подписки:', {
+            localIsPremium: localData.isPremium,
+            currentProfileIsSubscribed: currentProfile.is_subscribed,
+            willUpdate: localData.isPremium && !currentProfile.is_subscribed
+        });
+        
+        if (localData.isPremium && !currentProfile.is_subscribed) {
+            // Локально премиум, в базе нет - обновляем базу
+            updates.is_subscribed = true;
+            console.log('✅ Обновляем статус подписки: false -> true');
+        } else if (!localData.isPremium && currentProfile.is_subscribed) {
+            console.log('⚠️ НЕ сбрасываем статус подписки (база данных в приоритете)');
         }
+        // НЕ делаем else if (!localData.isPremium && currentProfile.is_subscribed)
+        // чтобы не сбрасывать статус подписки из-за устаревших локальных данных
         
         // Обновляем количество оставшихся бесплатных предсказаний
         const freeLeft = Math.max(0, 3 - localData.questionsUsed);
@@ -1269,9 +1284,9 @@ async function performDataSync(telegramId, localAppState) {
         const supabaseData = await syncUserDataFromSupabase(telegramId);
         
         if (supabaseData) {
-            // Объединяем данные, приоритет отдается более свежим изменениям
+            // Объединяем данные, приоритет для статуса подписки отдается базе данных
             const mergedState = {
-                isPremium: supabaseData.isPremium || localAppState.isPremium,
+                isPremium: supabaseData.isPremium || localAppState.isPremium, // База данных в приоритете
                 questionsUsed: Math.max(supabaseData.questionsUsed, localAppState.questionsUsed || 0),
                 dailyCardUsed: supabaseData.dailyCardUsed || localAppState.dailyCardUsed,
                 lastCardDay: supabaseData.lastCardDay || localAppState.lastCardDay
