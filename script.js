@@ -2394,6 +2394,12 @@ async function handleSubscriptionCodeActivation() {
         // Получаем количество дней подписки из кода
         const subscriptionDays = codeResult.subscriptionDays || 30;
         
+        // Вычисляем дату окончания подписки
+        const subscriptionEndDate = new Date();
+        subscriptionEndDate.setDate(subscriptionEndDate.getDate() + subscriptionDays);
+        
+        console.log('🔍 DEBUG: Дата окончания подписки:', subscriptionEndDate.toISOString());
+        
         // Получаем или создаем профиль пользователя
         let userProfile = await window.TarotDB.getUserProfile(userId);
         
@@ -2412,10 +2418,28 @@ async function handleSubscriptionCodeActivation() {
             });
         }
         
-        // Обновляем профиль с премиум статусом (только основные поля)
-        await window.TarotDB.updateUserProfile(userId, {
+        // Обновляем профиль с премиум статусом и датой окончания
+        const updateResult = await window.TarotDB.updateUserProfile(userId, {
             is_subscribed: true,
-            is_premium: true
+            is_premium: true,
+            subscription_end_date: subscriptionEndDate.toISOString()
+        });
+        
+        console.log('🔍 DEBUG: Результат обновления профиля:', updateResult);
+        
+        // Проверяем, что обновление действительно прошло успешно
+        if (!updateResult) {
+            console.error('❌ Обновление профиля не удалось!');
+            showMessage('❌ Код активирован, но возникла проблема с обновлением профиля', 'error');
+            return;
+        }
+        
+        // Дополнительная проверка - загружаем профиль заново
+        const verificationProfile = await window.TarotDB.getUserProfile(userId);
+        console.log('🔍 DEBUG: Проверяем обновленный профиль:', {
+            is_subscribed: verificationProfile?.is_subscribed,
+            is_premium: verificationProfile?.is_premium,
+            subscription_end_date: verificationProfile?.subscription_end_date
         });
         
         console.log('✅ Профиль обновлен с кодом подписки:', code);
