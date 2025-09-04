@@ -450,6 +450,38 @@ async function getUserProfile(telegramId) {
             return null;
         }
         
+        // Проверяем истечение подписки если профиль найден
+        if (data.subscription_end_date) {
+            const subscriptionEndDate = new Date(data.subscription_end_date);
+            const now = new Date();
+            
+            if (now > subscriptionEndDate) {
+                console.log('⏰ Подписка истекла:', {
+                    endDate: subscriptionEndDate.toISOString(),
+                    currentDate: now.toISOString()
+                });
+                
+                // Автоматически обновляем статус подписки в базе данных
+                try {
+                    await supabaseClient
+                        .from('tarot_user_profiles')
+                        .update({
+                            is_subscribed: false,
+                            is_premium: false
+                        })
+                        .eq('telegram_id', sanitizedTelegramId);
+                    
+                    // Обновляем локальные данные
+                    data.is_subscribed = false;
+                    data.is_premium = false;
+                    
+                    console.log('✅ Статус подписки автоматически обновлен (истекла)');
+                } catch (updateError) {
+                    console.error('❌ Ошибка обновления статуса подписки:', updateError);
+                }
+            }
+        }
+        
         return data;
     } catch (error) {
         console.error('❌ Критическая ошибка получения профиля:', error.message);
@@ -476,6 +508,12 @@ async function updateUserProfile(telegramId, updates) {
             return null;
         }
         
+        console.log('🔍 DEBUG: Обновляем профиль пользователя:', {
+            telegramId: telegramId,
+            updates: updates,
+            timestamp: new Date().toISOString()
+        });
+        
         const { data, error } = await supabaseClient
             .from('tarot_user_profiles')
             .update(updates)
@@ -484,11 +522,21 @@ async function updateUserProfile(telegramId, updates) {
             .single();
 
         if (error) {
-            console.error('❌ Ошибка обновления профиля:', error);
+            console.error('❌ Ошибка обновления профиля:', {
+                error: error,
+                telegramId: telegramId,
+                updates: updates,
+                errorCode: error.code,
+                errorMessage: error.message
+            });
             return null;
         }
         
-        console.log('✅ Профиль обновлен:', data);
+        console.log('✅ Профиль успешно обновлен:', {
+            telegramId: telegramId,
+            updatedData: data,
+            requestedUpdates: updates
+        });
         return data;
     } catch (error) {
         console.error('❌ Критическая ошибка обновления профиля:', error);
