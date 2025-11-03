@@ -52,13 +52,13 @@ export default async function handler(req, res) {
         let cards = null;
         let source = 'unknown';
         
-        // 1. Пытаемся загрузить из локального файла
+        // 1. Try to load from local file
         try {
             const cardsPath = path.join(process.cwd(), 'cards.json');
             const cardsData = fs.readFileSync(cardsPath, 'utf8');
             cards = JSON.parse(cardsData);
             source = 'local';
-            console.log('📂 Карты загружены из локального файла');
+            console.log('Cards loaded from local file');
         } catch (localError) {
             console.warn('⚠️ Не удалось загрузить локальный файл cards.json:', localError.message);
         }

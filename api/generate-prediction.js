@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
         } catch (n8nError) {
             console.error('❌ n8n Error:', n8nError.message);
-            console.log('🔄 Fallback к локальной генерации...');
+            console.log('Fallback to local generation...');
             
             // Fallback к локальной генерации
             const localPrediction = generateLocalPrediction(cards, question, type, additionalData);
