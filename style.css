@@ -212,8 +212,8 @@ body {
 
 .new-label {
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: -2px;
+    right: -2px;
     background: linear-gradient(45deg, #ff6b6b, #ff4757);
     color: white;
     font-size: 8px;
