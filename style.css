@@ -71,6 +71,9 @@ body {
     border-radius: 20px;
     font-size: 11px;
     line-height: 1.3;
+    min-height: 18px;
+    max-height: 24px;
+    height: auto;
 }
 
 .status-icon {
@@ -88,11 +91,22 @@ body {
 .subscription-status.premium {
     background: linear-gradient(45deg, #ffd700, #ffed4a);
     color: #1a1a2e;
+    /* Сохраняем одинаковый размер */
+    padding: 3px 10px;
+    min-height: 18px;
+    max-height: 24px;
+    font-size: 11px;
+    line-height: 1.3;
 }
 
 .subscription-status.premium .status-text {
     color: #1a1a2e;
     font-weight: bold;
+    font-size: 11px;
+}
+
+.subscription-status.premium .status-icon {
+    font-size: 12px;
 }
 
 /* Состояние загрузки */
@@ -104,14 +118,22 @@ body {
     );
     background-size: 200% 100%;
     animation: loadingGradient 1.5s ease-in-out infinite;
+    /* Наследуем размеры от базового класса */
+    padding: 3px 10px;
+    min-height: 18px;
+    max-height: 24px;
+    font-size: 11px;
+    line-height: 1.3;
 }
 
 .subscription-status.loading .status-icon {
     animation: loadingPulse 1s ease-in-out infinite;
+    font-size: 12px;
 }
 
 .subscription-status.loading .status-text {
     color: #9ca3af;
+    font-size: 11px;
 }
 
 @keyframes loadingGradient {
