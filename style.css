@@ -91,6 +91,45 @@ body {
     font-weight: bold;
 }
 
+/* Состояние загрузки */
+.subscription-status.loading {
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.1) 100%
+    );
+    background-size: 200% 100%;
+    animation: loadingGradient 1.5s ease-in-out infinite;
+}
+
+.subscription-status.loading .status-icon {
+    animation: loadingPulse 1s ease-in-out infinite;
+}
+
+.subscription-status.loading .status-text {
+    color: #9ca3af;
+}
+
+@keyframes loadingGradient {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes loadingPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
 /* ===== НАВИГАЦИЯ ===== */
 .nav-tabs {
     display: flex;

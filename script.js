@@ -2236,10 +2236,16 @@ function generateLocalYearCardPrediction(personalNumber, personalInfo, card) {
 }
 
 /**
- * Сохраняет дату рождения в Supabase (только один раз)
+ * Сохраняет дату рождения локально И в Supabase (только один раз)
+ *
+ * Логика:
+ * 1. Сохраняет в localStorage (ключ: birthdate_{userId})
+ * 2. Если Supabase доступен - сохраняет в таблицу tarot_user_profiles
+ * 3. Не перезаписывает существующие данные
+ *
+ * @param {Date} birthDate - Дата рождения пользователя
  */
 async function saveBirthdateToSupabase(birthDate) {
-    // Временно отключено - сохраняем только локально
     const userId = getUserId();
     if (!userId) {
         console.warn('⚠️ Нет ID пользователя для сохранения даты рождения');
@@ -2247,17 +2253,57 @@ async function saveBirthdateToSupabase(birthDate) {
     }
 
     try {
+        const birthdateFormatted = birthDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
         // Сохраняем локально
         const birthdateKey = `birthdate_${userId}`;
         const existingBirthdate = localStorage.getItem(birthdateKey);
 
         if (existingBirthdate) {
             console.log('📅 Дата рождения уже сохранена локально');
-            return;
+        } else {
+            localStorage.setItem(birthdateKey, birthdateFormatted);
+            console.log('✅ Дата рождения сохранена локально');
         }
 
-        localStorage.setItem(birthdateKey, birthDate.toISOString().split('T')[0]);
-        console.log('✅ Дата рождения сохранена локально');
+        // Пытаемся сохранить в Supabase через TarotDB
+        if (window.TarotDB && window.TarotDB.isConnected()) {
+            try {
+                console.log('🔄 Проверяем профиль пользователя в Supabase...');
+
+                // Получаем или создаем профиль пользователя
+                let userProfile = await window.TarotDB.getUserProfile(userId);
+
+                if (!userProfile) {
+                    console.log('👤 Профиль не найден, создаем новый...');
+                    userProfile = await window.TarotDB.getOrCreateUserProfile(userId);
+                }
+
+                // Если дата рождения уже есть в БД, не перезаписываем
+                if (userProfile && userProfile.birthdate) {
+                    console.log('📅 Дата рождения уже сохранена в Supabase:', userProfile.birthdate);
+                    return;
+                }
+
+                // Сохраняем дату рождения через updateUserProfile
+                console.log('💾 Сохраняем дату рождения в Supabase...');
+                const updated = await window.TarotDB.updateUserProfile(userId, {
+                    birthdate: birthdateFormatted
+                });
+
+                if (updated) {
+                    console.log('✅ Дата рождения сохранена в Supabase (таблица: tarot_user_profiles, поле: birthdate)');
+                } else {
+                    console.warn('⚠️ Не удалось обновить профиль, но продолжаем работу');
+                }
+            } catch (supabaseError) {
+                console.warn('⚠️ Ошибка при сохранении даты рождения в Supabase:', supabaseError.message);
+                console.warn('📱 Не критично - дата рождения сохранена локально');
+                // Это не критично - уже сохранено локально
+            }
+        } else {
+            console.log('📱 Supabase недоступен, используем только локальное хранилище');
+        }
 
     } catch (error) {
         console.error('❌ Ошибка при сохранении даты рождения:', error);
@@ -2803,13 +2849,60 @@ async function handleSubmitReview() {
 // 👑 PREMIUM
 // ========================================================================
 
+/**
+ * Показывает индикатор загрузки в статусной строке
+ */
+function showLoadingStatus(message = 'Загрузка...') {
+    const statusElement = document.getElementById('subscriptionStatus');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusText = document.getElementById('statusText');
+
+    if (!statusElement || !statusIcon || !statusText) return;
+
+    statusElement.classList.add('loading');
+    statusElement.classList.remove('premium');
+    statusIcon.textContent = '⏳';
+    statusText.textContent = message;
+
+    // Блокируем кнопки во время загрузки
+    disableInteraction();
+}
+
+/**
+ * Блокирует взаимодействие с интерфейсом
+ */
+function disableInteraction() {
+    const buttons = document.querySelectorAll('button, .nav-tab');
+    buttons.forEach(btn => {
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.5';
+    });
+}
+
+/**
+ * Разблокирует взаимодействие с интерфейсом
+ */
+function enableInteraction() {
+    const buttons = document.querySelectorAll('button, .nav-tab');
+    buttons.forEach(btn => {
+        btn.style.pointerEvents = '';
+        btn.style.opacity = '';
+    });
+}
+
+/**
+ * Обновляет статус подписки (вызывается после загрузки)
+ */
 function updateSubscriptionStatus(isPremium = false) {
     const statusElement = document.getElementById('subscriptionStatus');
     const statusIcon = document.getElementById('statusIcon');
     const statusText = document.getElementById('statusText');
-    
+
     if (!statusElement || !statusIcon || !statusText) return;
-    
+
+    // Убираем класс загрузки
+    statusElement.classList.remove('loading');
+
     if (isPremium) {
         statusElement.classList.add('premium');
         statusIcon.textContent = '👑';
@@ -2820,6 +2913,8 @@ function updateSubscriptionStatus(isPremium = false) {
         statusText.textContent = 'Базовый вариант';
     }
 
+    // Разблокируем интерфейс после загрузки
+    enableInteraction();
 }
 
 
@@ -3271,18 +3366,23 @@ async function initApp() {
         console.log('⚠️ initApp уже был вызван, пропускаем повторную инициализацию');
         return;
     }
-    
+
     initAppCalled = true;
     console.log('🚀 Инициализация приложения...');
-    
+
+    // Показываем индикатор загрузки сразу
+    showLoadingStatus('Инициализация...');
+
     try {
         // 0. Валидируем Telegram данные (только в продакшене)
         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
             console.log('🔐 Валидация Telegram данных...');
+            showLoadingStatus('Проверка безопасности...');
             await validateTelegramData();
         }
-        
+
         // 1. Ждем готовности конфигурации
+        showLoadingStatus('Загрузка конфигурации...');
         if (typeof window.isConfigReady === 'function') {
             let configReady = false;
             let attempts = 0;
@@ -3302,12 +3402,14 @@ async function initApp() {
         }
         
         // 2. Инициализируем DOM
+        showLoadingStatus('Подготовка интерфейса...');
         initializeDOMElements();
-        
-        // 3. Получаем Telegram ID пользователя 
+
+        // 3. Получаем Telegram ID пользователя
+        showLoadingStatus('Получение данных...');
         const userId = getTelegramUserId();
         console.log('👤 Получен пользователь ID:', userId);
-        
+
         // Сохраняем данные Telegram пользователя в appState
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
             appState.telegramUser = window.Telegram.WebApp.initDataUnsafe.user;
@@ -3320,19 +3422,20 @@ async function initApp() {
                 username: null
             };
         }
-        
+
         // 4. Загружаем локальные данные
         await loadAppStateLocally();
         console.log('📱 Локальное состояние загружено');
-        
+
         // 5. Синхронизируем данные с TarotDB
         try {
+            showLoadingStatus('Синхронизация...');
             console.log('🔍 Проверка TarotDB при инициализации:', {
                 tarotDBExists: !!window.TarotDB,
                 isConnected: window.TarotDB ? window.TarotDB.isConnected() : false,
                 connectionStatus: window.TarotDB ? window.TarotDB.getStatus() : null
             });
-            
+
             if (window.TarotDB && window.TarotDB.isConnected()) {
                 console.log('🔄 Синхронизация данных с TarotDB');
                 
