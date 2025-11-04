@@ -2140,7 +2140,7 @@ async function handleCalculateYearCard() {
             await saveBirthdateToSupabase(birthDate);
 
             // Генерируем интерпретацию через API
-            const interpretation = await generateYearCardInterpretation(personalNumber, personalInfo, card);
+            const interpretation = await generateYearCardInterpretation(personalNumber, personalInfo, card, birthDate);
 
             yearCardData = {
                 personalNumber,
@@ -2177,7 +2177,7 @@ async function handleCalculateYearCard() {
 /**
  * Генерирует интерпретацию карты года через API
  */
-async function generateYearCardInterpretation(personalNumber, personalInfo, card) {
+async function generateYearCardInterpretation(personalNumber, personalInfo, card, birthDate) {
     const mysticalName = mysticalNames[Math.floor(Math.random() * mysticalNames.length)];
 
     // Подготавливаем данные для API
@@ -2186,6 +2186,7 @@ async function generateYearCardInterpretation(personalNumber, personalInfo, card
         personalNumber: personalNumber,
         personalInfo: personalInfo,
         card: card,
+        birthDate: birthDate ? birthDate.toISOString().split('T')[0] : null, // YYYY-MM-DD формат
         year: 2026,
         name: mysticalName
     };
@@ -2193,7 +2194,19 @@ async function generateYearCardInterpretation(personalNumber, personalInfo, card
     try {
         // Пробуем сгенерировать через API
         if (typeof generatePredictionAPI === 'function') {
-            const interpretation = await generatePredictionAPI(apiData);
+            // Передаём данные в формате, ожидаемом generatePredictionAPI
+            const interpretation = await generatePredictionAPI(
+                card, // cards - карта
+                null, // question - нет вопроса для карты года
+                'year_card_2026', // type
+                {
+                    personalNumber: personalNumber,
+                    personalInfo: personalInfo,
+                    birthDate: birthDate ? birthDate.toISOString().split('T')[0] : null,
+                    year: 2026,
+                    name: mysticalName
+                } // additionalData
+            );
             if (interpretation) {
                 return interpretation;
             }
