@@ -2120,6 +2120,9 @@ async function handleCalculateYearCard() {
         const personalNumber = calculatePersonalNumber(day, month, year);
         const personalInfo = PERSONAL_NUMBERS_2026[personalNumber];
 
+        // Сохраняем дату рождения в Supabase (независимо от кэша)
+        await saveBirthdateToSupabase(birthDate);
+
         // Проверяем кэш
         const userId = getUserId();
         const cacheKey = `year_card_2026_${userId}`;
@@ -2135,9 +2138,6 @@ async function handleCalculateYearCard() {
 
             // Получаем случайную карту
             const card = getRandomCard();
-
-            // Сохраняем дату рождения в Supabase (только один раз)
-            await saveBirthdateToSupabase(birthDate);
 
             // Генерируем интерпретацию через API
             const interpretation = await generateYearCardInterpretation(personalNumber, personalInfo, card, birthDate);
@@ -2246,6 +2246,8 @@ function generateLocalYearCardPrediction(personalNumber, personalInfo, card) {
  * @param {Date} birthDate - Дата рождения пользователя
  */
 async function saveBirthdateToSupabase(birthDate) {
+    console.log('💾 saveBirthdateToSupabase вызвана с датой:', birthDate);
+
     const userId = getUserId();
     if (!userId) {
         console.warn('⚠️ Нет ID пользователя для сохранения даты рождения');
@@ -2254,6 +2256,7 @@ async function saveBirthdateToSupabase(birthDate) {
 
     try {
         const birthdateFormatted = birthDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        console.log('📅 Форматированная дата:', birthdateFormatted, 'для userId:', userId);
 
         // Сохраняем локально
         const birthdateKey = `birthdate_${userId}`;
