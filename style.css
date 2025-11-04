@@ -62,7 +62,7 @@ body {
 }
 
 .subscription-status {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     margin-top: 4px;
@@ -70,6 +70,10 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 20px;
     font-size: 12px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 200px;
 }
 
 .status-icon {
@@ -79,6 +83,9 @@ body {
 
 .status-text {
     color: #b0b0b0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .subscription-status.premium {

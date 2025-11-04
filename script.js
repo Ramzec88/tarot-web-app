@@ -3371,18 +3371,18 @@ async function initApp() {
     console.log('🚀 Инициализация приложения...');
 
     // Показываем индикатор загрузки сразу
-    showLoadingStatus('Инициализация...');
+    showLoadingStatus('Запуск...');
 
     try {
         // 0. Валидируем Telegram данные (только в продакшене)
         if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
             console.log('🔐 Валидация Telegram данных...');
-            showLoadingStatus('Проверка безопасности...');
+            showLoadingStatus('Проверка...');
             await validateTelegramData();
         }
 
         // 1. Ждем готовности конфигурации
-        showLoadingStatus('Загрузка конфигурации...');
+        showLoadingStatus('Настройка...');
         if (typeof window.isConfigReady === 'function') {
             let configReady = false;
             let attempts = 0;
@@ -3402,11 +3402,11 @@ async function initApp() {
         }
         
         // 2. Инициализируем DOM
-        showLoadingStatus('Подготовка интерфейса...');
+        showLoadingStatus('Подготовка...');
         initializeDOMElements();
 
         // 3. Получаем Telegram ID пользователя
-        showLoadingStatus('Получение данных...');
+        showLoadingStatus('Загрузка...');
         const userId = getTelegramUserId();
         console.log('👤 Получен пользователь ID:', userId);
 
