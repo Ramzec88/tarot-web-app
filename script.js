@@ -2328,19 +2328,19 @@ async function showYearCardWithAnimation(card, interpretation) {
 /**
  * Показывает интерпретацию карты года с анимацией печатания
  */
-function showYearCardInterpretation(interpretation) {
+async function showYearCardInterpretation(interpretation) {
     if (!yearAnswerContainer || !yearAnswerText) return;
 
     yearAnswerContainer.classList.remove('hidden');
     yearAnswerContainer.classList.add('show');
 
     // Анимация печатания
-    typewriterEffect(yearAnswerText, interpretation, () => {
-        // После завершения печатания показываем кнопки
-        setTimeout(() => {
-            yearCardActions?.classList.remove('hidden');
-        }, 500);
-    });
+    await typeText(yearAnswerText, interpretation);
+
+    // После завершения печатания показываем кнопки
+    setTimeout(() => {
+        yearCardActions?.classList.remove('hidden');
+    }, 500);
 }
 
 /**
