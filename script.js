@@ -2121,7 +2121,8 @@ async function handleCalculateYearCard() {
         const personalInfo = PERSONAL_NUMBERS_2026[personalNumber];
 
         // Проверяем кэш
-        const cacheKey = `year_card_2026_${currentUserId}`;
+        const userId = getUserId();
+        const cacheKey = `year_card_2026_${userId}`;
         const cachedResult = localStorage.getItem(cacheKey);
 
         let yearCardData;
@@ -2227,7 +2228,8 @@ function generateLocalYearCardPrediction(personalNumber, personalInfo, card) {
  * Сохраняет дату рождения в Supabase (только один раз)
  */
 async function saveBirthdateToSupabase(birthDate) {
-    if (!currentUserId) {
+    const userId = getUserId();
+    if (!userId) {
         console.warn('⚠️ Нет ID пользователя для сохранения даты рождения');
         return;
     }
@@ -2237,7 +2239,7 @@ async function saveBirthdateToSupabase(birthDate) {
         const { data: existingUser, error: fetchError } = await supabase
             .from('users')
             .select('birthdate')
-            .eq('telegram_id', currentUserId)
+            .eq('telegram_id', userId)
             .single();
 
         if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -2255,7 +2257,7 @@ async function saveBirthdateToSupabase(birthDate) {
         const { error: updateError } = await supabase
             .from('users')
             .upsert({
-                telegram_id: currentUserId,
+                telegram_id: userId,
                 birthdate: birthDate.toISOString().split('T')[0], // YYYY-MM-DD format
                 updated_at: new Date().toISOString()
             });
