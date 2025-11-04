@@ -2159,13 +2159,11 @@ async function handleCalculateYearCard() {
         showYearCardResult(yearCardData);
 
         // Добавляем в историю
-        addToHistory({
-            type: 'year_card_2026',
-            title: `Карта года 2026 - Число ${yearCardData.personalNumber}`,
-            content: `${yearCardData.personalInfo.name}: ${yearCardData.interpretation}`,
-            card: yearCardData.card,
-            timestamp: Date.now()
-        });
+        await addToHistory(
+            'year_card_2026',
+            `Карта года 2026 - Число ${yearCardData.personalNumber}`,
+            `${yearCardData.personalInfo.name}: ${yearCardData.interpretation}`
+        );
 
         console.log('✅ Карта года 2026 успешно рассчитана');
 
@@ -2228,6 +2226,7 @@ function generateLocalYearCardPrediction(personalNumber, personalInfo, card) {
  * Сохраняет дату рождения в Supabase (только один раз)
  */
 async function saveBirthdateToSupabase(birthDate) {
+    // Временно отключено - сохраняем только локально
     const userId = getUserId();
     if (!userId) {
         console.warn('⚠️ Нет ID пользователя для сохранения даты рождения');
@@ -2235,41 +2234,20 @@ async function saveBirthdateToSupabase(birthDate) {
     }
 
     try {
-        // Проверяем, есть ли уже дата рождения у пользователя
-        const { data: existingUser, error: fetchError } = await supabase
-            .from('users')
-            .select('birthdate')
-            .eq('telegram_id', userId)
-            .single();
+        // Сохраняем локально
+        const birthdateKey = `birthdate_${userId}`;
+        const existingBirthdate = localStorage.getItem(birthdateKey);
 
-        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows found
-            console.warn('⚠️ Ошибка при проверке существующей даты рождения:', fetchError);
+        if (existingBirthdate) {
+            console.log('📅 Дата рождения уже сохранена локально');
             return;
         }
 
-        // Если дата рождения уже есть, не перезаписываем
-        if (existingUser?.birthdate) {
-            console.log('📅 Дата рождения уже сохранена в БД');
-            return;
-        }
-
-        // Сохраняем дату рождения
-        const { error: updateError } = await supabase
-            .from('users')
-            .upsert({
-                telegram_id: userId,
-                birthdate: birthDate.toISOString().split('T')[0], // YYYY-MM-DD format
-                updated_at: new Date().toISOString()
-            });
-
-        if (updateError) {
-            console.error('❌ Ошибка при сохранении даты рождения:', updateError);
-        } else {
-            console.log('✅ Дата рождения сохранена в БД');
-        }
+        localStorage.setItem(birthdateKey, birthDate.toISOString().split('T')[0]);
+        console.log('✅ Дата рождения сохранена локально');
 
     } catch (error) {
-        console.error('❌ Ошибка при работе с БД:', error);
+        console.error('❌ Ошибка при сохранении даты рождения:', error);
     }
 }
 
@@ -2315,7 +2293,7 @@ async function showYearCardWithAnimation(card, interpretation) {
 
     // Добавляем анимацию звездочек
     if (yearStarAnimationContainer) {
-        createStarburstAnimation(yearStarAnimationContainer);
+        animateStars(3, yearStarAnimationContainer);
     }
 
     // Через секунду переворачиваем карту
@@ -2485,10 +2463,10 @@ function handleLearnMoreYear() {
 
 async function addToHistory(type, title, content) {
     const telegramId = getTelegramUserId();
-    
+
     console.log('📚 addToHistory вызван:', {
         type,
-        title: title.substring(0, 50) + '...',
+        title: title ? (title.substring(0, 50) + '...') : 'undefined',
         telegramId,
         tarotDBExists: !!window.TarotDB,
         isConnected: window.TarotDB ? window.TarotDB.isConnected() : false
