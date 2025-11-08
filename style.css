@@ -550,6 +550,7 @@ body {
     white-space: pre-wrap;
     overflow: hidden;
     font-family: inherit;
+    text-align: justify;
 }
 
 .ai-answer-content.finished-typing {
@@ -1989,7 +1990,7 @@ body {
     font-size: 15px;
     line-height: 1.6;
     margin-bottom: 15px;
-    text-align: left;
+    text-align: justify;
 }
 
 .intro-paragraph strong {
