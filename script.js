@@ -2123,47 +2123,18 @@ async function handleCalculateYearCard() {
         // Сохраняем дату рождения в Supabase (независимо от кэша)
         await saveBirthdateToSupabase(birthDate);
 
-        // Проверяем кэш
-        const userId = getUserId();
-        const cacheKey = `year_card_2026_${userId}`;
-        const cachedResult = localStorage.getItem(cacheKey);
-
-        let yearCardData;
-
-        if (cachedResult) {
-            console.log('📦 Используем кэшированный результат карты года');
-            yearCardData = JSON.parse(cachedResult);
-        } else {
-            console.log('🔄 Генерируем новую карту года через API');
-
-            // Получаем случайную карту
-            const card = getRandomCard();
-
-            // Генерируем интерпретацию через API
-            const interpretation = await generateYearCardInterpretation(personalNumber, personalInfo, card, birthDate);
-
-            yearCardData = {
-                personalNumber,
-                personalInfo,
-                card,
-                interpretation,
-                timestamp: Date.now()
-            };
-
-            // Сохраняем в кэш
-            localStorage.setItem(cacheKey, JSON.stringify(yearCardData));
-        }
-
-        // Скрываем загрузку и показываем результат
+        // Скрываем загрузку и показываем начальный результат
         hideYearCardLoading();
-        showYearCardResult(yearCardData);
 
-        // Добавляем в историю
-        await addToHistory(
-            'year_card_2026',
-            `Карта года 2026 - Число ${yearCardData.personalNumber}`,
-            `${yearCardData.personalInfo.name}: ${yearCardData.interpretation}`
-        );
+        // Для бесплатных пользователей - показываем число и кнопку "Вытянуть карту"
+        // Для премиум - сразу вытягиваем карту и получаем трактование
+        if (appState.isPremium) {
+            console.log('👑 Premium пользователь - генерируем полное трактование');
+            await showYearCardForPremium(personalNumber, personalInfo, birthDate);
+        } else {
+            console.log('🆓 Бесплатный пользователь - показываем базовую информацию');
+            showYearCardForFree(personalNumber, personalInfo);
+        }
 
         console.log('✅ Карта года 2026 успешно рассчитана');
 
@@ -2172,6 +2143,112 @@ async function handleCalculateYearCard() {
         hideYearCardLoading();
         showMessage('Произошла ошибка при расчете карты года. Попробуйте еще раз.', 'error');
     }
+}
+
+/**
+ * Показывает карту года для бесплатных пользователей (только личное число)
+ */
+function showYearCardForFree(personalNumber, personalInfo) {
+    // Обновляем информацию о личном числе
+    if (personalNumberValue) personalNumberValue.textContent = personalNumber;
+    if (personalNumberName) personalNumberName.textContent = personalInfo.name;
+    if (personalNumberMeaning) personalNumberMeaning.textContent = personalInfo.meaning;
+
+    // Скрываем форму и вводную информацию
+    yearCardForm?.classList.add('hidden');
+    const year2026Intro = document.getElementById('year2026Intro');
+    year2026Intro?.classList.add('hidden');
+
+    // Показываем результат
+    yearCardResult?.classList.remove('hidden');
+
+    // Показываем секцию с кнопкой "Вытянуть карту"
+    const drawCardSection = document.getElementById('drawCardSection');
+    drawCardSection?.classList.remove('hidden');
+
+    // Скрываем остальные элементы
+    const yearCardDisplay = document.getElementById('yearCardDisplay');
+    yearCardDisplay?.classList.add('hidden');
+
+    yearAnswerContainer?.classList.add('hidden');
+    yearCardActions?.classList.add('hidden');
+
+    const yearCardBrief = document.getElementById('yearCardBrief');
+    yearCardBrief?.classList.add('hidden');
+}
+
+/**
+ * Показывает карту года для премиум пользователей (с полным трактованием)
+ */
+async function showYearCardForPremium(personalNumber, personalInfo, birthDate) {
+    // Обновляем информацию о личном числе
+    if (personalNumberValue) personalNumberValue.textContent = personalNumber;
+    if (personalNumberName) personalNumberName.textContent = personalInfo.name;
+    if (personalNumberMeaning) personalNumberMeaning.textContent = personalInfo.meaning;
+
+    // Скрываем форму и вводную информацию
+    yearCardForm?.classList.add('hidden');
+    const year2026Intro = document.getElementById('year2026Intro');
+    year2026Intro?.classList.add('hidden');
+
+    // Показываем результат
+    yearCardResult?.classList.remove('hidden');
+
+    // Скрываем секцию с кнопкой "Вытянуть карту"
+    const drawCardSection = document.getElementById('drawCardSection');
+    drawCardSection?.classList.add('hidden');
+
+    // Проверяем кэш
+    const userId = getUserId();
+    const cacheKey = `year_card_2026_${userId}`;
+    const cachedResult = localStorage.getItem(cacheKey);
+
+    let yearCardData;
+
+    if (cachedResult) {
+        console.log('📦 Используем кэшированный результат карты года');
+        yearCardData = JSON.parse(cachedResult);
+    } else {
+        console.log('🔄 Генерируем новую карту года через API');
+
+        // Получаем случайную карту
+        const card = getRandomCard();
+
+        // Генерируем интерпретацию через API (для премиум)
+        const interpretation = await generateYearCardInterpretation(personalNumber, personalInfo, card, birthDate);
+
+        yearCardData = {
+            personalNumber,
+            personalInfo,
+            card,
+            interpretation,
+            timestamp: Date.now()
+        };
+
+        // Сохраняем в кэш
+        localStorage.setItem(cacheKey, JSON.stringify(yearCardData));
+    }
+
+    // Показываем карту с анимацией
+    const yearCardDisplay = document.getElementById('yearCardDisplay');
+    yearCardDisplay?.classList.remove('hidden');
+
+    setTimeout(() => {
+        showYearCardWithAnimation(yearCardData.card, yearCardData.interpretation, true);
+    }, 500);
+
+    // Скрываем кнопку "Узнать подробнее" для премиум
+    const learnMoreBtn = document.getElementById('learnMoreYearBtn');
+    if (learnMoreBtn) {
+        learnMoreBtn.style.display = 'none';
+    }
+
+    // Добавляем в историю
+    await addToHistory(
+        'year_card_2026',
+        `Карта года 2026 - Число ${yearCardData.personalNumber}`,
+        `${yearCardData.personalInfo.name}: ${yearCardData.interpretation}`
+    );
 }
 
 /**
@@ -2350,7 +2427,7 @@ function showYearCardResult(yearCardData) {
 /**
  * Показывает карту года с анимацией
  */
-async function showYearCardWithAnimation(card, interpretation) {
+async function showYearCardWithAnimation(card, interpretation, isPremium = false) {
     if (!yearTarotCard) return;
 
     // Добавляем анимацию звездочек
@@ -2362,8 +2439,10 @@ async function showYearCardWithAnimation(card, interpretation) {
     setTimeout(() => {
         // Устанавливаем изображение карты
         const cardFront = yearTarotCard.querySelector('.card-front');
-        if (cardFront && card.image) {
-            cardFront.style.backgroundImage = `url('${card.image}')`;
+        if (cardFront && card.displayImage) {
+            cardFront.style.backgroundImage = `url('${card.displayImage}')`;
+            cardFront.style.backgroundSize = 'cover';
+            cardFront.style.backgroundPosition = 'center';
             cardFront.classList.remove('hidden');
         }
 
@@ -2377,9 +2456,13 @@ async function showYearCardWithAnimation(card, interpretation) {
             }
             yearCardInfoAfterFlip?.classList.remove('hidden');
 
-            // Показываем интерпретацию
+            // Показываем интерпретацию или краткое описание
             setTimeout(() => {
-                showYearCardInterpretation(interpretation);
+                if (isPremium && interpretation) {
+                    showYearCardInterpretation(interpretation);
+                } else {
+                    showYearCardBrief(card);
+                }
             }, 1000);
 
         }, 800);
@@ -2406,11 +2489,102 @@ async function showYearCardInterpretation(interpretation) {
 }
 
 /**
+ * Показывает краткое описание карты для бесплатных пользователей
+ */
+function showYearCardBrief(card) {
+    const yearCardBrief = document.getElementById('yearCardBrief');
+    const briefCardName = document.getElementById('briefCardName');
+    const briefPersonalNumber = document.getElementById('briefPersonalNumber');
+
+    if (yearCardBrief && briefCardName && briefPersonalNumber) {
+        briefCardName.textContent = card.name;
+        briefPersonalNumber.textContent = personalNumberValue?.textContent || '';
+        yearCardBrief.classList.remove('hidden');
+    }
+
+    // Показываем кнопки действий (включая "Узнать подробнее")
+    setTimeout(() => {
+        yearCardActions?.classList.remove('hidden');
+    }, 500);
+}
+
+/**
+ * Обработчик кнопки "Вытянуть карту" для бесплатных пользователей
+ */
+async function handleDrawYearCard() {
+    try {
+        console.log('🎴 Бесплатный пользователь вытягивает карту года');
+
+        const drawCardBtn = document.getElementById('drawYearCardBtn');
+        if (drawCardBtn) {
+            drawCardBtn.disabled = true;
+            drawCardBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Вытягиваем...';
+        }
+
+        // Получаем случайную карту
+        const card = getRandomCard();
+
+        // Скрываем секцию с кнопкой
+        const drawCardSection = document.getElementById('drawCardSection');
+        drawCardSection?.classList.add('hidden');
+
+        // Показываем карту
+        const yearCardDisplay = document.getElementById('yearCardDisplay');
+        yearCardDisplay?.classList.remove('hidden');
+
+        // Сохраняем карту в локальном состоянии (без полного трактования)
+        const userId = getUserId();
+        const cacheKey = `year_card_2026_free_${userId}`;
+        const personalNumber = personalNumberValue?.textContent || '';
+        const personalName = personalNumberName?.textContent || '';
+
+        const yearCardData = {
+            personalNumber: personalNumber,
+            personalInfo: {
+                name: personalName,
+                meaning: personalNumberMeaning?.textContent || ''
+            },
+            card: card,
+            timestamp: Date.now(),
+            isFree: true
+        };
+
+        localStorage.setItem(cacheKey, JSON.stringify(yearCardData));
+
+        // Показываем карту с анимацией (без трактования)
+        setTimeout(() => {
+            showYearCardWithAnimation(card, null, false);
+        }, 500);
+
+        // Добавляем в историю (краткая версия)
+        await addToHistory(
+            'year_card_2026',
+            `Карта года 2026 - Число ${personalNumber}`,
+            `Вы вытянули карту: ${card.name}`
+        );
+
+    } catch (error) {
+        console.error('❌ Ошибка при вытягивании карты:', error);
+        showMessage('Произошла ошибка. Попробуйте еще раз.', 'error');
+
+        const drawCardBtn = document.getElementById('drawYearCardBtn');
+        if (drawCardBtn) {
+            drawCardBtn.disabled = false;
+            drawCardBtn.innerHTML = '<i class="fas fa-hand-sparkles"></i> Вытянуть карту года';
+        }
+    }
+}
+
+/**
  * Обработчик кнопки "Назад" к форме
  */
 function handleBackToYearForm() {
     yearCardResult?.classList.add('hidden');
     yearCardForm?.classList.remove('hidden');
+
+    // Показываем вводную информацию снова
+    const year2026Intro = document.getElementById('year2026Intro');
+    year2026Intro?.classList.remove('hidden');
 
     // Сбрасываем состояние карты
     if (yearTarotCard) {
@@ -2420,6 +2594,16 @@ function handleBackToYearForm() {
     yearCardInfoAfterFlip?.classList.add('hidden');
     yearAnswerContainer?.classList.add('hidden');
     yearCardActions?.classList.add('hidden');
+
+    // Скрываем все секции результатов
+    const drawCardSection = document.getElementById('drawCardSection');
+    drawCardSection?.classList.add('hidden');
+
+    const yearCardDisplay = document.getElementById('yearCardDisplay');
+    yearCardDisplay?.classList.add('hidden');
+
+    const yearCardBrief = document.getElementById('yearCardBrief');
+    yearCardBrief?.classList.add('hidden');
 
     // Очищаем поля
     if (birthdateInput) birthdateInput.value = '';
@@ -3355,6 +3539,10 @@ function setupEventListeners() {
     backToYearFormBtn?.addEventListener('click', handleBackToYearForm);
     shareYearCardBtn?.addEventListener('click', handleShareYearCard);
     learnMoreYearBtn?.addEventListener('click', handleLearnMoreYear);
+
+    // Кнопка "Вытянуть карту" для бесплатных пользователей
+    const drawYearCardBtn = document.getElementById('drawYearCardBtn');
+    drawYearCardBtn?.addEventListener('click', handleDrawYearCard);
 
     console.log('✅ Обработчики событий настроены');
 }

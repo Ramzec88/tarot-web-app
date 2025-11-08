@@ -1944,6 +1944,168 @@ body {
     font-style: italic;
 }
 
+/* Вводная информация о 2026 годе */
+.year-2026-intro {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 30px;
+}
+
+.intro-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.intro-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.intro-header h2 {
+    color: #ffd700;
+    font-size: 24px;
+    margin: 0;
+}
+
+.intro-content {
+    color: #e0e0e0;
+}
+
+.intro-paragraph {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.intro-paragraph strong {
+    color: #ffd700;
+}
+
+.intro-highlight {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    background: rgba(255, 215, 0, 0.1);
+    border-left: 3px solid #ffd700;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.highlight-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.highlight-text {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.highlight-text strong {
+    color: #ffd700;
+    font-size: 15px;
+}
+
+/* Секция с кнопкой "Вытянуть карту" */
+.draw-card-section {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: rgba(255, 215, 0, 0.05);
+    border: 1px dashed rgba(255, 215, 0, 0.3);
+    border-radius: 15px;
+}
+
+.draw-card-info {
+    margin-bottom: 20px;
+}
+
+.draw-card-info p {
+    color: #e0e0e0;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.draw-card-btn {
+    padding: 14px 30px;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.draw-card-btn:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    transform: translateY(-2px);
+}
+
+.draw-card-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Краткое описание для бесплатных пользователей */
+.year-card-brief {
+    background: rgba(255, 215, 0, 0.05);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.brief-content {
+    text-align: center;
+}
+
+.brief-content p {
+    color: #e0e0e0;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.brief-content p:last-child {
+    margin-bottom: 0;
+}
+
+.brief-content strong {
+    color: #ffd700;
+    font-weight: 600;
+}
+
+.brief-hint {
+    color: #b0b0b0 !important;
+    font-size: 14px !important;
+    font-style: italic;
+}
+
 /* Карта года */
 .year-card-display {
     text-align: center;
@@ -2032,6 +2194,40 @@ body {
 
     .birthdate-form {
         padding: 20px;
+    }
+
+    .year-2026-intro {
+        padding: 20px;
+    }
+
+    .intro-header h2 {
+        font-size: 20px;
+    }
+
+    .intro-paragraph {
+        font-size: 14px;
+    }
+
+    .intro-highlight {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .draw-card-section {
+        padding: 15px;
+    }
+
+    .draw-card-btn {
+        width: 100%;
+        max-width: 250px;
+    }
+
+    .year-card-brief {
+        padding: 15px;
+    }
+
+    .brief-content p {
+        font-size: 14px;
     }
 }
 
