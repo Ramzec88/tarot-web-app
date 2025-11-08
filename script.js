@@ -2134,11 +2134,32 @@ async function handleCalculateYearCard() {
         const day = birthDate.getDate();
         const month = birthDate.getMonth() + 1; // getMonth() возвращает 0-11
         const year = birthDate.getFullYear();
+        const birthdateFormatted = birthDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
         const personalNumber = calculatePersonalNumber(day, month, year);
         const personalInfo = PERSONAL_NUMBERS_2026[personalNumber];
 
-        // Сохраняем дату рождения в Supabase (независимо от кэша)
+        // Проверяем, изменилась ли дата рождения
+        const userId = getUserId();
+        const savedBirthdateKey = `birthdate_${userId}`;
+        const savedBirthdate = localStorage.getItem(savedBirthdateKey);
+        const birthdateChanged = savedBirthdate && savedBirthdate !== birthdateFormatted;
+
+        if (birthdateChanged) {
+            console.log('📅 Дата рождения изменилась с', savedBirthdate, 'на', birthdateFormatted);
+            console.log('🔄 Очищаем старый кэш и пересчитываем все заново');
+
+            // Очищаем кэш карты года (и для бесплатных, и для премиум)
+            const cacheKeyPremium = `year_card_2026_${userId}`;
+            const cacheKeyFree = `year_card_2026_free_${userId}`;
+            localStorage.removeItem(cacheKeyPremium);
+            localStorage.removeItem(cacheKeyFree);
+
+            showMessage('Дата рождения обновлена. Пересчитываем прогноз...', 'info');
+        }
+
+        // Сохраняем дату рождения в localStorage и Supabase
+        localStorage.setItem(savedBirthdateKey, birthdateFormatted);
         await saveBirthdateToSupabase(birthDate);
 
         // Скрываем загрузку и показываем начальный результат
